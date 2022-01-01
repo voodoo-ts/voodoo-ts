@@ -1,0 +1,38 @@
+{
+  "name": "vvalidator",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run build && jest dist/test",
+    "build": "tsc",
+    "linter": "npx eslint src/"
+  },
+  "author": "",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "error-stack-parser": "^2.0.6",
+    "json-colorizer": "^2.2.2",
+    "luxon": "^2.1.1",
+    "reflect-metadata": "^0.1.13",
+    "source-map-support": "^0.5.21",
+    "ts-morph": "^13.0.2",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.2",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.3",
+    "@types/luxon": "^2.0.7",
+    "@types/node": "^16.11.10",
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "eslint": "^8.3.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-jsdoc": "^37.0.3",
+    "eslint-plugin-prettier": "^4.0.0",
+    "jest": "^27.4.5",
+    "prettier": "^2.5.0",
+    "ts-jest": "^27.1.2"
+  }
+}
