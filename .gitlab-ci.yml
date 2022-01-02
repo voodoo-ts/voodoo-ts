@@ -16,6 +16,8 @@ jest:
   image: node:14
   only:
     - merge_requests
+    - development
+    - main
   artifacts:
     paths:
       - test-report.xml
