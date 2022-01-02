@@ -1,4 +1,48 @@
-sonarqube-check:
+stages:
+  - test
+  - publish
+
+publish:
+  stage: publish
+  only: ['main']
+  script:
+    - echo "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}" > .npmrc
+    - echo "@${CI_PROJECT_NAMESPACE}:registry=https://${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/" >> .npmrc
+    - npm install
+    - npm publish
+
+jest:
+  stage: test
+  image: node:14
+  only:
+    - merge_requests
+  script:
+    - npm install
+    - npm run coverage
+
+sonarqube-mr:
+  stage: test
+  image: 
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script: 
+    - echo sonar-scanner -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID} -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+    - sonar-scanner -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID} -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+  allow_failure: true
+  only:
+    - merge_requests
+    # - main 
+    # - develop
+
+sonarqube-branch:
+  stage: test
   image: 
     name: sonarsource/sonar-scanner-cli:latest
     entrypoint: [""]
@@ -13,6 +57,5 @@ sonarqube-check:
     - sonar-scanner
   allow_failure: true
   only:
-    - merge_requests
     - main 
     - develop
