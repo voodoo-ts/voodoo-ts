@@ -421,17 +421,6 @@ export class ValidatorInstance {
         }
         break;
 
-      /*case 'string':
-        messages.push({
-          path, //: `$.${path.join('.')}`,
-          message: 'not a string',
-          value: error.value,
-        });
-        break;
-
-      case 'number': {
-        throw new Error('Not implemented yet: "number" case');
-      }*/
       case 'root': {
         throw new Error('Not implemented yet: "root" case');
       }

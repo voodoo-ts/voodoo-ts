@@ -38,6 +38,23 @@ describe('plumbing', () => {
 
     expect(classDeclaration).toBeTruthy();
   });
+
+  it('should add inherited properties', () => {
+    const v = new ValidatorInstance({ project });
+
+    class TestBase {
+      baseAttribute!: string;
+    }
+
+    @v.validatorDecorator()
+    class Test extends TestBase {}
+    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
+    const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+    const classTrees = v.getPropertyTypeTrees(classDeclaration);
+
+    expect(classTrees.length).toEqual(1);
+    expect(classTrees[0].name).toEqual('baseAttribute');
+  });
 });
 
 describe('validator', () => {
@@ -217,7 +234,7 @@ describe('validator', () => {
 
     it('should validate optional string with valid string', () => {
       const result = v.validate(Test, { stringProperty: 'This is a string.' });
-      const t = new Test();
+
       expect(result.success).toEqual(true);
     });
 
