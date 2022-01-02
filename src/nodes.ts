@@ -10,6 +10,40 @@ export interface ITypeAndTree<T = any, U = keyof T> {
   tree: TypeNode;
 }
 
+export enum ValidationErrorType {
+  // String
+  NOT_A_STRING = 'NOT_A_STRING',
+
+  // Number
+  NOT_A_NUMBER = 'NOT_A_NUMBER',
+
+  // Class
+  OBJECT_PROPERTY_FAILED = 'OBJECT_PROPERTY_FAILED',
+  NOT_AN_OBJECT = 'NOT_AN_OBJECT',
+
+  // Arrays
+  ELEMENT_TYPE_FAILED = 'ELEMENT_TYPE_FAILED',
+  NOT_AN_ARRAY = 'NOT_AN_ARRAY',
+
+  CUSTOM = 'CUSTOM',
+}
+
+export interface INodeValidationSuccess {
+  success: true;
+}
+
+export interface INodeValidationError {
+  success: false;
+  type: TypeNode['kind'];
+  value: unknown;
+  reason?: ValidationErrorType;
+  expected?: unknown;
+  context?: Record<string, unknown>;
+  previousError?: INodeValidationError;
+}
+
+export type INodeValidationResult = INodeValidationSuccess | INodeValidationError;
+
 abstract class TypeNodeBase {
   abstract kind: string;
   abstract validate(value: unknown, context: IValidationContext): INodeValidationResult;
@@ -57,16 +91,26 @@ export class RootNode extends TypeNodeBase {
   }
 }
 
-export class StringNode extends TypeNodeBase {
+abstract class LeafNode extends TypeNodeBase {
+  abstract reason: ValidationErrorType;
+
+  fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
+    return super.fail(value, { reason: this.reason });
+  }
+}
+
+export class StringNode extends LeafNode {
   kind = 'string' as const;
+  reason = ValidationErrorType.NOT_A_STRING;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     return this.wrapBoolean(value, typeof value === 'string');
   }
 }
 
-export class NumberNode extends TypeNodeBase {
+export class NumberNode extends LeafNode {
   kind = 'number' as const;
+  reason = ValidationErrorType.NOT_A_NUMBER;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     return this.wrapBoolean(value, typeof value === 'number');
@@ -137,13 +181,17 @@ export class ArrayNode extends TypeNodeBase {
         for (const child of this.children) {
           const result = child.validate(item, context);
           if (!result.success) {
-            return this.fail(value, { reason: 'ELEMENT_TYPE_FAILED', context: { element: i }, previousError: result });
+            return this.fail(value, {
+              reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+              context: { element: i },
+              previousError: result,
+            });
           }
         }
       }
       return this.success();
     } else {
-      return this.fail(value, { reason: 'NOT_AN_ARRAY' });
+      return this.fail(value, { reason: ValidationErrorType.NOT_AN_ARRAY });
     }
   }
 }
@@ -151,7 +199,6 @@ export class ArrayNode extends TypeNodeBase {
 export class ClassNode extends TypeNodeBase {
   kind = 'class' as const;
   name: string;
-  // classTrees: ITypeAndTree<unknown, string>[];
   getClassTrees: () => ITypeAndTree[];
 
   constructor(fullReference: string, getClassTrees: () => ITypeAndTree[]) {
@@ -168,8 +215,8 @@ export class ClassNode extends TypeNodeBase {
       const errors: INodeValidationError[] = [];
       for (const { name, tree } of this.getClassTrees()) {
         const result = tree.validate((value as any)[name], { level: (context.level ?? 0) + 1 });
-        console.log({ name, value, x: (value as any)[name] });
-        console.log(JSON.stringify(result, null, 2));
+        // console.log({ name, value, x: (value as any)[name] });
+        // console.log(JSON.stringify(result, null, 2));
         if (!result.success) {
           if (!result.context) {
             result.context = {};
@@ -181,6 +228,7 @@ export class ClassNode extends TypeNodeBase {
       }
       if (errors.length) {
         return this.fail(value, {
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
           context: {
             classErrors: errors,
           },
@@ -189,25 +237,9 @@ export class ClassNode extends TypeNodeBase {
         return this.success();
       }
     } else {
-      return this.fail(value, { reason: 'NOT_AN_OBJECT' });
+      return this.fail(value, { reason: ValidationErrorType.NOT_AN_OBJECT });
     }
   }
 }
 
 export type TypeNode = RootNode | StringNode | NumberNode | NullNode | EnumNode | UnionNode | ClassNode | ArrayNode;
-
-export interface INodeValidationSuccess {
-  success: true;
-}
-
-export interface INodeValidationError {
-  success: false;
-  type: TypeNode['kind'];
-  value: unknown;
-  reason?: string;
-  expected?: unknown;
-  context?: Record<string, unknown>;
-  previousError?: INodeValidationError;
-}
-
-export type INodeValidationResult = INodeValidationSuccess | INodeValidationError;

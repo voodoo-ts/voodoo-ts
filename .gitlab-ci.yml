@@ -1,4 +1,27 @@
-sonarqube-check:
+stages:
+  - test
+  - publish
+
+publish:
+  stage: publish
+  only: ['main']
+  script:
+    - echo "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}" > .npmrc
+    - echo "@${CI_PROJECT_NAMESPACE}:registry=https://${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/" >> .npmrc
+    - npm install
+    - npm publish
+
+jest:
+  stage: test
+  image: node:14
+  only:
+    - merge_requests
+  script:
+    - npm install
+    - npm run coverage
+
+sonarqube:
+  stage: test
   image: 
     name: sonarsource/sonar-scanner-cli:latest
     entrypoint: [""]
