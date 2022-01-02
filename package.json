@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run build && jest dist/test",
+    "coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage dist/test",
     "build": "tsc",
     "linter": "npx eslint src/"
   },
@@ -32,6 +33,7 @@
     "eslint-plugin-jsdoc": "^37.0.3",
     "eslint-plugin-prettier": "^4.0.0",
     "jest": "^27.4.5",
+    "jest-sonar-reporter": "^2.0.0",
     "prettier": "^2.5.0",
     "ts-jest": "^27.1.2"
   }

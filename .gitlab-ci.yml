@@ -16,12 +16,17 @@ jest:
   image: node:14
   only:
     - merge_requests
+  artifacts:
+    paths:
+      - test-report.xml
   script:
     - npm install
     - npm run coverage
 
 sonarqube-mr:
   stage: test
+  needs:
+    - jest
   image: 
     name: sonarsource/sonar-scanner-cli:latest
     entrypoint: [""]
@@ -33,13 +38,10 @@ sonarqube-mr:
     paths:
       - .sonar/cache
   script: 
-    - echo sonar-scanner -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID} -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
-    - sonar-scanner -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID} -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+    - sonar-scanner -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID} -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} || true
   allow_failure: true
   only:
     - merge_requests
-    # - main 
-    # - develop
 
 sonarqube-branch:
   stage: test

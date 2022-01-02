@@ -14,7 +14,6 @@ import {
   SyntaxKind,
 } from 'ts-morph';
 
-import { enumerate } from './utils';
 import {
   ArrayNode,
   BooleanNode,
@@ -29,7 +28,10 @@ import {
   TypeNode,
   UndefinedNode,
   UnionNode,
+  ValidationErrorType,
 } from './nodes';
+import { enumerate } from './utils';
+import { ParseError, RecursionLimitError } from './errors';
 
 export const validatorMetadataKey = Symbol('format');
 
@@ -47,214 +49,6 @@ export interface IValidatorClassMeta {
 }
 
 type Constructor<T> = new (...args: unknown[]) => T;
-
-// interface IValidationContext {
-//   validate?: ValidatorInstance['validate'];
-//   propertyName?: string;
-//   level?: number;
-// }
-
-// abstract class TypeNodeBase {
-//   abstract kind: string;
-//   abstract validate(value: unknown, context: IValidationContext): INodeValidationResult;
-
-//   wrapBoolean(value: unknown, result: boolean, extra: Partial<INodeValidationError> = {}): INodeValidationResult {
-//     if (result) {
-//       return this.success();
-//     } else {
-//       return this.fail(value, extra);
-//     }
-//   }
-
-//   success(): INodeValidationSuccess {
-//     return { success: true };
-//   }
-
-//   fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
-//     return Object.assign(
-//       {
-//         success: false,
-//         type: this.kind as TypeNode['kind'],
-//         value,
-//       },
-//       extra,
-//     );
-//   }
-
-//   children: TypeNodeBase[] = [];
-// }
-
-// class RootNode extends TypeNodeBase {
-//   kind = 'root' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     if (context.level === undefined) {
-//       context.level = 0;
-//     }
-//     for (const child of this.children) {
-//       const result = child.validate(value, context);
-//       if (!result.success) {
-//         return result;
-//       }
-//     }
-//     return this.success();
-//   }
-// }
-
-// class StringNode extends TypeNodeBase {
-//   kind = 'string' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     return this.wrapBoolean(value, typeof value === 'string');
-//   }
-// }
-
-// class NumberNode extends TypeNodeBase {
-//   kind = 'number' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     return this.wrapBoolean(value, typeof value === 'number');
-//   }
-// }
-
-// class BooleanNode extends TypeNodeBase {
-//   kind = 'boolean' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     return this.wrapBoolean(value, typeof value === 'boolean');
-//   }
-// }
-
-// class NullNode extends TypeNodeBase {
-//   kind = 'null' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     return this.wrapBoolean(value, value === null);
-//   }
-// }
-
-// class UndefinedNode extends TypeNodeBase {
-//   kind = 'undefined' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     return this.wrapBoolean(value, value === undefined);
-//   }
-// }
-
-// class EnumNode extends TypeNodeBase {
-//   kind = 'enum' as const;
-//   name: string;
-//   allowedValues: unknown[];
-
-//   constructor(name: string, allowedValues: unknown[]) {
-//     super();
-//     this.name = name;
-//     this.allowedValues = allowedValues;
-//   }
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     return this.wrapBoolean(value, this.allowedValues.includes(value));
-//   }
-// }
-
-// class UnionNode extends TypeNodeBase {
-//   kind = 'union' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     for (const child of this.children) {
-//       const result = child.validate(value, context);
-//       if (result.success) {
-//         return result;
-//       }
-//     }
-
-//     return this.fail(value);
-//   }
-// }
-
-// class ArrayNode extends TypeNodeBase {
-//   kind = 'array' as const;
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     if (Array.isArray(value)) {
-//       for (const [i, item] of enumerate(value)) {
-//         for (const child of this.children) {
-//           const result = child.validate(item, context);
-//           if (!result.success) {
-//             return this.fail(value, { reason: 'ELEMENT_TYPE_FAILED', context: { element: i }, previousError: result });
-//           }
-//         }
-//       }
-//       return this.success();
-//     } else {
-//       return this.fail(value, { reason: 'NOT_AN_ARRAY' });
-//     }
-//   }
-// }
-
-// class ClassNode extends TypeNodeBase {
-//   kind = 'class' as const;
-//   name: string;
-//   // classTrees: ITypeAndTree<unknown, string>[];
-//   getClassTrees: () => ITypeAndTree[];
-
-//   constructor(fullReference: string, getClassTrees: () => ITypeAndTree[]) {
-//     super();
-//     this.name = fullReference;
-//     this.getClassTrees = getClassTrees;
-//   }
-
-//   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-//     if (context.level === 10) {
-//       throw new Error('loop');
-//     }
-//     if (typeof value === 'object' && value !== null) {
-//       const errors: INodeValidationError[] = [];
-//       for (const { name, tree } of this.getClassTrees()) {
-//         const result = tree.validate((value as any)[name], { level: (context.level ?? 0) + 1 });
-//         console.log({ name, value, x: (value as any)[name] });
-//         console.log(JSON.stringify(result, null, 2));
-//         if (!result.success) {
-//           if (!result.context) {
-//             result.context = {};
-//           }
-//           result.context.propertyName = name;
-//           result.context.className = this.name;
-//           errors.push(result);
-//         }
-//       }
-//       if (errors.length) {
-//         return this.fail(value, {
-//           context: {
-//             classErrors: errors,
-//           },
-//         });
-//       } else {
-//         return this.success();
-//       }
-//     } else {
-//       return this.fail(value, { reason: 'NOT_AN_OBJECT' });
-//     }
-//   }
-// }
-
-// type TypeNode = RootNode | StringNode | NumberNode | NullNode | EnumNode | UnionNode | ClassNode | ArrayNode;
-
-// interface INodeValidationSuccess {
-//   success: true;
-// }
-
-// interface INodeValidationError {
-//   success: false;
-//   type: TypeNode['kind'];
-//   value: unknown;
-//   reason?: string;
-//   expected?: unknown;
-//   context?: Record<string, unknown>;
-//   previousError?: INodeValidationError;
-// }
-
-// type INodeValidationResult = INodeValidationSuccess | INodeValidationError;
 
 interface IValidationSuccess<T> {
   success: true;
@@ -336,9 +130,7 @@ export class ValidatorInstance {
 
     const walkSyntaxNodes = (node: ReturnType<SourceFile['getChildAtIndex']>, level = 0): ClassDeclaration | null => {
       for (const c of node.getChildren()) {
-        // console.log(' '.repeat(level /*c.getIndentationLevel() * 2*/), c.getKindName(), c.getSymbol()?.getName());
         if (c.getKind() === SyntaxKind.ClassDeclaration) {
-          // console.log(' '.repeat(level), '', c.getStartLineNumber(), line, (c as ClassDeclaration).getName());
           if (c.getStartLineNumber() === line) {
             return c as ClassDeclaration;
           }
@@ -350,42 +142,8 @@ export class ValidatorInstance {
       }
       return null;
     };
-    // console.log(sourceFile.getChildren().map((n) => n.getKindName()));
+
     const cls = walkSyntaxNodes(sourceFile);
-
-    // const walkNamespaces = (namespace: ModuleDeclaration): ClassDeclaration | null => {
-    //   console.log(namespace.getName());
-    //   for (const childNamespace of namespace.getModules()) {
-    //     const cls = walkNamespaces(childNamespace);
-    //     if (cls) {
-    //       return cls;
-    //     }
-    //   }
-
-    //   const start = namespace.getStartLineNumber();
-    //   const end = namespace.getEndLineNumber();
-    //   console.log(namespace.getName(), start, end, line);
-    //   if (line > start && line < end) {
-    //     console.log('ns found');
-    //     const cls = namespace.getClassOrThrow(className);
-    //     if (cls) {
-    //       return cls;
-    //     }
-    //   }
-
-    //   return null;
-    // };
-
-    // let cls = sourceFile.getClass(className);
-    // if (!cls) {
-    //   for (const namespace of sourceFile.getModules()) {
-    //     const result = walkNamespaces(namespace);
-    //     if (result) {
-    //       cls = result;
-    //       break;
-    //     }
-    //   }
-    // }
 
     if (!cls) {
       throw new Error(`class not found: ${className}`);
@@ -419,7 +177,10 @@ export class ValidatorInstance {
       const spam = false;
 
       if (level > 10) {
-        throw new Error(`level > 10`);
+        throw new RecursionLimitError('Recursion limit reached', {
+          limit: 10,
+          class: cls.getName(),
+        });
       }
 
       if (!tree) {
@@ -427,63 +188,31 @@ export class ValidatorInstance {
       }
 
       if (t.isNumber()) {
-        if (spam) {
-          log('is number');
-        }
         tree.children.push(new NumberNode());
       } else if (t.isString()) {
-        if (spam) {
-          log('is string');
-        }
         tree.children.push(new StringNode());
       } else if (t.isBoolean()) {
-        if (spam) {
-          log('is bool');
-        }
         tree.children.push(new BooleanNode());
       } else if (t.isNull()) {
-        if (spam) {
-          log('is null');
-        }
         tree.children.push(new NullNode());
       } else if (t.isUndefined()) {
-        if (spam) {
-          log('is undefined');
-        }
         tree.children.push(new UndefinedNode());
       } else if (t.isEnum()) {
         const name = t.getText();
-        if (spam) {
-          log('is enum', name);
-        }
         const items = t.getUnionTypes().map((t) => t.getLiteralValueOrThrow()) as string[];
-        if (spam) {
-          log('items', items);
-        }
+
         tree.children.push(new EnumNode(name, items));
       } else if (t.isUnion()) {
-        if (spam) {
-          log('is union');
-        }
-
         const unionNode = new UnionNode();
         tree.children.push(unionNode);
         for (const unionType of t.getUnionTypes()) {
           walkTypeNodes(unionType, level + 1, unionNode);
         }
       } else if (t.isArray()) {
-        if (spam) {
-          log('is array');
-        }
-
         const arrayNode = new ArrayNode();
         tree.children.push(arrayNode);
         walkTypeNodes(t.getArrayElementTypeOrThrow(), level + 1, arrayNode);
       } else if (t.isClass()) {
-        if (!spam) {
-          log('is class', t.getText());
-        }
-
         // We won't do recursive stuff for now
         if (depth === 10) {
           throw new Error('loop detected');
@@ -498,24 +227,25 @@ export class ValidatorInstance {
 
         tree.children.push(new ClassNode(className, getClassTrees));
       } else if (t.isInterface()) {
-        if (spam) {
-          log('is interface', t.getText());
-        }
+        log('is interface', t.getText());
       } else if (t.getAliasSymbol()) {
         const name = t.getAliasSymbol()?.getFullyQualifiedName();
-        log('hastypesymbol', name);
 
         if (name === 'Omit') {
           console.log('OMIT');
           const typeArguments = t.getAliasTypeArguments();
 
           if (typeArguments.length !== 2) {
-            throw new Error('');
+            throw new ParseError('Omit<T, U> has not the expected structure', {
+              class: cls.getName(),
+              asText: t.getText(),
+              typeArguments,
+            });
           }
 
-          const [cls, keys] = typeArguments;
+          const [targetCls, keys] = typeArguments;
 
-          const referencedClassDeclaration = cls.getSymbol()?.getDeclarations()[0] as ClassDeclaration;
+          const referencedClassDeclaration = targetCls.getSymbol()?.getDeclarations()[0] as ClassDeclaration;
           const keyNames = new Set<string>();
           if (keys.isStringLiteral()) {
             keyNames.add(keys.getLiteralValueOrThrow().toString());
@@ -526,7 +256,11 @@ export class ValidatorInstance {
             }
           } else {
             // TODO
-            throw new Error('a');
+            throw new ParseError('Unknown paramter U for Omit<T, U>', {
+              class: cls.getName(),
+              asText: keys.getText(),
+              keys,
+            });
           }
 
           const getClassTrees: GetClassTrees<T> = () => {
@@ -539,10 +273,14 @@ export class ValidatorInstance {
           tree.children.push(new ClassNode(referencedClassDeclaration.getName() ?? '<unknown>', getClassTrees));
         }
       } else {
-        console.log('error', t.getText(), t.getAliasSymbol()?.getFullyQualifiedName());
-        // console.log(t.getAliasSymbol()?.getFullyQualifiedName());
+        console.log('error', t.getText());
+
         debugger;
-        throw new Error('unknown type node');
+
+        throw new ParseError('Syntax not supported', {
+          class: cls.getName(),
+          asText: t.getText(),
+        });
       }
 
       return tree;
@@ -640,6 +378,78 @@ export class ValidatorInstance {
   getClassMetadata(cls: Constructor<unknown>): IValidatorClassMeta {
     return Reflect.getMetadata(validatorMetadataKey, cls) as IValidatorClassMeta;
   }
+
+  getValidationErrors<T>(root: IValidationError<T>['errors']) {
+    const messages: any[] = [];
+    for (const [field, error] of Object.entries<INodeValidationError>(root as any)) {
+      const formatted = this.getValidationError<T>(error, [field]);
+      messages.push(...formatted);
+    }
+    console.log(messages);
+  }
+
+  getValidationError<T>(
+    error: INodeValidationError,
+    path: string[] = [],
+    messages: IErrorMessage[] = [],
+  ): IErrorMessage[] {
+    // const path: string[] = [];
+    // path.push(error.type);
+    switch (error.type) {
+      case 'array':
+        if (error.reason === ValidationErrorType.ELEMENT_TYPE_FAILED) {
+          path = [...path, `[${error?.context?.element}]`];
+          this.getValidationError<T>(error.previousError!, path, messages);
+        } else {
+          //
+        }
+        break;
+      case 'class':
+        // path.push(error.)
+        if (error.reason === ValidationErrorType.OBJECT_PROPERTY_FAILED) {
+          const classErrors = error.context!.classErrors as INodeValidationError[];
+          for (const classError of classErrors) {
+            const propertyPath = [...path, classError.context!.propertyName! as string];
+            this.getValidationError<T>(classError, propertyPath, messages);
+          }
+        } else {
+          messages.push({
+            path,
+            reason: error.reason!,
+            value: error.value,
+          });
+        }
+        break;
+
+      case 'root': {
+        throw new Error('Not implemented yet: "root" case');
+      }
+      case 'null': {
+        throw new Error('Not implemented yet: "null" case');
+      }
+      case 'union': {
+        throw new Error('Not implemented yet: "union" case');
+      }
+      case 'enum': {
+        throw new Error('Not implemented yet: "enum" case');
+      }
+
+      default:
+        messages.push({
+          path,
+          reason: error.reason!,
+          value: error.value,
+        });
+    }
+    return messages;
+  }
+}
+
+interface IErrorMessage {
+  path: string[];
+  reason: ValidationErrorType;
+  value: unknown;
+  context?: Record<string, unknown>;
 }
 
 const instance = new ValidatorInstance({
