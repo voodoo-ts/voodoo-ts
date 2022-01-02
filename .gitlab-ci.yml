@@ -58,4 +58,4 @@ sonarqube-branch:
   allow_failure: true
   only:
     - main 
-    - develop
+    - development
