@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prepare": "npm run build",
     "test": "npm run build && jest dist/test",
     "coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage dist/test",
     "build": "tsc",
