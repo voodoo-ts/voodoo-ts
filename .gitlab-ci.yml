@@ -13,7 +13,7 @@ publish:
 
 jest:
   stage: test
-  image: node:14
+  image: node:17
   only:
     - merge_requests
     - development
