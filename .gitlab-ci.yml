@@ -57,7 +57,7 @@ sonarqube-mr:
 sonarqube-branch:
   extends: .sonarqube
   script: 
-    - sonar-scanner
+    - sonar-scanner || true
   allow_failure: true
   only:
     - main 
