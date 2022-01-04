@@ -12,7 +12,7 @@ import {
   SyntaxKind,
 } from 'ts-morph';
 
-import { ParseError, RecursionLimitError, RuntimeError, VVError } from './errors';
+import { ParseError, RecursionLimitError } from './errors';
 import {
   ArrayNode,
   BooleanNode,
