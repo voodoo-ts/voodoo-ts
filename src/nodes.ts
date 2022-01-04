@@ -17,6 +17,15 @@ export enum ValidationErrorType {
   // Number
   NOT_A_NUMBER = 'NOT_A_NUMBER',
 
+  // Enum
+  NOT_AN_ENUM = 'NOT_AN_ENUM',
+
+  // Boolean
+  NOT_A_BOOLEAN = 'NOT_A_BOOLEAN',
+
+  // Union
+  NO_UNION_MATCH = 'NO_UNION_MATCH',
+
   // Class
   OBJECT_PROPERTY_FAILED = 'OBJECT_PROPERTY_FAILED',
   NOT_AN_OBJECT = 'NOT_AN_OBJECT',
@@ -26,6 +35,7 @@ export enum ValidationErrorType {
   NOT_AN_ARRAY = 'NOT_AN_ARRAY',
 
   CUSTOM = 'CUSTOM',
+  VALUE_REQUIRED = 'VALUE_REQUIRED',
 }
 
 export interface INodeValidationSuccess {
@@ -39,7 +49,7 @@ export interface INodeValidationError {
   reason?: ValidationErrorType;
   expected?: unknown;
   context?: Record<string, unknown>;
-  previousError?: INodeValidationError;
+  previousErrors: INodeValidationError[];
 }
 
 export type INodeValidationResult = INodeValidationSuccess | INodeValidationError;
@@ -66,6 +76,7 @@ abstract class TypeNodeBase {
         success: false,
         type: this.kind as TypeNode['kind'],
         value,
+        previousErrors: [],
       },
       extra,
     );
@@ -76,11 +87,28 @@ abstract class TypeNodeBase {
 
 export class RootNode extends TypeNodeBase {
   kind = 'root' as const;
+  optional: boolean;
+
+  constructor(optional: boolean) {
+    super();
+    this.optional = optional;
+  }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (context.level === undefined) {
       context.level = 0;
     }
+
+    if (!this.optional && value === undefined) {
+      return this.fail(value, {
+        reason: ValidationErrorType.VALUE_REQUIRED,
+      });
+    }
+
+    if (this.optional && value === undefined) {
+      return this.success();
+    }
+
     for (const child of this.children) {
       const result = child.validate(value, context);
       if (!result.success) {
@@ -117,8 +145,9 @@ export class NumberNode extends LeafNode {
   }
 }
 
-export class BooleanNode extends TypeNodeBase {
+export class BooleanNode extends LeafNode {
   kind = 'boolean' as const;
+  reason = ValidationErrorType.NOT_A_BOOLEAN;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     return this.wrapBoolean(value, typeof value === 'boolean');
@@ -153,7 +182,17 @@ export class EnumNode extends TypeNodeBase {
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-    return this.wrapBoolean(value, this.allowedValues.includes(value));
+    if (this.allowedValues.includes(value)) {
+      return this.success();
+    } else {
+      return this.fail(value, {
+        reason: ValidationErrorType.NOT_AN_ENUM,
+        context: {
+          name: this.name,
+          allowedValues: this.allowedValues,
+        },
+      });
+    }
   }
 }
 
@@ -161,14 +200,21 @@ export class UnionNode extends TypeNodeBase {
   kind = 'union' as const;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
+    const errors: INodeValidationError[] = [];
     for (const child of this.children) {
       const result = child.validate(value, context);
       if (result.success) {
         return result;
+      } else {
+        errors.push(result);
       }
     }
 
-    return this.fail(value);
+    return this.fail(value, {
+      reason: ValidationErrorType.NO_UNION_MATCH,
+      previousErrors: errors,
+      context: {},
+    });
   }
 }
 
@@ -184,7 +230,7 @@ export class ArrayNode extends TypeNodeBase {
             return this.fail(value, {
               reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
               context: { element: i },
-              previousError: result,
+              previousErrors: [result],
             });
           }
         }
@@ -222,22 +268,23 @@ export class ClassNode extends TypeNodeBase {
             result.context = {};
           }
           result.context.propertyName = name;
-          result.context.className = this.name;
+          result.context.name = this.name;
           errors.push(result);
         }
       }
       if (errors.length) {
         return this.fail(value, {
           reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          previousErrors: errors,
           context: {
-            classErrors: errors,
+            name: this.name,
           },
         });
       } else {
         return this.success();
       }
     } else {
-      return this.fail(value, { reason: ValidationErrorType.NOT_AN_OBJECT });
+      return this.fail(value, { reason: ValidationErrorType.NOT_AN_OBJECT, context: { name: this.name } });
     }
   }
 }

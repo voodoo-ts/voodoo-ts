@@ -6,14 +6,13 @@ import ErrorStackParser from 'error-stack-parser';
 import {
   ClassDeclaration,
   ClassInstancePropertyTypes,
-  ModuleDeclaration,
   Project,
-  PropertyDeclarationStructure,
-  QuestionTokenableNodeStructure,
+  PropertyDeclaration,
   SourceFile,
   SyntaxKind,
 } from 'ts-morph';
 
+import { ParseError, RecursionLimitError, RuntimeError, VVError } from './errors';
 import {
   ArrayNode,
   BooleanNode,
@@ -30,8 +29,6 @@ import {
   UnionNode,
   ValidationErrorType,
 } from './nodes';
-import { enumerate } from './utils';
-import { ParseError, RecursionLimitError } from './errors';
 
 export const validatorMetadataKey = Symbol('format');
 
@@ -58,7 +55,7 @@ interface IValidationSuccess<T> {
 interface IValidationError<T> {
   success: false;
   object: null;
-  errors: Partial<Record<keyof T, INodeValidationError>>;
+  errors: Record<string | number | symbol, IErrorMessage[]>;
 }
 
 type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
@@ -113,16 +110,23 @@ export class ValidatorInstance {
 
   /**
    * This method tries to find a class based on the className, filename and line where the @Validator() call occured.
-   * The line is needed to tell classes in the same file, with the same name but different namespaces apart
    *
-   * This will only find classes defined toplevel or in namespaces (nesting supported). This will fail
-   * for classes defined in other classes or in functions.
+   * This loops through the whole syntax tree of the source file, and checks each class syntax node
+   * if the line correspondents to the class. Because this is rather hacky, the `line` parameter
+   * might not line up exactly to the class syntax node's start line. This considers decorators,
+   * but will fail for more unconventional code styles. This however should always work:
    *
-   * This function will recurse through all namespaces defined in a file. Will throw if no class can be found.
+   * ```
+   * @SomeDecorator()
+   * @Validator()
+   * @SomeOtherDecorator()
+   * class Test {}
    *
-   * @param filename
-   * @param className
-   * @param line
+   * ```
+   *
+   * @param filename Filename of the where the class should be searched
+   * @param className String represtation of the className
+   * @param line The line where the @Decorator() call occured
    * @returns
    */
   getClass(filename: string, className: string, line: number): ClassDeclaration {
@@ -131,8 +135,18 @@ export class ValidatorInstance {
     const walkSyntaxNodes = (node: ReturnType<SourceFile['getChildAtIndex']>, level = 0): ClassDeclaration | null => {
       for (const c of node.getChildren()) {
         if (c.getKind() === SyntaxKind.ClassDeclaration) {
-          if (c.getStartLineNumber() === line) {
-            return c as ClassDeclaration;
+          const cls = c as ClassDeclaration;
+
+          // A class can have multiple decorators, collect their line numbers and check them too
+          const decoratorLineStarts = cls.getDecorators().map((decorator) => decorator.getStartLineNumber());
+          for (const decoratorLineStart of decoratorLineStarts) {
+            if (decoratorLineStart === line) {
+              return cls;
+            }
+          }
+
+          if (cls.getStartLineNumber() === line) {
+            return cls;
           }
         }
         const cls = walkSyntaxNodes(c, level + 1);
@@ -170,11 +184,11 @@ export class ValidatorInstance {
 
     const walkTypeNodes = (
       t: ReturnType<ClassInstancePropertyTypes['getType']>,
-      level = 1,
+      hasQuestionToken: boolean,
       tree?: TypeNode,
+      level = 1,
     ): TypeNode => {
       const log = (...args: any[]): void => console.log(' '.repeat(level), ...args);
-      const spam = false;
 
       if (level > 10) {
         throw new RecursionLimitError('Recursion limit reached', {
@@ -184,7 +198,22 @@ export class ValidatorInstance {
       }
 
       if (!tree) {
-        tree = new RootNode();
+        // First function call, set up root node. If our property is defined as optional, the result type is T | undefined
+        // If this is the case, unwrap the union to allow for nicer error reporting
+        tree = new RootNode(hasQuestionToken);
+        if (hasQuestionToken && t.isUnion()) {
+          const unionTypes = t.getUnionTypes().filter((unionType) => !unionType.isUndefined());
+          if (unionTypes.length === 1) {
+            return walkTypeNodes(unionTypes[0], false, tree, level + 1);
+          } else {
+            const unionNode = new UnionNode();
+            tree.children.push(unionNode);
+            for (const unionType of unionTypes) {
+              walkTypeNodes(unionType, false, unionNode, level + 1);
+            }
+            return tree;
+          }
+        }
       }
 
       if (t.isNumber()) {
@@ -206,19 +235,19 @@ export class ValidatorInstance {
         const unionNode = new UnionNode();
         tree.children.push(unionNode);
         for (const unionType of t.getUnionTypes()) {
-          walkTypeNodes(unionType, level + 1, unionNode);
+          walkTypeNodes(unionType, false, unionNode, level + 1);
         }
       } else if (t.isArray()) {
         const arrayNode = new ArrayNode();
         tree.children.push(arrayNode);
-        walkTypeNodes(t.getArrayElementTypeOrThrow(), level + 1, arrayNode);
+        walkTypeNodes(t.getArrayElementTypeOrThrow(), false, arrayNode, level + 1);
       } else if (t.isClass()) {
         // We won't do recursive stuff for now
         if (depth === 10) {
           throw new Error('loop detected');
         }
 
-        // Get the class declartion for the referenced class and build a tree from it
+        // Get the class declaration for the referenced class
         const referencedClassDeclaration = t.getSymbol()?.getDeclarations()[0] as ClassDeclaration;
         const className = t.getText();
 
@@ -232,7 +261,6 @@ export class ValidatorInstance {
         const name = t.getAliasSymbol()?.getFullyQualifiedName();
 
         if (name === 'Omit') {
-          console.log('OMIT');
           const typeArguments = t.getAliasTypeArguments();
 
           if (typeArguments.length !== 2) {
@@ -246,13 +274,20 @@ export class ValidatorInstance {
           const [targetCls, keys] = typeArguments;
 
           const referencedClassDeclaration = targetCls.getSymbol()?.getDeclarations()[0] as ClassDeclaration;
+
+          if (referencedClassDeclaration.getKind() !== SyntaxKind.ClassDeclaration) {
+            throw new ParseError('Only other validators are supported as T', {
+              class: cls.getName(),
+              asText: t.getText(),
+            });
+          }
+
           const keyNames = new Set<string>();
           if (keys.isStringLiteral()) {
             keyNames.add(keys.getLiteralValueOrThrow().toString());
           } else if (keys.isUnion()) {
             for (const unionType of keys.getUnionTypes()) {
               keyNames.add(unionType.getLiteralValueOrThrow().toString());
-              console.log({ keyNames });
             }
           } else {
             // TODO
@@ -271,6 +306,11 @@ export class ValidatorInstance {
           };
 
           tree.children.push(new ClassNode(referencedClassDeclaration.getName() ?? '<unknown>', getClassTrees));
+        } else {
+          throw new ParseError('Syntax not supported', {
+            class: cls.getName(),
+            asText: t.getText(),
+          });
         }
       } else {
         console.log('error', t.getText());
@@ -293,7 +333,9 @@ export class ValidatorInstance {
     while (currentClass) {
       for (const prop of currentClass.getInstanceProperties()) {
         const type = prop.getType();
-        const tree = walkTypeNodes(type);
+        const hasQuestionToken = (prop as PropertyDeclaration).hasQuestionToken();
+
+        const tree = walkTypeNodes(type, hasQuestionToken);
 
         trees.push({
           name: prop.getName() as keyof T,
@@ -324,20 +366,16 @@ export class ValidatorInstance {
     const propertyTypeTrees = this.getPropertyTypeTrees<T>(classDeclaration);
 
     let allFieldsAreValid = true;
-    const errors: IValidationError<T>['errors'] = {};
+    const errors: Record<string | number | symbol, IErrorMessage[]> = {};
     for (const { name, tree } of propertyTypeTrees) {
       const result = tree.validate(values[name], { propertyName: name as string });
       if (!result.success) {
-        errors[name] = result;
+        errors[name] = this.flattenValidationError(result, [name as string]);
         allFieldsAreValid = false;
       } else {
         //
       }
-      console.log(name, values[name], { result });
     }
-
-    console.log(allFieldsAreValid);
-    console.log('\n\n\n');
 
     if (allFieldsAreValid) {
       return {
@@ -356,14 +394,14 @@ export class ValidatorInstance {
 
   validate<T>(cls: Constructor<T>, values: MaybePartial<T>): IValidationResult<T> {
     // Get metadata + types
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, cls) as IValidatorClassMeta;
+    const validatorMeta = this.getClassMetadata(cls);
 
     const classDeclaration = this.getClass(validatorMeta.filename, cls.name, validatorMeta.line);
 
     return this.validateClassDeclaration<T>(classDeclaration, values);
   }
 
-  validatorDecorator(options: IValidatorOptions = { auto: true }) {
+  validatorDecorator(options: IValidatorOptions = { auto: true }): ReturnType<typeof Reflect['metadata']> {
     const error = new Error();
     const stack = ErrorStackParser.parse(error);
 
@@ -379,38 +417,28 @@ export class ValidatorInstance {
     return Reflect.getMetadata(validatorMetadataKey, cls) as IValidatorClassMeta;
   }
 
-  getValidationErrors<T>(root: IValidationError<T>['errors']) {
-    const messages: any[] = [];
-    for (const [field, error] of Object.entries<INodeValidationError>(root as any)) {
-      const formatted = this.getValidationError<T>(error, [field]);
-      messages.push(...formatted);
-    }
-    console.log(messages);
-  }
-
-  getValidationError<T>(
+  flattenValidationError<T>(
     error: INodeValidationError,
     path: string[] = [],
     messages: IErrorMessage[] = [],
   ): IErrorMessage[] {
-    // const path: string[] = [];
-    // path.push(error.type);
     switch (error.type) {
       case 'array':
         if (error.reason === ValidationErrorType.ELEMENT_TYPE_FAILED) {
           path = [...path, `[${error?.context?.element}]`];
-          this.getValidationError<T>(error.previousError!, path, messages);
+          for (const previousError of error.previousErrors) {
+            this.flattenValidationError<T>(previousError, path, messages);
+          }
         } else {
           //
         }
         break;
       case 'class':
-        // path.push(error.)
         if (error.reason === ValidationErrorType.OBJECT_PROPERTY_FAILED) {
-          const classErrors = error.context!.classErrors as INodeValidationError[];
+          const classErrors = error.previousErrors;
           for (const classError of classErrors) {
             const propertyPath = [...path, classError.context!.propertyName! as string];
-            this.getValidationError<T>(classError, propertyPath, messages);
+            this.flattenValidationError<T>(classError, propertyPath, messages);
           }
         } else {
           messages.push({
@@ -421,17 +449,36 @@ export class ValidatorInstance {
         }
         break;
 
-      case 'root': {
-        throw new Error('Not implemented yet: "root" case');
-      }
-      case 'null': {
-        throw new Error('Not implemented yet: "null" case');
-      }
       case 'union': {
-        throw new Error('Not implemented yet: "union" case');
+        if (error.reason === ValidationErrorType.NO_UNION_MATCH) {
+          const errors = error.previousErrors.map((previousError) => {
+            if (previousError.type === 'class' || previousError.type === 'enum') {
+              return previousError.context!.name;
+            } else {
+              return previousError.type;
+            }
+          });
+
+          messages.push({
+            path,
+            reason: error.reason,
+            value: error.value,
+            context: {
+              unionErrors: errors,
+            },
+          });
+        }
+
+        break;
       }
       case 'enum': {
-        throw new Error('Not implemented yet: "enum" case');
+        messages.push({
+          path,
+          reason: error.reason!,
+          value: error.value,
+          context: { allowedValues: error.context?.allowedValues },
+        });
+        break;
       }
 
       default:
@@ -445,7 +492,7 @@ export class ValidatorInstance {
   }
 }
 
-interface IErrorMessage {
+export interface IErrorMessage {
   path: string[];
   reason: ValidationErrorType;
   value: unknown;
