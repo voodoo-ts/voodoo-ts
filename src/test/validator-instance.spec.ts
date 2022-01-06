@@ -1,16 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Project } from 'ts-morph';
-import { ParseError } from '../errors';
-import { ValidationErrorType } from '../nodes';
 
-import { IErrorMessage, IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../validator';
+import { IErrorMessage } from '../error-formatter';
+import { ParseError } from '../errors';
+import { ClassNode, ValidationErrorType } from '../nodes';
+import { isParseError } from '../parser';
+import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../validator';
 
 const project = new Project({
   tsConfigFilePath: 'tsconfig.json',
-  // Optionally specify compiler options, tsconfig.json, in-memory file system, and more here.
-  // If you initialize with a tsconfig.json, then it will automatically populate the project
-  // with the associated source files.
-  // Read more: https://ts-morph.com/setup/
 });
 
 describe('plumbing', () => {
@@ -113,7 +111,7 @@ describe('plumbing', () => {
 
     @v.validatorDecorator()
     class Test {
-      derivedAttribute!: {};
+      derivedAttribute!: symbol;
     }
 
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
@@ -441,6 +439,18 @@ describe('validator', () => {
           embeddedObjectMultikeyAlias!: Omit<TestEmbed, SkippedKeys>;
         }
 
+        it('should construct the tree correctly', () => {
+          const { filename, line } = v.getClassMetadata(Test);
+          const cls = v.getClass(filename, 'Test', line);
+          const trees = v.getPropertyTypeTrees(cls);
+
+          expect(trees[0].tree.children[0].kind).toEqual('class');
+          expect((trees[0].tree.children[0] as ClassNode).getClassTrees().map((t) => t.name)).toEqual([
+            'embeddedProperty1',
+            'embeddedProperty3',
+          ]);
+        });
+
         it('should validate', () => {
           const result = v.validate(Test, {
             embeddedObject: { embeddedProperty1: 123 },
@@ -461,12 +471,17 @@ describe('validator', () => {
         }
 
         it('should throw ParseError()', () => {
-          const result = () =>
+          try {
             v.validate(Test, {
               embeddedObject: { embeddedProperty1: '123' },
             });
-
-          expect(result).toThrow(ParseError);
+          } catch (error) {
+            expect(error).toBeInstanceOf(ParseError);
+            if (isParseError(error)) {
+              expect(error.context.class).toBeTruthy();
+              expect(error.context.asText).toBeTruthy();
+            }
+          }
         });
       });
     });
@@ -630,6 +645,39 @@ describe('validator', () => {
           expect(unionPropertyError.length).toBeGreaterThan(0);
         }
       });
+    });
+  });
+
+  describe('interface', () => {
+    const v = new ValidatorInstance({ project });
+
+    interface ITest {
+      test: number;
+    }
+
+    interface ITest2 extends ITest {
+      stringProperty: string;
+    }
+    @v.validatorDecorator()
+    class Test {
+      embedded!: ITest;
+      embedded1!: ITest;
+      embedded2!: ITest2;
+      embedded3!: {
+        inlineNumberProperty: number;
+      };
+    }
+
+    it('should validate', () => {
+      const result = v.validate(Test, {
+        embedded: { test: 1 },
+        embedded1: { test: 2 },
+        embedded2: { test: 3, stringProperty: 'test' },
+        embedded3: { inlineNumberProperty: 234 },
+      });
+      console.log(result);
+      console.log(v.parser.classTreeCache.map.values());
+      expect(result.success).toEqual(true);
     });
   });
 

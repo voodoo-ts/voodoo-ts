@@ -5,8 +5,8 @@ interface IValidationContext {
   level?: number;
 }
 
-export interface ITypeAndTree<T = any, U = keyof T> {
-  name: U;
+export interface ITypeAndTree {
+  name: string;
   tree: TypeNode;
 }
 
