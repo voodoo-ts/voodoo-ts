@@ -48,10 +48,10 @@ sonarqube-mr:
   extends: .sonarqube
   script: 
     - |
-      sonar-scanner 
-          -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID} 
-          -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} 
-          -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} 
+      sonar-scanner \
+          -Dsonar.pullrequest.key=${CI_MERGE_REQUEST_IID} \
+          -Dsonar.pullrequest.branch=${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} \
+          -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} \
           || true
   allow_failure: true
   only:
