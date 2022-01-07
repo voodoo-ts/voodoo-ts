@@ -132,8 +132,6 @@ export class Parser {
   classTreeCache = new ClassTreeCache();
 
   handleRootNode(type: Type, hasQuestionToken: boolean): [TypeNode, Type] {
-    // First function call, set up root node. If our property is defined as optional, the result type is T | undefined
-    // If this is the case, unwrap the union to allow for nicer error reporting
     const tree = new RootNode(hasQuestionToken);
 
     if (type.isUnion()) {
@@ -147,14 +145,8 @@ export class Parser {
 
       if (unionTypedWithoutUndefined.length === 1) {
         // Prevent unnecessary UnionNode
-        // this.walkTypeNodes(classDeclaration, unionTypedWithoutUndefined[0], false, tree);
         return [tree, unionTypedWithoutUndefined[0]];
       } else {
-        // const unionNode = new UnionNode();
-        // tree.children.push(unionNode);
-        // for (const unionType of unionTypedWithoutUndefined) {
-        //   this.walkTypeNodes(classDeclaration, unionType, false, unionNode);
-        // }
         return [tree, type];
       }
     }
@@ -170,6 +162,8 @@ export class Parser {
     // Walk the syntax nodes for a type recursively and try to build a tree of validators from it
 
     if (!tree) {
+      // First function call, set up root node. If our property is defined as optional, the result type is T | undefined
+      // If this is the case, unwrap the union to allow for nicer error reporting
       [tree, type] = this.handleRootNode(type, hasQuestionToken);
     }
 
