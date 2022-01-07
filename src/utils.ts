@@ -5,3 +5,18 @@ export function* enumerate<T>(iterable: Iterable<T>, start: number = 0): Generat
     i++;
   }
 }
+
+export function* zip<T, U>(a: T[], b: U[]): Generator<[T, U]> {
+  const iterA = a[Symbol.iterator]();
+  const iterB = b[Symbol.iterator]();
+  while (true) {
+    const valueA = iterA.next();
+    const valueB = iterB.next();
+
+    if (valueA.done || valueB.done) {
+      return;
+    }
+
+    yield [valueA.value, valueB.value];
+  }
+}
