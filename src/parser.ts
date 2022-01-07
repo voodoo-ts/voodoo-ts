@@ -18,8 +18,10 @@ import {
   ITypeAndTree,
   NullNode,
   NumberNode,
+  RecordNode,
   RootNode,
   StringNode,
+  TupleNode,
   TypeNode,
   UndefinedNode,
   UnionNode,
@@ -86,16 +88,7 @@ function getFirstSymbolDeclaration(type: Type): ClassOrInterfaceOrLiteral {
 }
 
 function getOmitParameters(type: Type): IOmitParameters {
-  const typeArguments = type.getAliasTypeArguments();
-
-  if (typeArguments.length !== 2) {
-    throw new ParseError('Omit<T, U> has not the expected structure', {
-      asText: type.getText(),
-      typeArguments,
-    });
-  }
-
-  const [targetType, stringLiteralOrUnion] = typeArguments;
+  const [targetType, stringLiteralOrUnion] = type.getAliasTypeArguments();
 
   const referencedClassDeclaration = getFirstSymbolDeclaration(targetType);
 
@@ -137,6 +130,29 @@ class ClassTreeCache {
 
 export class Parser {
   classTreeCache = new ClassTreeCache();
+
+  handleRootNode(type: Type, hasQuestionToken: boolean): [TypeNode, Type] {
+    const tree = new RootNode(hasQuestionToken);
+
+    if (type.isUnion()) {
+      const unionTypes = type.getUnionTypes();
+      const hasUndefined = unionTypes.find((t) => t.isUndefined());
+      const unionTypedWithoutUndefined = unionTypes.filter((unionType) => !unionType.isUndefined());
+
+      if (hasUndefined) {
+        tree.optional = true;
+      }
+
+      if (unionTypedWithoutUndefined.length === 1) {
+        // Prevent unnecessary UnionNode
+        return [tree, unionTypedWithoutUndefined[0]];
+      } else {
+        return [tree, type];
+      }
+    }
+    return [tree, type];
+  }
+
   walkTypeNodes(
     classDeclaration: ClassOrInterfaceOrLiteral,
     type: Type,
@@ -148,21 +164,7 @@ export class Parser {
     if (!tree) {
       // First function call, set up root node. If our property is defined as optional, the result type is T | undefined
       // If this is the case, unwrap the union to allow for nicer error reporting
-      tree = new RootNode(hasQuestionToken);
-      if (hasQuestionToken && type.isUnion()) {
-        const unionTypes = type.getUnionTypes().filter((unionType) => !unionType.isUndefined());
-        if (unionTypes.length === 1) {
-          // Prevent unnecessary UnionNode
-          return this.walkTypeNodes(classDeclaration, unionTypes[0], false, tree);
-        } else {
-          const unionNode = new UnionNode();
-          tree.children.push(unionNode);
-          for (const unionType of unionTypes) {
-            this.walkTypeNodes(classDeclaration, unionType, false, unionNode);
-          }
-          return tree;
-        }
-      }
+      [tree, type] = this.handleRootNode(type, hasQuestionToken);
     }
 
     if (type.isNumber()) {
@@ -184,6 +186,9 @@ export class Parser {
       const unionNode = new UnionNode();
       tree.children.push(unionNode);
       for (const unionType of type.getUnionTypes()) {
+        if (tree.kind === 'root' && unionType.isUndefined()) {
+          continue;
+        }
         this.walkTypeNodes(classDeclaration, unionType, false, unionNode);
       }
     } else if (type.isArray()) {
@@ -199,12 +204,18 @@ export class Parser {
 
       tree.children.push(new ClassNode(className, getClassTrees));
     } else if ((type.isInterface() || type.isObject()) && !type.getAliasSymbol()) {
-      // TODO
-      // debugger;
-      const referencedDeclaration = getFirstSymbolDeclaration(type);
-      const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration);
+      if (!type.isTuple()) {
+        const referencedDeclaration = getFirstSymbolDeclaration(type);
+        const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration);
 
-      tree.children.push(new ClassNode(getName(referencedDeclaration), getClassTrees));
+        tree.children.push(new ClassNode(getName(referencedDeclaration), getClassTrees));
+      } else {
+        const tupleNode = new TupleNode();
+        tree.children.push(tupleNode);
+        for (const tupleElementType of type.getTypeArguments()) {
+          this.walkTypeNodes(classDeclaration, tupleElementType, false, tupleNode);
+        }
+      }
     } else if (type.getAliasSymbol()) {
       const name = type.getAliasSymbol()?.getFullyQualifiedName();
 
@@ -219,14 +230,22 @@ export class Parser {
         };
 
         tree.children.push(new ClassNode(getName(referencedClassDeclaration), getClassTrees));
+      } else if (name === 'Record') {
+        const recordNode = new RecordNode();
+        const [keyType, valueType] = type.getAliasTypeArguments();
+        this.walkTypeNodes(classDeclaration, keyType, false, recordNode);
+        this.walkTypeNodes(classDeclaration, valueType, false, recordNode);
+        tree.children.push(recordNode);
       } else {
         throw new ParseError('Syntax not supported', {
           asText: type.getText(),
+          hasAliasSymbol: true,
         });
       }
     } else {
       throw new ParseError('Syntax not supported', {
         asText: type.getText(),
+        noBranchMatched: true,
       });
     }
 
@@ -274,7 +293,6 @@ export class Parser {
       }
 
       if (isClass(currentClass)) {
-        console.log('cls', currentClass.getBaseClass()?.getName());
         currentClass = currentClass.getBaseClass();
       } else if (isInterface(currentClass)) {
         const [baseInterface] = currentClass.getBaseDeclarations();
