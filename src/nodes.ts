@@ -1,4 +1,4 @@
-import { enumerate } from './utils';
+import { enumerate, zip } from './utils';
 
 interface IValidationContext {
   propertyName?: string;
@@ -30,9 +30,10 @@ export enum ValidationErrorType {
   OBJECT_PROPERTY_FAILED = 'OBJECT_PROPERTY_FAILED',
   NOT_AN_OBJECT = 'NOT_AN_OBJECT',
 
-  // Arrays
+  // Arrays / Tuple
   ELEMENT_TYPE_FAILED = 'ELEMENT_TYPE_FAILED',
   NOT_AN_ARRAY = 'NOT_AN_ARRAY',
+  NO_LENGTH_MATCH = 'NO_LENGTH_MATCH',
 
   CUSTOM = 'CUSTOM',
   VALUE_REQUIRED = 'VALUE_REQUIRED',
@@ -154,16 +155,18 @@ export class BooleanNode extends LeafNode {
   }
 }
 
-export class NullNode extends TypeNodeBase {
+export class NullNode extends LeafNode {
   kind = 'null' as const;
+  reason = ValidationErrorType.CUSTOM;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     return this.wrapBoolean(value, value === null);
   }
 }
 
-export class UndefinedNode extends TypeNodeBase {
+export class UndefinedNode extends LeafNode {
   kind = 'undefined' as const;
+  reason = ValidationErrorType.CUSTOM;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     return this.wrapBoolean(value, value === undefined);
@@ -254,15 +257,12 @@ export class ClassNode extends TypeNodeBase {
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-    if (context.level === 10) {
-      throw new Error('loop');
-    }
     if (typeof value === 'object' && value !== null) {
       const errors: INodeValidationError[] = [];
       for (const { name, tree } of this.getClassTrees()) {
-        const result = tree.validate((value as any)[name], { level: (context.level ?? 0) + 1 });
-        // console.log({ name, value, x: (value as any)[name] });
-        // console.log(JSON.stringify(result, null, 2));
+        const result = tree.validate((value as any)[name], {
+          level: (context.level ?? 0) + 1,
+        });
         if (!result.success) {
           if (!result.context) {
             result.context = {};
@@ -289,4 +289,66 @@ export class ClassNode extends TypeNodeBase {
   }
 }
 
-export type TypeNode = RootNode | StringNode | NumberNode | NullNode | EnumNode | UnionNode | ClassNode | ArrayNode;
+export class TupleNode extends TypeNodeBase {
+  kind = 'tuple' as const;
+  validate(value: unknown, context: IValidationContext): INodeValidationResult {
+    if (!Array.isArray(value)) {
+      return this.fail(value, { reason: ValidationErrorType.NOT_AN_ARRAY });
+    }
+
+    if (value.length !== this.children.length) {
+      return this.fail(value, { reason: ValidationErrorType.NO_LENGTH_MATCH });
+    }
+
+    for (const [i, [child, tupleElementValue]] of enumerate(zip(this.children, value))) {
+      const result = child.validate(tupleElementValue, context);
+      if (!result.success) {
+        return this.fail(value, {
+          reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+          context: { element: i },
+          previousErrors: [result],
+        });
+      }
+    }
+
+    return this.success();
+  }
+}
+
+export class RecordNode extends TypeNodeBase {
+  kind = 'record' as const;
+
+  validate(value: unknown, context: IValidationContext): INodeValidationResult {
+    if (typeof value === 'object' && value !== null) {
+      const valueValidationNode = this.children[1];
+      for (const [objectKey, objectValue] of Object.entries(value)) {
+        const valueResult = valueValidationNode.validate(objectValue, context);
+        if (!valueResult.success) {
+          return this.fail(value, {
+            previousErrors: [valueResult],
+            context: {
+              valueInvalid: true,
+              key: objectKey,
+            },
+          });
+        }
+      }
+
+      return this.success();
+    } else {
+      return this.fail(value, { reason: ValidationErrorType.NOT_AN_OBJECT });
+    }
+  }
+}
+
+export type TypeNode =
+  | RootNode
+  | StringNode
+  | NumberNode
+  | NullNode
+  | EnumNode
+  | UnionNode
+  | ClassNode
+  | ArrayNode
+  | TupleNode
+  | RecordNode;

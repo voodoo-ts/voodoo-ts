@@ -3,7 +3,7 @@ import { Project } from 'ts-morph';
 
 import { IErrorMessage } from '../error-formatter';
 import { ParseError } from '../errors';
-import { ClassNode, ValidationErrorType } from '../nodes';
+import { ClassNode, RootNode, ValidationErrorType } from '../nodes';
 import { isParseError } from '../parser';
 import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../validator';
 
@@ -126,7 +126,7 @@ describe('plumbing', () => {
 
     @v.validatorDecorator()
     class Test {
-      derivedAttribute!: Record<string, number>;
+      derivedAttribute!: Pick<{ a: number }, 'a'>;
     }
 
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
@@ -317,6 +317,79 @@ describe('validator', () => {
     });
   });
 
+  describe('tuple', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      tupleProperty!: [number, string, boolean];
+    }
+
+    it('should construct the correct tree', () => {
+      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
+      const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+      const trees = v.getPropertyTypeTrees(classDeclaration);
+      const tupleTree = trees[0];
+
+      expect(tupleTree.tree).toEqual({
+        kind: 'root',
+        children: [
+          {
+            kind: 'tuple',
+            children: [
+              { kind: 'number', reason: 'NOT_A_NUMBER', children: [] },
+              { kind: 'string', reason: 'NOT_A_STRING', children: [] },
+              { kind: 'boolean', reason: 'NOT_A_BOOLEAN', children: [] },
+            ],
+          },
+        ],
+        optional: false,
+      });
+    });
+
+    it('should validate valid tuples', () => {
+      const result = v.validate(Test, { tupleProperty: [1, 'two', false] });
+
+      expect(result.success).toEqual(true);
+    });
+
+    it('should not validate empty tuples', () => {
+      const result = v.validate(Test, { tupleProperty: [] as any });
+
+      expect(result.success).toEqual(false);
+    });
+
+    it('should fail for invalid tuple elements', () => {
+      const result = v.validate(Test, { tupleProperty: [1, 'two', 'three'] } as any);
+
+      expect(result.success).toEqual(false);
+      if (!result.success) {
+        // Needed for type narrowing
+        expect(result.errors.tupleProperty).toBeTruthy();
+      }
+    });
+
+    it('should fail for invalid types', () => {
+      const result = v.validate(Test, { tupleProperty: 123 } as any);
+
+      expect(result.success).toEqual(false);
+      if (!result.success) {
+        // Needed for type narrowing
+        expect(result.errors.tupleProperty).toBeTruthy();
+      }
+    });
+
+    it('should fail if property is undefined', () => {
+      const result = v.validate(Test, {} as any);
+
+      expect(result.success).toEqual(false);
+      if (!result.success) {
+        // Needed for type narrowing
+        expect(result.errors.tupleProperty).toBeTruthy();
+      }
+    });
+  });
+
   describe('optional', () => {
     const v = new ValidatorInstance({ project });
 
@@ -488,7 +561,7 @@ describe('validator', () => {
   });
 
   describe('union', () => {
-    describe('simple', () => {
+    describe('simple -> (string | number)', () => {
       const v = new ValidatorInstance({ project });
 
       @v.validatorDecorator()
@@ -496,19 +569,19 @@ describe('validator', () => {
         unionProperty!: string | number;
       }
 
-      it('union (string | number) should validate string', () => {
+      it('should validate string', () => {
         const result = v.validate(Test, { unionProperty: 'one' });
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number) should validate number', () => {
+      it('should validate number', () => {
         const result = v.validate(Test, { unionProperty: 2 });
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number) should not validate undefined', () => {
+      it('should not validate undefined', () => {
         const result = v.validate(Test, {});
 
         expect(result.success).toEqual(false);
@@ -519,7 +592,7 @@ describe('validator', () => {
         }
       });
 
-      it('union (string | number) should not validate boolean', () => {
+      it('should not validate boolean', () => {
         const result = v.validate(Test, { unionProperty: false } as any);
 
         expect(result.success).toEqual(false);
@@ -535,7 +608,7 @@ describe('validator', () => {
         }
       });
     });
-    describe('optional', () => {
+    describe('optional ->  (string | number)?', () => {
       const v = new ValidatorInstance({ project });
 
       @v.validatorDecorator()
@@ -562,25 +635,25 @@ describe('validator', () => {
         expect(trees[0].tree.children[0].children.map((c) => c.kind)).toEqual(['string', 'number']);
       });
 
-      it('union (string | number)? should validate string', () => {
+      it('should validate string', () => {
         const result = v.validate(Test, { unionProperty: 'one' });
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number)? should validate number', () => {
+      it('should validate number', () => {
         const result = v.validate(Test, { unionProperty: 2 });
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number)? should validate undefined', () => {
+      it('should validate undefined', () => {
         const result = v.validate(Test, {});
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number) should not validate boolean', () => {
+      it('should not validate boolean', () => {
         const result = v.validate(Test, { unionProperty: false } as any);
 
         expect(result.success).toEqual(false);
@@ -595,7 +668,7 @@ describe('validator', () => {
       });
     });
 
-    describe('with nesting', () => {
+    describe('with nesting -> (string | number | TestEmbed)?', () => {
       const v = new ValidatorInstance({ project });
 
       @v.validatorDecorator()
@@ -608,31 +681,31 @@ describe('validator', () => {
         unionProperty?: string | number | TestEmbed;
       }
 
-      it('union (string | number)? should validate string', () => {
+      it('should validate string', () => {
         const result = v.validate(Test, { unionProperty: 'one' });
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number)? should validate number', () => {
+      it('should validate number', () => {
         const result = v.validate(Test, { unionProperty: 2 });
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number)? should validate undefined', () => {
+      it('should validate undefined', () => {
         const result = v.validate(Test, {});
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number)? should validate embedded object', () => {
+      it('should validate embedded object', () => {
         const result = v.validate(Test, { unionProperty: { embeddedNumber: 123 } });
 
         expect(result.success).toEqual(true);
       });
 
-      it('union (string | number)? should not validate boolean', () => {
+      it('(string | number)? should not validate boolean', () => {
         const result = v.validate(Test, { unionProperty: false } as any);
 
         expect(result.success).toEqual(false);
@@ -643,6 +716,107 @@ describe('validator', () => {
           expect(result.errors.unionProperty[0].context?.unionErrors).toBeInstanceOf(Array);
           const unionPropertyError = result.errors.unionProperty[0].context?.unionErrors as unknown[];
           expect(unionPropertyError.length).toBeGreaterThan(0);
+        }
+      });
+    });
+
+    describe('null -> (string | null)', () => {
+      const v = new ValidatorInstance({ project });
+
+      @v.validatorDecorator()
+      class Test {
+        unionProperty!: string | null;
+      }
+
+      it('should validate string', () => {
+        const result = v.validate(Test, { unionProperty: 'one' });
+
+        expect(result.success).toEqual(true);
+      });
+
+      it('should validate null', () => {
+        const result = v.validate(Test, { unionProperty: null });
+
+        expect(result.success).toEqual(true);
+      });
+
+      it('should not validate undefined', () => {
+        const result = v.validate(Test, {});
+
+        expect(result.success).toEqual(false);
+        if (!result.success) {
+          expect(result.errors.unionProperty).toBeInstanceOf(Array);
+          expect(result.errors.unionProperty.length).toEqual(1);
+          expect(result.errors.unionProperty[0].reason).toEqual(ValidationErrorType.VALUE_REQUIRED);
+        }
+      });
+
+      it('should not validate boolean', () => {
+        const result = v.validate(Test, { unionProperty: false } as any);
+
+        expect(result.success).toEqual(false);
+        if (!result.success) {
+          // Needed for type narrowing
+          expect(result.errors.unionProperty).toBeInstanceOf(Array);
+          expect(result.errors.unionProperty.length).toBeGreaterThan(0);
+          expect(result.errors.unionProperty[0].context?.unionErrors).toBeInstanceOf(Array);
+
+          const unionPropertyErrors = result.errors.unionProperty[0].context?.unionErrors as IErrorMessage[];
+          expect(unionPropertyErrors.length).toBeGreaterThan(0);
+          expect(unionPropertyErrors).toEqual(['null', 'string']);
+        }
+      });
+    });
+
+    describe('undefined -> (string | undefined)', () => {
+      const v = new ValidatorInstance({ project });
+
+      @v.validatorDecorator()
+      class Test {
+        unionProperty!: string | undefined;
+      }
+
+      it('should construct the tree correctly', () => {
+        const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
+        const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+        const trees = v.getPropertyTypeTrees(classDeclaration);
+        const unionPropertyTree = trees[0].tree;
+
+        expect(unionPropertyTree).toEqual({
+          children: [{ children: [], kind: 'string', reason: 'NOT_A_STRING' }],
+          kind: 'root',
+          optional: true,
+        });
+        console.log(unionPropertyTree);
+      });
+
+      it('should validate string', () => {
+        const result = v.validate(Test, { unionProperty: 'one' });
+
+        expect(result.success).toEqual(true);
+      });
+
+      it('should not validate null', () => {
+        const result = v.validate(Test, { unionProperty: null } as any);
+
+        expect(result.success).toEqual(false);
+      });
+
+      it('should validate undefined', () => {
+        const result = v.validate(Test, {} as any);
+
+        expect(result.success).toEqual(true);
+      });
+
+      it('should not validate boolean', () => {
+        const result = v.validate(Test, { unionProperty: false } as any);
+
+        expect(result.success).toEqual(false);
+        if (!result.success) {
+          // Needed for type narrowing
+          expect(result.errors.unionProperty).toBeInstanceOf(Array);
+          expect(result.errors.unionProperty.length).toBeGreaterThan(0);
+          expect(result.errors.unionProperty[0].reason).toEqual(ValidationErrorType.NOT_A_STRING);
         }
       });
     });
@@ -681,6 +855,60 @@ describe('validator', () => {
     });
   });
 
+  describe('records', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      recordProperty!: Record<string, number>;
+    }
+
+    it('should construct the correct tree', () => {
+      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
+      const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+      const trees = v.getPropertyTypeTrees(classDeclaration);
+      const tupleTree = trees[0];
+
+      expect(tupleTree.tree).toEqual({
+        kind: 'root',
+        optional: false,
+        children: [
+          {
+            kind: 'record',
+            children: [
+              { kind: 'string', reason: 'NOT_A_STRING', children: [] },
+              { kind: 'number', reason: 'NOT_A_NUMBER', children: [] },
+            ],
+          },
+        ],
+      });
+    });
+
+    it('should validate a record', () => {
+      const result = v.validate(Test, { recordProperty: { one: 1, two: 2 } });
+
+      expect(result.success).toEqual(true);
+    });
+
+    it('should validate an empty record', () => {
+      const result = v.validate(Test, { recordProperty: {} });
+
+      expect(result.success).toEqual(true);
+    });
+
+    it('should not validate an invalid type', () => {
+      const result = v.validate(Test, { recordProperty: false as any });
+
+      expect(result.success).toEqual(false);
+    });
+
+    it('should not validate record with invalid value type', () => {
+      const result = v.validate(Test, { recordProperty: { one: 'one', two: 2 } as any });
+
+      expect(result.success).toEqual(false);
+    });
+  });
+
   describe('complex', () => {
     const v = new ValidatorInstance({ project });
 
@@ -711,6 +939,7 @@ describe('validator', () => {
       property12!: string;
       property13!: string;
       property14!: string;
+      property15!: [number, string];
     }
 
     it('should validate', () => {
