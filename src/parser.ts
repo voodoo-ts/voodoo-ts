@@ -316,7 +316,7 @@ export class Parser {
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
-   * @param cls A ts-morph class declaration whose members will be processed
+   * @param classDeclaration A ts-morph class declaration whose members will be processed
    */
   getPropertyTypeTrees(classDeclaration: ClassOrInterfaceOrLiteral): ITypeAndTree[] {
     const cached = this.classTreeCache.get(classDeclaration);
