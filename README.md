@@ -180,9 +180,9 @@ class Test {
 
 As far as types are concerned vvalidator covers what I think are the main use-cases.
 
-Error formatting is still work in progress. It's better than the raw error structure coming from the "AST", but there will be probably some improvments.
+Error formatting is still work in progress. It's better than the raw error structure coming from the "AST", but there will be probably some improvements.
 
-Totally absent as of right now, are decorators to add constraints not defineable by the type system. For example
+Totally absent as of right now, are decorators to add constraints not definable by the type system. For example
 
 @Length(min, max)  
 @IsEmail()

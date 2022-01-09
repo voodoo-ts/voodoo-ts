@@ -82,9 +82,9 @@ export class ValidatorInstance {
    *
    * ```
    *
-   * @param filename Filename of the where the class should be searched
-   * @param className String represtation of the className
-   * @param line The line where the @Decorator() call occured
+   * @param filename Filename of the file the class should be searched
+   * @param className String representation of the className
+   * @param line The line where the @Decorator() call occurred
    * @returns
    */
   getClass(filename: string, className: string, line: number): ClassDeclaration {
@@ -136,7 +136,7 @@ export class ValidatorInstance {
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
-   * @param cls A ts-morph class decleration whose members will be processed
+   * @param cls A ts-morph class declaration whose members will be processed
    */
   getPropertyTypeTrees(cls: ClassDeclaration): ITypeAndTree[] {
     const trees = this.parser.getPropertyTypeTrees(cls);
