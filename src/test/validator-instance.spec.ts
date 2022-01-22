@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Project } from 'ts-morph';
-import { ValidateIf } from '..';
 
 import { IErrorMessage } from '../error-formatter';
-import { ClassNotDecoratedError, ClassNotFoundError, ParseError } from '../errors';
-import { ClassNode, RootNode, ValidationErrorType } from '../nodes';
+import { ClassNotDecoratedError, ParseError } from '../errors';
+import { ClassNode, ValidationErrorType } from '../nodes';
 import { isParseError } from '../parser';
-import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../validator';
+import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey, ValidateIf } from '../validator';
 
 const project = new Project({
   tsConfigFilePath: 'tsconfig.json',
@@ -476,7 +475,6 @@ describe('validator', () => {
       if (!result.success) {
         // Needed for type narrowing
         expect(result.errors.stringProperty).toBeTruthy();
-        console.log(JSON.stringify(result.errors.stringProperty, null, 2));
       }
     });
 
@@ -552,7 +550,6 @@ describe('validator', () => {
         expect(result.success).toEqual(false);
         if (!result.success) {
           console.log(result.errors);
-          // v.transformValidationErrors(result.errors);
         }
       });
     });
