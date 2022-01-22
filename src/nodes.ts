@@ -1,6 +1,6 @@
 import { enumerate, zip } from './utils';
 
-interface IValidationContext {
+export interface IValidationContext {
   propertyName?: string;
   level?: number;
 }
@@ -47,7 +47,7 @@ export interface INodeValidationError {
   success: false;
   type: TypeNode['kind'];
   value: unknown;
-  reason?: ValidationErrorType;
+  reason?: ValidationErrorType | string;
   expected?: unknown;
   context?: Record<string, unknown>;
   previousErrors: INodeValidationError[];
@@ -58,6 +58,7 @@ export type INodeValidationResult = INodeValidationSuccess | INodeValidationErro
 abstract class TypeNodeBase {
   abstract kind: string;
   abstract validate(value: unknown, context: IValidationContext): INodeValidationResult;
+  children: TypeNode[] = [];
 
   wrapBoolean(value: unknown, result: boolean, extra: Partial<INodeValidationError> = {}): INodeValidationResult {
     if (result) {
@@ -72,18 +73,25 @@ abstract class TypeNodeBase {
   }
 
   fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
-    return Object.assign(
-      {
-        success: false,
-        type: this.kind as TypeNode['kind'],
-        value,
-        previousErrors: [],
-      },
-      extra,
-    );
+    return {
+      success: false,
+      type: this.kind as TypeNode['kind'],
+      value,
+      previousErrors: [],
+      ...extra,
+    };
   }
 
-  children: TypeNodeBase[] = [];
+  validateAllChildren(value: unknown, context: IValidationContext): INodeValidationResult {
+    for (const child of this.children) {
+      const result = child.validate(value, context);
+      if (!result.success) {
+        return result;
+      }
+    }
+
+    return this.success();
+  }
 }
 
 export class RootNode extends TypeNodeBase {
@@ -110,13 +118,7 @@ export class RootNode extends TypeNodeBase {
       return this.success();
     }
 
-    for (const child of this.children) {
-      const result = child.validate(value, context);
-      if (!result.success) {
-        return result;
-      }
-    }
-    return this.success();
+    return this.validateAllChildren(value, context);
   }
 }
 
@@ -133,7 +135,11 @@ export class StringNode extends LeafNode {
   reason = ValidationErrorType.NOT_A_STRING;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-    return this.wrapBoolean(value, typeof value === 'string');
+    if (typeof value !== 'string') {
+      return this.fail(value);
+    }
+
+    return this.validateAllChildren(value, context);
   }
 }
 
@@ -142,7 +148,11 @@ export class NumberNode extends LeafNode {
   reason = ValidationErrorType.NOT_A_NUMBER;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-    return this.wrapBoolean(value, typeof value === 'number');
+    if (typeof value !== 'number') {
+      return this.fail(value);
+    }
+
+    return this.validateAllChildren(value, context);
   }
 }
 
@@ -271,6 +281,8 @@ export class ClassNode extends TypeNodeBase {
           result.context.name = this.name;
           errors.push(result);
         }
+
+        this.validateAllChildren(value, context);
       }
       if (errors.length) {
         return this.fail(value, {
@@ -341,6 +353,20 @@ export class RecordNode extends TypeNodeBase {
   }
 }
 
+export class DecoratorNode extends TypeNodeBase {
+  kind = 'decorator' as const;
+  validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult;
+
+  constructor(validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult) {
+    super();
+    this.validationFunc = validationFunc.bind(this);
+  }
+
+  validate(value: unknown, context: IValidationContext): INodeValidationResult {
+    return this.validationFunc(value, context);
+  }
+}
+
 export type TypeNode =
   | RootNode
   | StringNode
@@ -351,4 +377,7 @@ export type TypeNode =
   | ClassNode
   | ArrayNode
   | TupleNode
-  | RecordNode;
+  | RecordNode
+  | DecoratorNode
+  | BooleanNode
+  | UndefinedNode;
