@@ -2,13 +2,12 @@ import 'reflect-metadata';
 import 'source-map-support/register';
 
 import ErrorStackParser from 'error-stack-parser';
-import { ClassDeclaration, Node, Project, SyntaxKind } from 'ts-morph';
+import { ClassDeclaration, Node, Project } from 'ts-morph';
 
-import { DecoratorMap, getDecorators, groupDecorators } from './decorators';
 import { flattenValidationError, IErrorMessage } from './error-formatter';
-import { ClassNotDecoratedError, ClassNotFoundError, RuntimeError } from './errors';
-import { DecoratorNode, ITypeAndTree, TypeNode } from './nodes';
-import { ClassCache, isClass, Parser } from './parser';
+import { ClassNotDecoratedError, ClassNotFoundError } from './errors';
+import { ITypeAndTree } from './nodes';
+import { isClass, Parser } from './parser';
 import { Constructor } from './types';
 
 export const validatorMetadataKey = Symbol('format');
