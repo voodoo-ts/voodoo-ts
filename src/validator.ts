@@ -2,18 +2,18 @@ import 'reflect-metadata';
 import 'source-map-support/register';
 
 import ErrorStackParser from 'error-stack-parser';
-import { ClassDeclaration, Node, Project, SyntaxKind } from 'ts-morph';
+import { ClassDeclaration, Node, Project } from 'ts-morph';
 
 import { flattenValidationError, IErrorMessage } from './error-formatter';
-import { ClassNotFoundError, RuntimeError } from './errors';
+import { ClassNotDecoratedError, ClassNotFoundError } from './errors';
 import { ITypeAndTree } from './nodes';
-import { Parser } from './parser';
+import { isClass, Parser } from './parser';
+import { Constructor } from './types';
 
 export const validatorMetadataKey = Symbol('format');
+export const validateIfMetadataKey = Symbol('validateIfMetadataKey');
 
-interface IValidatorOptions {
-  auto: boolean;
-}
+interface IValidatorOptions {}
 
 export interface IValidatorClassMeta {
   filename: string;
@@ -21,8 +21,6 @@ export interface IValidatorClassMeta {
 
   options: IValidatorOptions;
 }
-
-type Constructor<T> = new (...args: unknown[]) => T;
 
 interface IValidationSuccess<T> {
   success: true;
@@ -33,6 +31,12 @@ interface IValidationError<T> {
   success: false;
   object: null;
   errors: Record<string | number | symbol, IErrorMessage[]>;
+}
+
+type ValidateIfFunc = (obj: any) => boolean;
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export function ValidateIf(func: ValidateIfFunc): ReturnType<typeof Reflect['metadata']> {
+  return Reflect.metadata(validateIfMetadataKey, func);
 }
 
 type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
@@ -47,7 +51,7 @@ export class ValidatorInstance {
   project: Project;
   parser: Parser;
 
-  classCache = new Map<string, ClassDeclaration>();
+  classCache = new Map<string, ClassDeclaration>(); // TODO: Better name
 
   constructor(options: IValidatorConstructorOptions) {
     this.project = options.project;
@@ -97,9 +101,9 @@ export class ValidatorInstance {
     const sourceFile = this.project.getSourceFileOrThrow(filename);
 
     const walkSyntaxNodes = (node: Node, level = 0): ClassDeclaration | null => {
-      for (const c of node.getChildren()) {
-        if (c.getKind() === SyntaxKind.ClassDeclaration) {
-          const cls = c as ClassDeclaration;
+      for (const childNode of node.getChildren()) {
+        if (isClass(childNode)) {
+          const cls = childNode;
 
           // A class can have multiple decorators, collect their line numbers and check them too
           const decoratorLineStarts = cls.getDecorators().map((decorator) => decorator.getStartLineNumber());
@@ -113,7 +117,7 @@ export class ValidatorInstance {
             return cls;
           }
         }
-        const cls = walkSyntaxNodes(c, level + 1);
+        const cls = walkSyntaxNodes(childNode, level + 1);
         if (cls) {
           return cls;
         }
@@ -136,31 +140,32 @@ export class ValidatorInstance {
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
-   * @param cls A ts-morph class decleration whose members will be processed
+   * @param classDeclaration A ts-morph class decleration whose members will be processed
    */
-  getPropertyTypeTrees(cls: ClassDeclaration): ITypeAndTree[] {
-    const trees = this.parser.getPropertyTypeTrees(cls);
-
+  getPropertyTypeTrees<T>(cls: Constructor<T>, classDeclaration: ClassDeclaration): ITypeAndTree[] {
+    const trees = this.parser.getPropertyTypeTrees(classDeclaration);
     return trees;
   }
 
-  validateOrThrow<T>(cls: Constructor<T>, values: unknown): values is T {
-    if (!(typeof values === 'object') || values === null) {
-      return false;
-    }
-    const r = this.validate(cls, values);
-    if (!r.success) {
-      throw new Error('a');
-    }
-    return r.success;
+  getValidateIfFunc<T>(cls: Constructor<T>, propertyKey: string): ValidateIfFunc | undefined {
+    return Reflect.getMetadata(validateIfMetadataKey, cls.prototype, propertyKey);
   }
 
-  validateClassDeclaration<T>(classDeclaration: ClassDeclaration, values: MaybePartial<T>): IValidationResult<T> {
-    const propertyTypeTrees = this.getPropertyTypeTrees(classDeclaration);
+  validateClassDeclaration<T>(
+    cls: Constructor<T>,
+    classDeclaration: ClassDeclaration,
+    values: MaybePartial<T>,
+  ): IValidationResult<T> {
+    const propertyTypeTrees = this.getPropertyTypeTrees(cls, classDeclaration);
 
     let allFieldsAreValid = true;
     const errors: Record<string | number | symbol, IErrorMessage[]> = {};
     for (const { name, tree } of propertyTypeTrees) {
+      const validateIf = this.getValidateIfFunc(cls, name);
+      if (validateIf && !validateIf(values)) {
+        continue;
+      }
+
       const result = tree.validate(values[name], { propertyName: name });
       if (!result.success) {
         errors[name] = flattenValidationError(result, [name]);
@@ -174,7 +179,6 @@ export class ValidatorInstance {
         object: values as T,
       };
     } else {
-      console.log(JSON.stringify(errors, null, 2));
       return {
         success: false,
         object: null,
@@ -186,29 +190,37 @@ export class ValidatorInstance {
   validate<T>(cls: Constructor<T>, values: MaybePartial<T>): IValidationResult<T> {
     // Get metadata + types
     const validatorMeta = this.getClassMetadata(cls);
-
     const classDeclaration = this.getClass(validatorMeta.filename, cls.name, validatorMeta.line);
 
-    return this.validateClassDeclaration<T>(classDeclaration, values);
+    return this.validateClassDeclaration<T>(cls, classDeclaration, values);
   }
 
-  validatorDecorator(options: IValidatorOptions = { auto: true }): ReturnType<typeof Reflect['metadata']> {
+  validatorDecorator(options: IValidatorOptions = {}): ReturnType<typeof Reflect['metadata']> {
     const error = new Error();
     const stack = ErrorStackParser.parse(error);
 
-    return Reflect.metadata(validatorMetadataKey, {
-      filename: stack[1].fileName,
-      line: stack[1].lineNumber,
+    const filename = stack[1].fileName!;
+    const line = stack[1].lineNumber!;
+
+    const classMetadata = {
+      filename,
+      line,
       options,
-    });
+    };
+
+    return (target: object) => {
+      const classDeclaration = this.getClass(filename, target.constructor.name, line);
+      this.parser.setClassReference(classDeclaration, target as Constructor<unknown>);
+      Reflect.defineMetadata(validatorMetadataKey, classMetadata, target);
+    };
   }
 
   getClassMetadata(cls: Constructor<unknown>): IValidatorClassMeta {
     const meta = Reflect.getMetadata(validatorMetadataKey, cls);
-    if (meta.filename && meta.line && meta.options) {
+    if (meta?.filename && meta?.line && meta?.options) {
       return meta as IValidatorClassMeta;
     } else {
-      throw new RuntimeError('No class metadata found', { cls: cls.name });
+      throw new ClassNotDecoratedError('No class metadata found', { cls: cls.name });
     }
   }
 }

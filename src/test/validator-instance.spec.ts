@@ -2,16 +2,16 @@
 import { Project } from 'ts-morph';
 
 import { IErrorMessage } from '../error-formatter';
-import { ParseError } from '../errors';
-import { ClassNode, RootNode, ValidationErrorType } from '../nodes';
+import { ClassNotDecoratedError, ParseError } from '../errors';
+import { ClassNode, ValidationErrorType } from '../nodes';
 import { isParseError } from '../parser';
-import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../validator';
+import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey, ValidateIf } from '../validator';
 
 const project = new Project({
   tsConfigFilePath: 'tsconfig.json',
 });
 
-describe('plumbing', () => {
+describe('general', () => {
   it('should construct', () => {
     const instance = new ValidatorInstance({ project });
     expect(instance).toBeTruthy();
@@ -87,10 +87,12 @@ describe('plumbing', () => {
   it('should add inherited properties', () => {
     const v = new ValidatorInstance({ project });
 
+    @v.validatorDecorator()
     class TestBase {
       baseAttribute!: string;
     }
 
+    @v.validatorDecorator()
     class TestDervied extends TestBase {
       derivedAttribute!: string;
     }
@@ -99,7 +101,7 @@ describe('plumbing', () => {
     class Test extends TestDervied {}
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
     const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
-    const classTrees = v.getPropertyTypeTrees(classDeclaration);
+    const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
 
     expect(classTrees.length).toEqual(2);
     expect(classTrees[0].name).toEqual('derivedAttribute');
@@ -116,7 +118,7 @@ describe('plumbing', () => {
 
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
     const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
-    const classTreesWrapper = () => v.getPropertyTypeTrees(classDeclaration);
+    const classTreesWrapper = () => v.getPropertyTypeTrees(Test, classDeclaration);
 
     expect(classTreesWrapper).toThrow(ParseError);
   });
@@ -126,14 +128,76 @@ describe('plumbing', () => {
 
     @v.validatorDecorator()
     class Test {
-      derivedAttribute!: Pick<{ a: number }, 'a'>;
+      unknownAttribute!: Pick<{ a: number }, 'a'>;
     }
 
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
     const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
-    const classTreesWrapper = () => v.getPropertyTypeTrees(classDeclaration);
+    const classTreesWrapper = () => v.getPropertyTypeTrees(Test, classDeclaration);
 
     expect(classTreesWrapper).toThrow(ParseError);
+  });
+
+  it('should throw if class is not decorated (v.getClassMetadata)', () => {
+    const v = new ValidatorInstance({ project });
+
+    class Test {
+      attribute!: string;
+    }
+
+    const result = () => v.getClassMetadata(Test);
+
+    expect(result).toThrow(ClassNotDecoratedError);
+  });
+
+  it('should throw if class is not decorated (v.validate)', () => {
+    const v = new ValidatorInstance({ project });
+
+    class Test {
+      attribute!: string;
+    }
+
+    const result = () => v.validate(Test, { attribute: 'blorb' });
+
+    expect(result).toThrow(ClassNotDecoratedError);
+  });
+
+  describe('@ValidateIf', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      @ValidateIf((obj: Test) => obj.otherAttribute)
+      firstAttribute!: string;
+      otherAttribute!: boolean;
+    }
+
+    it('should validate with valid string and otherAttribute = true', () => {
+      const result = v.validate(Test, {
+        firstAttribute: 'string',
+        otherAttribute: true,
+      });
+
+      expect(result.success).toEqual(true);
+    });
+
+    it('should not validate with invalid string and otherAttribute = true', () => {
+      const result = v.validate(Test, {
+        firstAttribute: 123,
+        otherAttribute: true,
+      } as any);
+
+      expect(result.success).toEqual(false);
+    });
+
+    it('should validate with invalid string and otherAttribute = false', () => {
+      const result = v.validate(Test, {
+        firstAttribute: 123,
+        otherAttribute: false,
+      } as any);
+
+      expect(result.success).toEqual(true);
+    });
   });
 });
 
@@ -328,7 +392,7 @@ describe('validator', () => {
     it('should construct the correct tree', () => {
       const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
       const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
-      const trees = v.getPropertyTypeTrees(classDeclaration);
+      const trees = v.getPropertyTypeTrees(Test, classDeclaration);
       const tupleTree = trees[0];
 
       expect(tupleTree.tree).toEqual({
@@ -411,7 +475,6 @@ describe('validator', () => {
       if (!result.success) {
         // Needed for type narrowing
         expect(result.errors.stringProperty).toBeTruthy();
-        console.log(JSON.stringify(result.errors.stringProperty, null, 2));
       }
     });
 
@@ -487,7 +550,6 @@ describe('validator', () => {
         expect(result.success).toEqual(false);
         if (!result.success) {
           console.log(result.errors);
-          // v.transformValidationErrors(result.errors);
         }
       });
     });
@@ -515,7 +577,7 @@ describe('validator', () => {
         it('should construct the tree correctly', () => {
           const { filename, line } = v.getClassMetadata(Test);
           const cls = v.getClass(filename, 'Test', line);
-          const trees = v.getPropertyTypeTrees(cls);
+          const trees = v.getPropertyTypeTrees(Test, cls);
 
           expect(trees[0].tree.children[0].kind).toEqual('class');
           expect((trees[0].tree.children[0] as ClassNode).getClassTrees().map((t) => t.name)).toEqual([
@@ -619,7 +681,7 @@ describe('validator', () => {
       it('should remove undefined from the root property', () => {
         const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
         const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
-        const trees = v.getPropertyTypeTrees(classDeclaration);
+        const trees = v.getPropertyTypeTrees(Test, classDeclaration);
 
         /*
           Expected:
@@ -705,7 +767,7 @@ describe('validator', () => {
         expect(result.success).toEqual(true);
       });
 
-      it('(string | number)? should not validate boolean', () => {
+      it('should not validate boolean', () => {
         const result = v.validate(Test, { unionProperty: false } as any);
 
         expect(result.success).toEqual(false);
@@ -779,7 +841,7 @@ describe('validator', () => {
       it('should construct the tree correctly', () => {
         const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
         const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
-        const trees = v.getPropertyTypeTrees(classDeclaration);
+        const trees = v.getPropertyTypeTrees(Test, classDeclaration);
         const unionPropertyTree = trees[0].tree;
 
         expect(unionPropertyTree).toEqual({
@@ -866,7 +928,7 @@ describe('validator', () => {
     it('should construct the correct tree', () => {
       const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
       const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
-      const trees = v.getPropertyTypeTrees(classDeclaration);
+      const trees = v.getPropertyTypeTrees(Test, classDeclaration);
       const tupleTree = trees[0];
 
       expect(tupleTree.tree).toEqual({

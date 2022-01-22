@@ -1,6 +1,5 @@
 import {
   ClassDeclaration,
-  ClassInstancePropertyTypes,
   InterfaceDeclaration,
   Node,
   PropertyDeclaration,
@@ -9,11 +8,13 @@ import {
   TypeLiteralNode,
 } from 'ts-morph';
 
-import { ParseError } from './errors';
+import { getDecorators, groupDecorators } from './decorators';
+import { ParseError, RuntimeError } from './errors';
 import {
   ArrayNode,
   BooleanNode,
   ClassNode,
+  DecoratorNode,
   EnumNode,
   ITypeAndTree,
   NullNode,
@@ -26,6 +27,7 @@ import {
   UndefinedNode,
   UnionNode,
 } from './nodes';
+import { Constructor } from './types';
 
 type GetClassTrees = () => ITypeAndTree[];
 
@@ -36,17 +38,38 @@ interface IOmitParameters {
   propertyNames: Set<string>;
 }
 
+/**
+ * Typeguard to ensure a thrown exception is a ParseError
+ * @param error
+ * @returns
+ */
 export function isParseError(error: unknown): error is ParseError {
   return error instanceof ParseError;
 }
 
-function isClass(obj: Node): obj is ClassDeclaration {
+/**
+ * Typeguard to ensure obj is a class declaration
+ * @param obj Must be a ts-morph node
+ * @returns
+ */
+export function isClass(obj: Node): obj is ClassDeclaration {
   return obj.getKind() === SyntaxKind.ClassDeclaration;
 }
 
+/**
+ * Typeguard to ensure obj is an interface declaration
+ * @param obj Must be a ts-morph node
+ * @returns
+ */
 function isInterface(obj: Node): obj is InterfaceDeclaration {
   return obj.getKind() === SyntaxKind.InterfaceDeclaration;
 }
+
+/**
+ * Typeguard to ensure obj is class or interface declaration or a literal
+ * @param obj
+ * @returns
+ */
 function isClassOrInterfaceOrLiteral(obj?: Node): obj is ClassOrInterfaceOrLiteral {
   if (!obj) {
     return false;
@@ -59,6 +82,12 @@ function isClassOrInterfaceOrLiteral(obj?: Node): obj is ClassOrInterfaceOrLiter
   );
 }
 
+/**
+ * Returns the name of a class or an interface. For object literals it'll use
+ * the filename and line number as name. Can be used as cache key.
+ * @param obj
+ * @returns
+ */
 function getName(obj: ClassOrInterfaceOrLiteral): string {
   if (isClass(obj) || isInterface(obj)) {
     const name = obj.getName();
@@ -87,6 +116,18 @@ function getFirstSymbolDeclaration(type: Type): ClassOrInterfaceOrLiteral {
   return declaration;
 }
 
+function getBaseDeclaration(currentDeclaration: ClassOrInterfaceOrLiteral): ClassOrInterfaceOrLiteral | undefined {
+  if (isClass(currentDeclaration)) {
+    return currentDeclaration.getBaseClass();
+  } else if (isInterface(currentDeclaration)) {
+    const [baseInterface] = currentDeclaration.getBaseDeclarations();
+    if (baseInterface && isInterface(baseInterface)) {
+      return baseInterface;
+    }
+  }
+  return undefined;
+}
+
 function getOmitParameters(type: Type): IOmitParameters {
   const [targetType, stringLiteralOrUnion] = type.getAliasTypeArguments();
 
@@ -109,9 +150,25 @@ function getOmitParameters(type: Type): IOmitParameters {
   return { referencedClassDeclaration, propertyNames };
 }
 
-class ClassTreeCache {
-  map = new Map<string, ITypeAndTree[]>();
+function walkPropertyTypeTree(node: TypeNode, callback: (n: TypeNode) => unknown): void {
+  if (node.kind === 'root') {
+    callback(node);
+  }
+  for (const child of node.children) {
+    callback(child);
+    walkPropertyTypeTree(child, callback);
+  }
+}
 
+export class ClassCache<T> {
+  map = new Map<string, T>();
+
+  /**
+   * Computes a cache key for a class, interface or object literal. Since names
+   * can occur multiple times in a file, this uses the filename and line as key
+   * @param classDeclaration
+   * @returns
+   */
   getKey(classDeclaration: ClassOrInterfaceOrLiteral): string {
     const sourceFile = classDeclaration.getSourceFile();
     const line = classDeclaration.getStartLineNumber();
@@ -119,17 +176,22 @@ class ClassTreeCache {
     return `${line}::${filename}`;
   }
 
-  get(classDeclaration: ClassOrInterfaceOrLiteral): ITypeAndTree[] | undefined {
-    return this.map.get(this.getKey(classDeclaration)) as ITypeAndTree[];
+  get(classDeclaration: ClassOrInterfaceOrLiteral): T | undefined {
+    return this.map.get(this.getKey(classDeclaration)) as T;
   }
 
-  set(classDeclaration: ClassOrInterfaceOrLiteral, classTrees: ITypeAndTree[]): void {
+  set(classDeclaration: ClassOrInterfaceOrLiteral, classTrees: T): void {
     this.map.set(this.getKey(classDeclaration), classTrees);
   }
 }
 
 export class Parser {
-  classTreeCache = new ClassTreeCache();
+  classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
+  classTreeCache = new ClassCache<ITypeAndTree[]>();
+
+  setClassReference(classDeclaration: ClassDeclaration, cls: Constructor<unknown>): void {
+    this.classDeclarationToClassReference.set(classDeclaration, cls);
+  }
 
   handleRootNode(type: Type, hasQuestionToken: boolean): [TypeNode, Type] {
     const tree = new RootNode(hasQuestionToken);
@@ -153,12 +215,7 @@ export class Parser {
     return [tree, type];
   }
 
-  walkTypeNodes(
-    classDeclaration: ClassOrInterfaceOrLiteral,
-    type: Type,
-    hasQuestionToken: boolean,
-    tree?: TypeNode,
-  ): TypeNode {
+  walkTypeNodes(type: Type, hasQuestionToken: boolean, tree?: TypeNode): TypeNode {
     // Walk the syntax nodes for a type recursively and try to build a tree of validators from it
 
     if (!tree) {
@@ -186,15 +243,16 @@ export class Parser {
       const unionNode = new UnionNode();
       tree.children.push(unionNode);
       for (const unionType of type.getUnionTypes()) {
+        // Skip undefined, it is already handled by the RootNode
         if (tree.kind === 'root' && unionType.isUndefined()) {
           continue;
         }
-        this.walkTypeNodes(classDeclaration, unionType, false, unionNode);
+        this.walkTypeNodes(unionType, false, unionNode);
       }
     } else if (type.isArray()) {
       const arrayNode = new ArrayNode();
       tree.children.push(arrayNode);
-      this.walkTypeNodes(classDeclaration, type.getArrayElementTypeOrThrow(), false, arrayNode);
+      this.walkTypeNodes(type.getArrayElementTypeOrThrow(), false, arrayNode);
     } else if (type.isClass()) {
       // Get the class declaration for the referenced class
       const referencedClassDeclaration = getFirstSymbolDeclaration(type);
@@ -213,7 +271,7 @@ export class Parser {
         const tupleNode = new TupleNode();
         tree.children.push(tupleNode);
         for (const tupleElementType of type.getTypeArguments()) {
-          this.walkTypeNodes(classDeclaration, tupleElementType, false, tupleNode);
+          this.walkTypeNodes(tupleElementType, false, tupleNode);
         }
       }
     } else if (type.getAliasSymbol()) {
@@ -233,19 +291,21 @@ export class Parser {
       } else if (name === 'Record') {
         const recordNode = new RecordNode();
         const [keyType, valueType] = type.getAliasTypeArguments();
-        this.walkTypeNodes(classDeclaration, keyType, false, recordNode);
-        this.walkTypeNodes(classDeclaration, valueType, false, recordNode);
+        this.walkTypeNodes(keyType, false, recordNode);
+        this.walkTypeNodes(valueType, false, recordNode);
         tree.children.push(recordNode);
       } else {
         throw new ParseError('Syntax not supported', {
           asText: type.getText(),
           hasAliasSymbol: true,
+          type,
         });
       }
     } else {
       throw new ParseError('Syntax not supported', {
         asText: type.getText(),
         noBranchMatched: true,
+        type,
       });
     }
 
@@ -256,11 +316,11 @@ export class Parser {
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
-   * @param cls A ts-morph class decleration whose members will be processed
+   * @param classDeclaration A ts-morph class decleration whose members will be processed
    * @param depth Internal parameter to track recusrive depth, to bail out from infinite loops
    */
-  getPropertyTypeTrees(cls: ClassOrInterfaceOrLiteral): ITypeAndTree[] {
-    const cached = this.classTreeCache.get(cls);
+  getPropertyTypeTrees(classDeclaration: ClassOrInterfaceOrLiteral): ITypeAndTree[] {
+    const cached = this.classTreeCache.get(classDeclaration);
     if (cached) {
       return cached;
     }
@@ -268,47 +328,65 @@ export class Parser {
     // We need to merge in all attributes from base classes, so start with the supplied class
     // and walk up until there is no base class
     const trees: ITypeAndTree[] = [];
-    let currentClass: ClassOrInterfaceOrLiteral | undefined = cls;
+    let currentClass: ClassOrInterfaceOrLiteral | undefined = classDeclaration;
     while (currentClass) {
       const properties = isClass(currentClass) ? currentClass.getInstanceProperties() : currentClass.getProperties();
       for (const prop of properties) {
-        const type = prop.getType();
-        const hasQuestionToken = (prop as PropertyDeclaration).hasQuestionToken();
+        const name = prop.getName();
+        const tree = this.buildTypeTree(currentClass, prop as PropertyDeclaration);
 
-        let tree: TypeNode;
-        try {
-          tree = this.walkTypeNodes(currentClass, type, hasQuestionToken);
-        } catch (error) {
-          if (isParseError(error)) {
-            // Enrich context
-            error.context.class = getName(currentClass);
-          }
-          throw error;
+        if (isClass(currentClass)) {
+          this.applyDecorators(currentClass, name, tree);
         }
 
         trees.push({
-          name: prop.getName(),
+          name,
           tree,
         });
       }
 
-      if (isClass(currentClass)) {
-        currentClass = currentClass.getBaseClass();
-      } else if (isInterface(currentClass)) {
-        const [baseInterface] = currentClass.getBaseDeclarations();
-        if (baseInterface && isInterface(baseInterface)) {
-          currentClass = baseInterface;
-        } else {
-          break;
-        }
-      } else {
-        // No need to traverse for literals
-        break;
-      }
+      currentClass = getBaseDeclaration(currentClass);
     }
 
-    this.classTreeCache.set(cls, trees);
+    this.classTreeCache.set(classDeclaration, trees);
 
     return trees;
+  }
+
+  buildTypeTree(currentClass: ClassOrInterfaceOrLiteral, prop: PropertyDeclaration): TypeNode {
+    const type = prop.getType();
+    const hasQuestionToken = prop.hasQuestionToken();
+
+    try {
+      return this.walkTypeNodes(type, hasQuestionToken);
+    } catch (error) {
+      if (isParseError(error)) {
+        // Enrich context
+        error.context.class = getName(currentClass);
+      }
+      throw error;
+    }
+  }
+
+  applyDecorators(classDeclaration: ClassDeclaration, propertyKey: string, tree: TypeNode): void {
+    const cls = this.classDeclarationToClassReference.get(classDeclaration);
+
+    if (!cls) {
+      throw new RuntimeError(`Referenced class '${getName(classDeclaration)}' is not decorated`);
+    }
+
+    const decorators = getDecorators(cls.prototype, propertyKey);
+
+    if (decorators) {
+      const propertyDecoratorMap = groupDecorators(decorators);
+
+      walkPropertyTypeTree(tree, (node) => {
+        const decoratorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
+        const decoratorNodes = decoratorsForNodeKind.map(
+          (decorator) => new DecoratorNode(decorator.validate(...decorator.options!)),
+        );
+        node.children.push(...decoratorNodes);
+      });
+    }
   }
 }
