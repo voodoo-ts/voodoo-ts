@@ -2,7 +2,7 @@ import { INodeValidationError, ValidationErrorType } from './nodes';
 
 export interface IErrorMessage {
   path: string[];
-  reason: ValidationErrorType;
+  reason: INodeValidationError['reason'];
   value: unknown;
   context?: Record<string, unknown>;
 }
