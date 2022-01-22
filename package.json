@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "test": "npm run build && jest dist/test",
+    "test-all": "npm run test dist/test",
+    "test": "npm run build && jest --verbose",
     "coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage dist/test",
     "build": "tsc",
     "linter": "npx eslint src/"
