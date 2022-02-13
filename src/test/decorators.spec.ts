@@ -164,6 +164,7 @@ describe('decorators', () => {
 
       expect(classTrees.length).toEqual(1);
       expect(classTrees[0].tree).toEqual({
+        kind: 'root',
         children: [
           {
             kind: 'string',
@@ -171,7 +172,6 @@ describe('decorators', () => {
             reason: 'NOT_A_STRING',
           },
         ],
-        kind: 'root',
         optional: false,
       });
     });
