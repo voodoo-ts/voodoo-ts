@@ -199,6 +199,26 @@ describe('general', () => {
       expect(result.success).toEqual(true);
     });
   });
+
+  describe('unknown attributes', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      attribute!: string;
+    }
+    it('should not allow unknown attributes by default', () => {
+      const result = v.validate(Test, { notTheAttribute: 'blorb' });
+
+      expect(result.success).toEqual(false);
+    });
+
+    it('should allow unknown attributes if allowUnknownFields is set', () => {
+      const result = v.validate(Test, { attribute: 'Test', notTheAttribute: 'blorb' }, { allowUnknownFields: true });
+
+      expect(result.success).toEqual(true);
+    });
+  });
 });
 
 describe('validator', () => {

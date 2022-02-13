@@ -14,6 +14,10 @@ export const validateIfMetadataKey = Symbol('validateIfMetadataKey');
 
 interface IValidatorOptions {}
 
+export interface IValidationOptions {
+  allowUnknownFields?: boolean;
+}
+
 export interface IValidatorClassMeta {
   filename: string;
   line: number;
@@ -44,17 +48,26 @@ type MaybePartial<T> = Partial<T> & Record<any, any>;
 
 export interface IValidatorConstructorOptions {
   project: Project;
+  defaultOptions?: IValidationOptions;
 }
 
 export class ValidatorInstance {
   project: Project;
   parser: Parser;
+  defaultOptions: IValidationOptions;
 
   classCache = new Map<string, ClassDeclaration>(); // TODO: Better name
 
   constructor(options: IValidatorConstructorOptions) {
     this.project = options.project;
     this.parser = new Parser();
+
+    this.defaultOptions = Object.assign(
+      {
+        allowUnknownFields: false,
+      } as IValidationOptions,
+      options.defaultOptions ?? {},
+    );
   }
 
   static withDefaultProject(): ValidatorInstance {
@@ -154,12 +167,16 @@ export class ValidatorInstance {
     cls: Constructor<T>,
     classDeclaration: ClassDeclaration,
     values: MaybePartial<T>,
+    options: IValidationOptions = {},
   ): IValidationResult<T> {
     const propertyTypeTrees = this.getPropertyTypeTrees(cls, classDeclaration);
 
     let allFieldsAreValid = true;
     const errors: Record<string | number | symbol, IErrorMessage[]> = {};
+    const properties = new Set(Object.keys(values));
     for (const { name, tree } of propertyTypeTrees) {
+      properties.delete(name);
+
       const validateIf = this.getValidateIfFunc(cls, name);
       if (validateIf && !validateIf(values)) {
         continue;
@@ -170,6 +187,24 @@ export class ValidatorInstance {
         errors[name] = flattenValidationError(result, [name]);
         allFieldsAreValid = false;
       }
+    }
+
+    const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;
+    if (!allowUnknownFields && properties.size) {
+      for (const name of properties.values()) {
+        errors[name] = flattenValidationError(
+          {
+            success: false,
+            type: 'root',
+            value: values[name],
+            reason: 'UNKNOWN_FIELD',
+            previousErrors: [],
+          },
+          [name],
+        );
+      }
+
+      allFieldsAreValid = false;
     }
 
     if (allFieldsAreValid) {
@@ -186,12 +221,12 @@ export class ValidatorInstance {
     }
   }
 
-  validate<T>(cls: Constructor<T>, values: MaybePartial<T>): IValidationResult<T> {
+  validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
     // Get metadata + types
     const validatorMeta = this.getClassMetadata(cls);
     const classDeclaration = this.getClass(validatorMeta.filename, cls.name, validatorMeta.line);
 
-    return this.validateClassDeclaration<T>(cls, classDeclaration, values);
+    return this.validateClassDeclaration<T>(cls, classDeclaration, values, options);
   }
 
   validatorDecorator(options: IValidatorOptions = {}): ReturnType<typeof Reflect['metadata']> {
