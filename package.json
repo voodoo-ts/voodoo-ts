@@ -18,15 +18,15 @@
   "author": "",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "error-stack-parser": "^2.0.6",
+    "error-stack-parser": "^2.0.7",
     "json-colorizer": "^2.2.2",
     "luxon": "^2.1.1",
     "reflect-metadata": "^0.1.13",
     "source-map-support": "^0.5.21",
-    "ts-morph": "^13.0.2",
-    "ts-node": "^10.4.0",
-    "typescript": "^4.5.2",
-    "winston": "^3.3.3"
+    "ts-morph": "^13.0.3",
+    "ts-node": "^10.5.0",
+    "typescript": "^4.5.5",
+    "winston": "^3.6.0"
   },
   "devDependencies": {
     "@types/jest": "^27.0.3",
@@ -41,6 +41,6 @@
     "jest": "^27.4.5",
     "jest-sonar-reporter": "^2.0.0",
     "prettier": "^2.5.0",
-    "ts-jest": "^27.1.2"
+    "ts-jest": "^27.1.3"
   }
 }

@@ -67,10 +67,10 @@ export const Validate = createValidationDecorator<DecoratorFactory, [validateFun
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/naming-convention
 export const LengthFactory = (type: TypeNode['kind']) =>
   createValidationDecorator<DecoratorFactory, [min: number, max?: number]>({
-    name: 'Validate',
+    name: 'Length',
     type,
     validate(this: DecoratorNode, min: number, max?: number) {
-      return function (value: string | unknown[], context: IValidationContext) {
+      return function (value: string | unknown[]) {
         const length = value.length;
         if (length < min) {
           return this.fail(value, {
@@ -95,3 +95,50 @@ export const Length = LengthFactory('root');
 export const StringLength = LengthFactory('string');
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ArrayLength = LengthFactory('array');
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const IsNumber = createValidationDecorator<DecoratorFactory, []>({
+  name: 'IsNumber',
+  type: 'string',
+  validate(raidx: number = 10) {
+    return function (this: DecoratorNode, value: string) {
+      const n = parseInt(value, raidx);
+      if (Number.isNaN(n)) {
+        return this.fail(value);
+      }
+      return this.success();
+    };
+  },
+});
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const Range = createValidationDecorator<DecoratorFactory, [min: number, max: number]>({
+  name: 'Range',
+  type: 'number',
+  validate(min: number, max?: number) {
+    return function (this: DecoratorNode, value: number) {
+      if (value < min) {
+        return this.fail(value, { reason: '' });
+      }
+      if (max !== undefined && value > max) {
+        return this.fail(value, { reason: '' });
+      }
+      return this.success();
+    };
+  },
+});
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const IsNumberList = createValidationDecorator<DecoratorFactory, [min: number, max: number]>({
+  name: 'IsNumberList',
+  type: 'string',
+  validate(splitter: Parameters<string['split']>[0] = /,\s*/) {
+    return function (this: DecoratorNode, value: string) {
+      const splitted = value.split(splitter);
+      if (!splitted.every((v) => !Number.isNaN(Number(v)))) {
+        return this.fail(value, { reason: '' });
+      } else {
+        return this.success();
+      }
+    };
+  },
+});
