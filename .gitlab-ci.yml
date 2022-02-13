@@ -55,8 +55,10 @@ sonarqube-mr:
           -Dsonar.pullrequest.base=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} \
           || true
   allow_failure: true
-  only:
-    - merge_requests
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /^dependabot\//'
+      when: never
 
 sonarqube-branch:
   extends: .sonarqube
