@@ -34,7 +34,7 @@ describe('general', () => {
     @v.validatorDecorator()
     class Test {}
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+    const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
 
     expect(classDeclaration).toBeTruthy();
   });
@@ -52,7 +52,7 @@ describe('general', () => {
     @decorator()
     class Test {}
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+    const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
 
     expect(classDeclaration).toBeTruthy();
   });
@@ -79,7 +79,7 @@ describe('general', () => {
     })
     class Test {}
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+    const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
 
     expect(classDeclaration).toBeTruthy();
   });
@@ -100,7 +100,7 @@ describe('general', () => {
     @v.validatorDecorator()
     class Test extends TestDervied {}
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+    const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
     const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
 
     expect(classTrees.length).toEqual(2);
@@ -117,7 +117,7 @@ describe('general', () => {
     }
 
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+    const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
     const classTreesWrapper = () => v.getPropertyTypeTrees(Test, classDeclaration);
 
     expect(classTreesWrapper).toThrow(ParseError);
@@ -132,7 +132,7 @@ describe('general', () => {
     }
 
     const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+    const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
     const classTreesWrapper = () => v.getPropertyTypeTrees(Test, classDeclaration);
 
     expect(classTreesWrapper).toThrow(ParseError);
@@ -411,7 +411,7 @@ describe('validator', () => {
 
     it('should construct the correct tree', () => {
       const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+      const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
       const trees = v.getPropertyTypeTrees(Test, classDeclaration);
       const tupleTree = trees[0];
 
@@ -596,7 +596,7 @@ describe('validator', () => {
 
         it('should construct the tree correctly', () => {
           const { filename, line } = v.getClassMetadata(Test);
-          const cls = v.getClass(filename, 'Test', line);
+          const cls = v.classDiscovery.getClass(filename, 'Test', line);
           const trees = v.getPropertyTypeTrees(Test, cls);
 
           expect(trees[0].tree.children[0].kind).toEqual('class');
@@ -700,7 +700,7 @@ describe('validator', () => {
 
       it('should remove undefined from the root property', () => {
         const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-        const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+        const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
         const trees = v.getPropertyTypeTrees(Test, classDeclaration);
 
         /*
@@ -860,7 +860,7 @@ describe('validator', () => {
 
       it('should construct the tree correctly', () => {
         const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-        const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+        const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
         const trees = v.getPropertyTypeTrees(Test, classDeclaration);
         const unionPropertyTree = trees[0].tree;
 
@@ -947,7 +947,7 @@ describe('validator', () => {
 
     it('should construct the correct tree', () => {
       const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+      const classDeclaration = v.classDiscovery.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
       const trees = v.getPropertyTypeTrees(Test, classDeclaration);
       const tupleTree = trees[0];
 
