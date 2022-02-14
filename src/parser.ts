@@ -327,15 +327,15 @@ export class Parser {
     // We need to merge in all attributes from base classes, so start with the supplied class
     // and walk up until there is no base class
     const trees: ITypeAndTree[] = [];
-    let currentClass: ClassOrInterfaceOrLiteral | undefined = classDeclaration;
-    while (currentClass) {
-      const properties = isClass(currentClass) ? currentClass.getInstanceProperties() : currentClass.getProperties();
+
+    for (const declaration of this.getAllDeclarations(classDeclaration)) {
+      const properties = isClass(declaration) ? declaration.getInstanceProperties() : declaration.getProperties();
       for (const prop of properties) {
         const name = prop.getName();
-        const tree = this.buildTypeTree(currentClass, prop as PropertyDeclaration);
+        const tree = this.buildTypeTree(declaration, prop as PropertyDeclaration);
 
-        if (isClass(currentClass)) {
-          this.applyDecorators(currentClass, name, tree);
+        if (isClass(declaration)) {
+          this.applyDecorators(declaration, name, tree);
         }
 
         trees.push({
@@ -343,13 +343,25 @@ export class Parser {
           tree,
         });
       }
-
-      currentClass = getBaseDeclaration(currentClass);
     }
 
     this.classTreeCache.set(classDeclaration, trees);
 
     return trees;
+  }
+
+  getAllDeclarations(classDeclaration: ClassOrInterfaceOrLiteral): ClassOrInterfaceOrLiteral[] {
+    const declarations: ClassOrInterfaceOrLiteral[] = [];
+
+    let currentDeclaration: ClassOrInterfaceOrLiteral | undefined = classDeclaration;
+    while (currentDeclaration) {
+      declarations.push(currentDeclaration);
+      currentDeclaration = getBaseDeclaration(currentDeclaration);
+    }
+
+    declarations.reverse();
+
+    return declarations;
   }
 
   buildTypeTree(currentClass: ClassOrInterfaceOrLiteral, prop: PropertyDeclaration): TypeNode {

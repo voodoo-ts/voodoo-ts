@@ -44,7 +44,7 @@ describe('decorators', () => {
 
     it('should add a decorator node to the tree', () => {
       const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
       const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
 
       expect(classTrees.length).toEqual(1);
@@ -94,7 +94,7 @@ describe('decorators', () => {
 
     it('should add a decorator node to the tree', () => {
       const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
       const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
 
       expect(classTrees.length).toEqual(1);
@@ -159,7 +159,7 @@ describe('decorators', () => {
 
     it('should add a decorator node to the tree', () => {
       const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.getClass(validatorMeta.filename, Test.name, validatorMeta.line);
+      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
       const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
 
       expect(classTrees.length).toEqual(1);

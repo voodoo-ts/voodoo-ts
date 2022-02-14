@@ -51,35 +51,12 @@ export interface IValidatorConstructorOptions {
   defaultOptions?: IValidationOptions;
 }
 
-export class ValidatorInstance {
+export class ClassDiscovery {
   project: Project;
-  parser: Parser;
-  defaultOptions: IValidationOptions;
-
   classCache = new Map<string, ClassDeclaration>(); // TODO: Better name
 
-  constructor(options: IValidatorConstructorOptions) {
-    this.project = options.project;
-    this.parser = new Parser();
-
-    this.defaultOptions = Object.assign(
-      {
-        allowUnknownFields: false,
-      } as IValidationOptions,
-      options.defaultOptions ?? {},
-    );
-  }
-
-  static withDefaultProject(): ValidatorInstance {
-    return new ValidatorInstance({
-      project: new Project({
-        tsConfigFilePath: 'tsconfig.json',
-        // Optionally specify compiler options, tsconfig.json, in-memory file system, and more here.
-        // If you initialize with a tsconfig.json, then it will automatically populate the project
-        // with the associated source files.
-        // Read more: https://ts-morph.com/setup/
-      }),
-    });
+  constructor(project: Project) {
+    this.project = project;
   }
 
   /**
@@ -103,7 +80,7 @@ export class ValidatorInstance {
    * @param line The line where the @Decorator() call occurred
    * @returns
    */
-  getClass(filename: string, className: string, line: number): ClassDeclaration {
+  getClass(className: string, filename: string, line: number): ClassDeclaration {
     const cacheKey = `${line}:${filename}`;
     const cached = this.classCache.get(cacheKey);
     if (cached) {
@@ -146,6 +123,39 @@ export class ValidatorInstance {
     this.classCache.set(cacheKey, cls);
 
     return cls;
+  }
+}
+
+export class ValidatorInstance {
+  project: Project;
+  parser: Parser;
+  classDiscovery: ClassDiscovery;
+
+  defaultOptions: IValidationOptions;
+
+  constructor(options: IValidatorConstructorOptions) {
+    this.project = options.project;
+    this.parser = new Parser();
+    this.classDiscovery = new ClassDiscovery(options.project);
+
+    this.defaultOptions = Object.assign(
+      {
+        allowUnknownFields: false,
+      } as IValidationOptions,
+      options.defaultOptions ?? {},
+    );
+  }
+
+  static withDefaultProject(): ValidatorInstance {
+    return new ValidatorInstance({
+      project: new Project({
+        tsConfigFilePath: 'tsconfig.json',
+        // Optionally specify compiler options, tsconfig.json, in-memory file system, and more here.
+        // If you initialize with a tsconfig.json, then it will automatically populate the project
+        // with the associated source files.
+        // Read more: https://ts-morph.com/setup/
+      }),
+    });
   }
 
   /**
@@ -224,7 +234,7 @@ export class ValidatorInstance {
   validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
     // Get metadata + types
     const validatorMeta = this.getClassMetadata(cls);
-    const classDeclaration = this.getClass(validatorMeta.filename, cls.name, validatorMeta.line);
+    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
 
     return this.validateClassDeclaration<T>(cls, classDeclaration, values, options);
   }
@@ -243,7 +253,7 @@ export class ValidatorInstance {
     };
 
     return (target: object) => {
-      const classDeclaration = this.getClass(filename, target.constructor.name, line);
+      const classDeclaration = this.classDiscovery.getClass(target.constructor.name, filename, line);
       this.parser.setClassReference(classDeclaration, target as Constructor<unknown>);
       Reflect.defineMetadata(validatorMetadataKey, classMetadata, target);
     };
