@@ -104,8 +104,8 @@ describe('general', () => {
     const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
 
     expect(classTrees.length).toEqual(2);
-    expect(classTrees[0].name).toEqual('derivedAttribute');
-    expect(classTrees[1].name).toEqual('baseAttribute');
+    expect(classTrees[0].name).toEqual('baseAttribute');
+    expect(classTrees[1].name).toEqual('derivedAttribute');
   });
 
   it('should throw for unsupported syntax nodes', () => {
