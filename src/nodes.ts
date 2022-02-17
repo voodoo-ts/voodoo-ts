@@ -11,6 +11,9 @@ export interface ITypeAndTree {
 }
 
 export enum ValidationErrorType {
+  VALUE_REQUIRED = 'VALUE_REQUIRED',
+  UNKNOWN_FIELD = 'UNKNOWN_FIELD',
+
   // String
   NOT_A_STRING = 'NOT_A_STRING',
 
@@ -36,7 +39,6 @@ export enum ValidationErrorType {
   NO_LENGTH_MATCH = 'NO_LENGTH_MATCH',
 
   CUSTOM = 'CUSTOM',
-  VALUE_REQUIRED = 'VALUE_REQUIRED',
 }
 
 export interface INodeValidationSuccess {
@@ -119,6 +121,20 @@ export class RootNode extends TypeNodeBase {
     }
 
     return this.validateAllChildren(value, context);
+  }
+
+  static rootError(value: unknown, reason: ValidationErrorType): INodeValidationError {
+    return {
+      success: false,
+      type: 'root',
+      value,
+      reason,
+      previousErrors: [],
+    };
+  }
+
+  static unknownFieldError(value: unknown): INodeValidationError {
+    return this.rootError(value, ValidationErrorType.UNKNOWN_FIELD);
   }
 }
 

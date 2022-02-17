@@ -5,8 +5,8 @@ import { ClassDeclaration, Node, Project } from 'ts-morph';
 
 import { flattenValidationError, IErrorMessage } from './error-formatter';
 import { ClassNotDecoratedError, ClassNotFoundError } from './errors';
-import { ITypeAndTree } from './nodes';
-import { isClass, Parser } from './parser';
+import { INodeValidationError, ITypeAndTree, RootNode } from './nodes';
+import { ClassCache, isClass, Parser } from './parser';
 import { Constructor } from './types';
 
 export const validatorMetadataKey = Symbol('format');
@@ -25,6 +25,13 @@ export interface IValidatorClassMeta {
   options: IValidatorOptions;
 }
 
+export interface IClassMeta<Options> {
+  filename: string;
+  line: number;
+
+  options: Options;
+}
+
 interface IValidationSuccess<T> {
   success: true;
   object: T;
@@ -33,7 +40,8 @@ interface IValidationSuccess<T> {
 interface IValidationError<T> {
   success: false;
   object: null;
-  errors: Record<string | number | symbol, IErrorMessage[]>;
+  errors: Record<string, IErrorMessage[]>;
+  rawErrors: Record<string, INodeValidationError>;
 }
 
 type ValidateIfFunc = (obj: any) => boolean;
@@ -182,7 +190,8 @@ export class ValidatorInstance {
     const propertyTypeTrees = this.getPropertyTypeTrees(cls, classDeclaration);
 
     let allFieldsAreValid = true;
-    const errors: Record<string | number | symbol, IErrorMessage[]> = {};
+    const errors: Record<string, IErrorMessage[]> = {};
+    const rawErrors: Record<string, INodeValidationError> = {};
     const properties = new Set(Object.keys(values));
     for (const { name, tree } of propertyTypeTrees) {
       properties.delete(name);
@@ -194,6 +203,7 @@ export class ValidatorInstance {
 
       const result = tree.validate(values[name], { propertyName: name });
       if (!result.success) {
+        rawErrors[name] = result;
         errors[name] = flattenValidationError(result, [name]);
         allFieldsAreValid = false;
       }
@@ -202,16 +212,9 @@ export class ValidatorInstance {
     const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;
     if (!allowUnknownFields && properties.size) {
       for (const name of properties.values()) {
-        errors[name] = flattenValidationError(
-          {
-            success: false,
-            type: 'root',
-            value: values[name],
-            reason: 'UNKNOWN_FIELD',
-            previousErrors: [],
-          },
-          [name],
-        );
+        const error = RootNode.unknownFieldError(values[name]);
+        rawErrors[name] = error;
+        errors[name] = flattenValidationError(error, [name]);
       }
 
       allFieldsAreValid = false;
@@ -227,6 +230,7 @@ export class ValidatorInstance {
         success: false,
         object: null,
         errors,
+        rawErrors,
       };
     }
   }
