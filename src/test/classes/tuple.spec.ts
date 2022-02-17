@@ -1,5 +1,5 @@
 import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../../validator';
-import { project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('tuple', () => {
   const v = new ValidatorInstance({ project });
@@ -40,8 +40,7 @@ describe('tuple', () => {
   it('should not validate empty tuples', () => {
     const result = v.validate(Test, { tupleProperty: [] as any });
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         tupleProperty: {
           success: false,
@@ -51,16 +50,13 @@ describe('tuple', () => {
           previousErrors: [],
         },
       });
-    }
+    });
   });
 
   it('should fail for invalid tuple elements', () => {
     const result = v.validate(Test, { tupleProperty: [1, 'two', 'three'] } as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.tupleProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         tupleProperty: {
           success: false,
@@ -79,16 +75,13 @@ describe('tuple', () => {
           context: { element: 2 },
         },
       });
-    }
+    });
   });
 
   it('should fail for invalid types', () => {
     const result = v.validate(Test, { tupleProperty: 123 } as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.tupleProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         tupleProperty: {
           success: false,
@@ -98,16 +91,13 @@ describe('tuple', () => {
           previousErrors: [],
         },
       });
-    }
+    });
   });
 
   it('should fail if property is undefined', () => {
     const result = v.validate(Test, {} as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.tupleProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         tupleProperty: {
           success: false,
@@ -116,6 +106,6 @@ describe('tuple', () => {
           previousErrors: [],
         },
       });
-    }
+    });
   });
 });

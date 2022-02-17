@@ -1,5 +1,5 @@
 import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../../validator';
-import { project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('optional', () => {
   const v = new ValidatorInstance({ project });
@@ -42,10 +42,7 @@ describe('optional', () => {
   it('should fail optional string for invalid strings', () => {
     const result = v.validate(Test, { stringProperty: 123 } as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.stringProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         stringProperty: {
           success: false,
@@ -55,16 +52,13 @@ describe('optional', () => {
           reason: 'NOT_A_STRING',
         },
       });
-    }
+    });
   });
 
   it('should fail optional string for null', () => {
     const result = v.validate(Test, { stringProperty: null } as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.stringProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         stringProperty: {
           success: false,
@@ -74,6 +68,6 @@ describe('optional', () => {
           reason: 'NOT_A_STRING',
         },
       });
-    }
+    });
   });
 });

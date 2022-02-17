@@ -41,44 +41,33 @@ describe('union', () => {
     it('should not validate boolean', () => {
       const result = v.validate(Test, { unionProperty: false } as any);
 
-      expect(result.success).toEqual(false);
-      if (!result.success) {
-        // Needed for type narrowing
-        // expect(result.errors.unionProperty).toBeInstanceOf(Array);
-        // expect(result.errors.unionProperty.length).toBeGreaterThan(0);
-        // expect(result.errors.unionProperty[0].context?.unionErrors).toBeInstanceOf(Array);
-
-        // const unionPropertyErrors = result.errors.unionProperty[0].context?.unionErrors as IErrorMessage[];
-        // expect(unionPropertyErrors.length).toBeGreaterThan(0);
-        // expect(unionPropertyErrors).toEqual(['string', 'number']);
-        expectValidationError(result, (result) => {
-          expect(result.rawErrors).toEqual({
-            unionProperty: {
-              success: false,
-              type: 'union',
-              reason: ValidationErrorType.NO_UNION_MATCH,
-              value: false,
-              context: {},
-              previousErrors: [
-                {
-                  success: false,
-                  type: 'string',
-                  reason: ValidationErrorType.NOT_A_STRING,
-                  value: false,
-                  previousErrors: [],
-                },
-                {
-                  success: false,
-                  type: 'number',
-                  reason: ValidationErrorType.NOT_A_NUMBER,
-                  value: false,
-                  previousErrors: [],
-                },
-              ],
-            },
-          });
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
+          unionProperty: {
+            success: false,
+            type: 'union',
+            reason: ValidationErrorType.NO_UNION_MATCH,
+            value: false,
+            context: {},
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                reason: ValidationErrorType.NOT_A_STRING,
+                value: false,
+                previousErrors: [],
+              },
+              {
+                success: false,
+                type: 'number',
+                reason: ValidationErrorType.NOT_A_NUMBER,
+                value: false,
+                previousErrors: [],
+              },
+            ],
+          },
         });
-      }
+      });
     });
   });
   describe('optional ->  (string | number)?', () => {
@@ -116,19 +105,6 @@ describe('union', () => {
           },
         ],
       });
-
-      /*
-        Expected:
-          RootNode 
-          - UnionNode 
-            - StringNode
-            - NumberNode
-       */
-      // expect(trees[0].tree.kind).toEqual('root');
-      // expect(trees[0].tree.children.length).toEqual(1);
-      // expect(trees[0].tree.children[0].kind).toEqual('union');
-      // expect(trees[0].tree.children[0].children.length).toEqual(2);
-      // expect(trees[0].tree.children[0].children.map((c) => c.kind)).toEqual(['string', 'number']);
     });
 
     it('should validate string', () => {
@@ -179,16 +155,6 @@ describe('union', () => {
           },
         });
       });
-
-      // expect(result.success).toEqual(false);
-      // if (!result.success) {
-      //   // Needed for type narrowing
-      //   expect(result.errors.unionProperty).toBeInstanceOf(Array);
-      //   expect(result.errors.unionProperty.length).toBeGreaterThan(0);
-      //   expect(result.errors.unionProperty[0].context?.unionErrors).toBeInstanceOf(Array);
-      //   const unionPropertyError = result.errors.unionProperty[0].context?.unionErrors as unknown[];
-      //   expect(unionPropertyError.length).toBeGreaterThan(0);
-      // }
     });
   });
 
@@ -267,15 +233,6 @@ describe('union', () => {
           },
         });
       });
-      // expect(result.success).toEqual(false);
-      // if (!result.success) {
-      //   // Needed for type narrowing
-      //   expect(result.errors.unionProperty).toBeInstanceOf(Array);
-      //   expect(result.errors.unionProperty.length).toBeGreaterThan(0);
-      //   expect(result.errors.unionProperty[0].context?.unionErrors).toBeInstanceOf(Array);
-      //   const unionPropertyError = result.errors.unionProperty[0].context?.unionErrors as unknown[];
-      //   expect(unionPropertyError.length).toBeGreaterThan(0);
-      // }
     });
   });
 
@@ -312,13 +269,6 @@ describe('union', () => {
           },
         });
       });
-
-      // expect(result.success).toEqual(false);
-      // if (!result.success) {
-      //   expect(result.errors.unionProperty).toBeInstanceOf(Array);
-      //   expect(result.errors.unionProperty.length).toEqual(1);
-      //   expect(result.errors.unionProperty[0].reason).toEqual(ValidationErrorType.VALUE_REQUIRED);
-      // }
     });
 
     it('should not validate boolean', () => {
@@ -351,18 +301,6 @@ describe('union', () => {
           },
         });
       });
-
-      // expect(result.success).toEqual(false);
-      // if (!result.success) {
-      //   // Needed for type narrowing
-      //   expect(result.errors.unionProperty).toBeInstanceOf(Array);
-      //   expect(result.errors.unionProperty.length).toBeGreaterThan(0);
-      //   expect(result.errors.unionProperty[0].context?.unionErrors).toBeInstanceOf(Array);
-
-      //   const unionPropertyErrors = result.errors.unionProperty[0].context?.unionErrors as IErrorMessage[];
-      //   expect(unionPropertyErrors.length).toBeGreaterThan(0);
-      //   expect(unionPropertyErrors).toEqual(['null', 'string']);
-      // }
     });
   });
 
@@ -419,8 +357,6 @@ describe('union', () => {
           },
         });
       });
-
-      // expect(result.success).toEqual(false);
     });
 
     it('should not validate boolean', () => {
@@ -437,14 +373,6 @@ describe('union', () => {
           },
         });
       });
-
-      // expect(result.success).toEqual(false);
-      // if (!result.success) {
-      //   // Needed for type narrowing
-      //   expect(result.errors.unionProperty).toBeInstanceOf(Array);
-      //   expect(result.errors.unionProperty.length).toBeGreaterThan(0);
-      //   expect(result.errors.unionProperty[0].reason).toEqual(ValidationErrorType.NOT_A_STRING);
-      // }
     });
   });
 });

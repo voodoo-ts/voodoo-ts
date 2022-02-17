@@ -1,5 +1,5 @@
 import { ValidatorInstance } from '../../validator';
-import { project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('strings', () => {
   it('should validate valid string', () => {
@@ -35,10 +35,7 @@ describe('strings', () => {
     }
     const result = v.validate(Test, { stringProperty: 123 } as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.stringProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         stringProperty: {
           success: false,
@@ -48,6 +45,6 @@ describe('strings', () => {
           reason: 'NOT_A_STRING',
         },
       });
-    }
+    });
   });
 });

@@ -1,5 +1,5 @@
 import { ValidatorInstance } from '../../validator';
-import { project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('enums', () => {
   const v = new ValidatorInstance({ project });
@@ -22,10 +22,7 @@ describe('enums', () => {
   it('should format invalid enum errors correctly', () => {
     const result = v.validate(Test, { enumProperty: 123 } as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.enumProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         enumProperty: {
           success: false,
@@ -36,6 +33,6 @@ describe('enums', () => {
           previousErrors: [],
         },
       });
-    }
+    });
   });
 });

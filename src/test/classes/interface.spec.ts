@@ -43,10 +43,6 @@ describe('interface', () => {
         },
       ],
     });
-
-    // expectValidationError(tree, (result) => {
-    //   expect(result.rawErrors).toEqual();
-    // });
   });
 
   it('should construct the correct trees for extending interfaces', () => {
@@ -102,10 +98,6 @@ describe('interface', () => {
         },
       },
     ]);
-
-    // expectValidationError(tree, (result) => {
-    //   expect(result.rawErrors).toEqual();
-    // });
   });
 
   it('should construct the correct trees for object literals', () => {
@@ -115,7 +107,7 @@ describe('interface', () => {
     const { name, tree } = trees[3];
 
     expect(name).toEqual('embedded3');
-    const expectedFilename = __filename.split('.').slice();
+
     expect(tree).toEqual({
       kind: 'root',
       optional: false,

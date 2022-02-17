@@ -1,5 +1,5 @@
 import { ValidatorInstance } from '../../validator';
-import { project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('booleans', () => {
   const v = new ValidatorInstance({ project });
@@ -9,8 +9,14 @@ describe('booleans', () => {
     booleanProperty!: boolean;
   }
 
-  it('should validate valid boolean', () => {
+  it('should validate true', () => {
     const result = v.validate(Test, { booleanProperty: true });
+
+    expect(result.success).toEqual(true);
+  });
+
+  it('should validate false', () => {
+    const result = v.validate(Test, { booleanProperty: false });
 
     expect(result.success).toEqual(true);
   });
@@ -18,10 +24,7 @@ describe('booleans', () => {
   it('should fail for invalid booleans', () => {
     const result = v.validate(Test, { booleanProperty: 123 } as any);
 
-    expect(result.success).toEqual(false);
-    if (!result.success) {
-      // Needed for type narrowing
-      expect(result.errors.booleanProperty).toBeTruthy();
+    expectValidationError(result, (result) => {
       expect(result.rawErrors).toEqual({
         booleanProperty: {
           success: false,
@@ -31,6 +34,6 @@ describe('booleans', () => {
           reason: 'NOT_A_BOOLEAN',
         },
       });
-    }
+    });
   });
 });
