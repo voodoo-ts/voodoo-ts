@@ -278,11 +278,13 @@ export class ClassNode extends TypeNodeBase {
   kind = 'class' as const;
   name: string;
   getClassTrees: () => ITypeAndTree[];
+  meta: Record<string, unknown> = {};
 
-  constructor(fullReference: string, getClassTrees: () => ITypeAndTree[]) {
+  constructor(name: string, getClassTrees: () => ITypeAndTree[], meta: Record<string, unknown> = {}) {
     super();
-    this.name = fullReference;
+    this.name = name;
     this.getClassTrees = getClassTrees;
+    this.meta = meta;
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {

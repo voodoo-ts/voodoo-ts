@@ -266,7 +266,11 @@ export class Parser {
         const referencedDeclaration = getFirstSymbolDeclaration(type);
         const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration);
 
-        tree.children.push(new ClassNode(getName(referencedDeclaration), getClassTrees));
+        tree.children.push(
+          new ClassNode(getName(referencedDeclaration), getClassTrees, {
+            from: type.isInterface() ? 'interface' : 'object',
+          }),
+        );
       } else {
         const tupleNode = new TupleNode();
         tree.children.push(tupleNode);
@@ -287,7 +291,11 @@ export class Parser {
           return classTrees;
         };
 
-        tree.children.push(new ClassNode(getName(referencedClassDeclaration), getClassTrees));
+        tree.children.push(
+          new ClassNode(getName(referencedClassDeclaration), getClassTrees, {
+            omitted: propertyNames,
+          }),
+        );
       } else if (name === 'Record') {
         const recordNode = new RecordNode();
         const [keyType, valueType] = type.getAliasTypeArguments();
