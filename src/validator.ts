@@ -32,12 +32,12 @@ export interface IClassMeta<Options> {
   options: Options;
 }
 
-interface IValidationSuccess<T> {
+export interface IValidationSuccess<T> {
   success: true;
   object: T;
 }
 
-interface IValidationError<T> {
+export interface IValidationError<T> {
   success: false;
   object: null;
   errors: Record<string, IErrorMessage[]>;
@@ -50,7 +50,7 @@ export function ValidateIf(func: ValidateIfFunc): ReturnType<typeof Reflect['met
   return Reflect.metadata(validateIfMetadataKey, func);
 }
 
-type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
+export type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
 
 type MaybePartial<T> = Partial<T> & Record<any, any>;
 
