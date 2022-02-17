@@ -26,6 +26,9 @@ export enum ValidationErrorType {
   // Boolean
   NOT_A_BOOLEAN = 'NOT_A_BOOLEAN',
 
+  // Null
+  NOT_NULL = 'NOT_NULL',
+
   // Union
   NO_UNION_MATCH = 'NO_UNION_MATCH',
 
@@ -183,7 +186,7 @@ export class BooleanNode extends LeafNode {
 
 export class NullNode extends LeafNode {
   kind = 'null' as const;
-  reason = ValidationErrorType.CUSTOM;
+  reason = ValidationErrorType.NOT_NULL;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     return this.wrapBoolean(value, value === null);
