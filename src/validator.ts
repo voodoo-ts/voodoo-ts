@@ -178,6 +178,12 @@ export class ValidatorInstance {
     return trees;
   }
 
+  getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
+    const validatorMeta = this.getClassMetadata(cls);
+    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
+    return this.getPropertyTypeTrees(cls, classDeclaration);
+  }
+
   getValidateIfFunc<T>(cls: Constructor<T>, propertyKey: string): ValidateIfFunc | undefined {
     return Reflect.getMetadata(validateIfMetadataKey, cls.prototype, propertyKey);
   }
