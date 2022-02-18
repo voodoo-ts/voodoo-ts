@@ -38,6 +38,7 @@ export enum ValidationErrorType {
 
   // Arrays / Tuple
   ELEMENT_TYPE_FAILED = 'ELEMENT_TYPE_FAILED',
+  ARRAY_TYPE_FAILED = 'ARRAY_TYPE_FAILED',
   NOT_AN_ARRAY = 'NOT_AN_ARRAY',
   NO_LENGTH_MATCH = 'NO_LENGTH_MATCH',
 
@@ -255,18 +256,28 @@ export class ArrayNode extends TypeNodeBase {
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (Array.isArray(value)) {
+      const [arrayTypeNode, ...children] = this.children;
       for (const [i, item] of enumerate(value)) {
-        for (const child of this.children) {
-          const result = child.validate(item, context);
-          if (!result.success) {
-            return this.fail(value, {
-              reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
-              context: { element: i },
-              previousErrors: [result],
-            });
-          }
+        const result = arrayTypeNode.validate(item, context);
+        if (!result.success) {
+          return this.fail(value, {
+            reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+            context: { element: i },
+            previousErrors: [result],
+          });
         }
       }
+
+      for (const child of children) {
+        const result = child.validate(value, context);
+        if (!result.success) {
+          return this.fail(value, {
+            reason: ValidationErrorType.ARRAY_TYPE_FAILED,
+            previousErrors: [result],
+          });
+        }
+      }
+
       return this.success();
     } else {
       return this.fail(value, { reason: ValidationErrorType.NOT_AN_ARRAY });
