@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { Project } from 'ts-morph';
 
 import { IValidationError, IValidationResult } from '../validator';
@@ -14,4 +16,12 @@ export function expectValidationError(
   if (!result.success) {
     cb(result);
   }
+}
+
+export function genValidationErrorTest(result: IValidationResult<unknown>): void {
+  console.log(`
+  expectValidationError(result, (result) => {
+    expect(result.rawErrors).toEqual(${!result.success ? JSON.stringify(result.rawErrors) : '!'});
+  });
+`);
 }
