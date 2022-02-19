@@ -32,12 +32,12 @@ export interface IClassMeta<Options> {
   options: Options;
 }
 
-interface IValidationSuccess<T> {
+export interface IValidationSuccess<T> {
   success: true;
   object: T;
 }
 
-interface IValidationError<T> {
+export interface IValidationError<T> {
   success: false;
   object: null;
   errors: Record<string, IErrorMessage[]>;
@@ -50,7 +50,7 @@ export function ValidateIf(func: ValidateIfFunc): ReturnType<typeof Reflect['met
   return Reflect.metadata(validateIfMetadataKey, func);
 }
 
-type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
+export type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
 
 type MaybePartial<T> = Partial<T> & Record<any, any>;
 
@@ -170,11 +170,18 @@ export class ValidatorInstance {
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
+   * @param cls Class reference
    * @param classDeclaration A ts-morph class declaration whose members will be processed
    */
   getPropertyTypeTrees<T>(cls: Constructor<T>, classDeclaration: ClassDeclaration): ITypeAndTree[] {
     const trees = this.parser.getPropertyTypeTrees(classDeclaration);
     return trees;
+  }
+
+  getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
+    const validatorMeta = this.getClassMetadata(cls);
+    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
+    return this.getPropertyTypeTrees(cls, classDeclaration);
   }
 
   getValidateIfFunc<T>(cls: Constructor<T>, propertyKey: string): ValidateIfFunc | undefined {
