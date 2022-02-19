@@ -402,7 +402,7 @@ export class Parser {
       walkPropertyTypeTree(tree, (node) => {
         const decoratorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
         const decoratorNodes = decoratorsForNodeKind.map(
-          (decorator) => new DecoratorNode(decorator.validate(...decorator.options!)),
+          (decorator) => new DecoratorNode(decorator.name, decorator.type, decorator.validate(...decorator.options!)),
         );
         node.children.push(...decoratorNodes);
       });

@@ -16,12 +16,9 @@ import {
   StringValidationError,
   Validate,
 } from '../decorators';
-import { IErrorMessage } from '../error-formatter';
-import { ParseError } from '../errors';
-import { ClassNode, DecoratorNode, IValidationContext, ValidationErrorType } from '../nodes';
-import { isParseError } from '../parser';
+import { DecoratorNode, IValidationContext, ValidationErrorType } from '../nodes';
 import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../validator';
-import { expectValidationError, genValidationErrorTest } from './utils';
+import { expectValidationError } from './utils';
 
 const project = new Project({
   tsConfigFilePath: 'tsconfig.json',
@@ -68,7 +65,7 @@ describe('decorators', () => {
         optional: false,
         children: [
           { kind: 'string', children: [], reason: expect.anything() },
-          { kind: 'decorator', children: [], validationFunc: expect.any(Function) },
+          { kind: 'decorator', type: 'root', name: 'Validate', children: [], validationFunc: expect.any(Function) },
         ],
       });
     });
@@ -82,6 +79,7 @@ describe('decorators', () => {
             success: false,
             type: 'decorator',
             value: 'NOT_TEST',
+            context: { decorator: { name: 'Validate', type: 'root' } },
             previousErrors: [],
           },
         });
@@ -136,7 +134,15 @@ describe('decorators', () => {
         children: [
           {
             kind: 'string',
-            children: [{ kind: 'decorator', children: [], validationFunc: expect.any(Function) }],
+            children: [
+              {
+                kind: 'decorator',
+                name: 'Length',
+                type: 'string',
+                children: [],
+                validationFunc: expect.any(Function),
+              },
+            ],
             reason: expect.anything(),
           },
         ],
@@ -156,7 +162,13 @@ describe('decorators', () => {
             reason: LengthValidationError.LENGTH_FAILED,
             value: '',
             previousErrors: [],
-            context: { min: 1 },
+            context: {
+              decorator: {
+                name: 'Length',
+                type: 'string',
+              },
+              min: 1,
+            },
           },
         });
       });
@@ -227,6 +239,8 @@ describe('decorators', () => {
             children: [
               {
                 kind: 'decorator',
+                name: 'Length',
+                type: 'string',
                 validationFunc: expect.any(Function),
                 children: [],
               },
@@ -248,7 +262,14 @@ describe('decorators', () => {
             reason: LengthValidationError.LENGTH_FAILED,
             value: '',
             previousErrors: [],
-            context: { min: 1, max: 2 },
+            context: {
+              decorator: {
+                name: 'Length',
+                type: 'string',
+              },
+              min: 1,
+              max: 2,
+            },
           },
         });
       });
@@ -265,7 +286,14 @@ describe('decorators', () => {
             reason: LengthValidationError.LENGTH_FAILED,
             value: '123',
             previousErrors: [],
-            context: { min: 1, max: 2 },
+            context: {
+              decorator: {
+                name: 'Length',
+                type: 'string',
+              },
+              min: 1,
+              max: 2,
+            },
           },
         });
       });
@@ -335,6 +363,8 @@ describe('decorators', () => {
               },
               {
                 kind: 'decorator',
+                name: 'Length',
+                type: 'array',
                 validationFunc: expect.any(Function),
                 children: [],
               },
@@ -361,7 +391,13 @@ describe('decorators', () => {
                 reason: LengthValidationError.LENGTH_FAILED,
                 value: [],
                 previousErrors: [],
-                context: { min: 1 },
+                context: {
+                  decorator: {
+                    name: 'Length',
+                    type: 'array',
+                  },
+                  min: 1,
+                },
               },
             ],
           },
@@ -439,6 +475,8 @@ describe('decorators', () => {
               },
               {
                 kind: 'decorator',
+                name: 'Length',
+                type: 'array',
                 validationFunc: expect.any(Function),
                 children: [],
               },
@@ -465,7 +503,14 @@ describe('decorators', () => {
                 reason: LengthValidationError.LENGTH_FAILED,
                 value: [],
                 previousErrors: [],
-                context: { min: 1, max: 2 },
+                context: {
+                  decorator: {
+                    name: 'Length',
+                    type: 'array',
+                  },
+                  min: 1,
+                  max: 2,
+                },
               },
             ],
           },
@@ -489,7 +534,14 @@ describe('decorators', () => {
                 type: 'decorator',
                 reason: LengthValidationError.LENGTH_FAILED,
                 value: ['1', '2', '3'],
-                context: { min: 1, max: 2 },
+                context: {
+                  decorator: {
+                    name: 'Length',
+                    type: 'array',
+                  },
+                  min: 1,
+                  max: 2,
+                },
                 previousErrors: [],
               },
             ],
@@ -553,6 +605,8 @@ describe('decorators', () => {
             children: [
               {
                 kind: 'decorator',
+                name: 'Range',
+                type: 'number',
                 children: [],
                 validationFunc: expect.any(Function),
               },
@@ -590,6 +644,12 @@ describe('decorators', () => {
             type: 'decorator',
             reason: NumberValidationError.OUT_OF_RANGE,
             value: 4,
+            context: {
+              decorator: {
+                name: 'Range',
+                type: 'number',
+              },
+            },
             previousErrors: [],
           },
         });
@@ -628,6 +688,12 @@ describe('decorators', () => {
             type: 'decorator',
             reason: NumberValidationError.OUT_OF_RANGE,
             value: 4,
+            context: {
+              decorator: {
+                name: 'Range',
+                type: 'number',
+              },
+            },
             previousErrors: [],
           },
         });
@@ -644,6 +710,12 @@ describe('decorators', () => {
             type: 'decorator',
             reason: NumberValidationError.OUT_OF_RANGE,
             value: 11,
+            context: {
+              decorator: {
+                name: 'Range',
+                type: 'number',
+              },
+            },
             previousErrors: [],
           },
         });
@@ -673,6 +745,8 @@ describe('decorators', () => {
             children: [
               {
                 kind: 'decorator',
+                name: 'IsNumber',
+                type: 'string',
                 children: [],
                 validationFunc: expect.any(Function),
               },
@@ -726,6 +800,12 @@ describe('decorators', () => {
             type: 'decorator',
             reason: StringValidationError.NOT_A_NUMBER_STRING,
             value: 'TEST',
+            context: {
+              decorator: {
+                name: 'IsNumber',
+                type: 'string',
+              },
+            },
             previousErrors: [],
           },
         });
@@ -755,6 +835,8 @@ describe('decorators', () => {
             children: [
               {
                 kind: 'decorator',
+                name: 'IsNumber',
+                type: 'string',
                 children: [],
                 validationFunc: expect.any(Function),
               },
@@ -808,6 +890,12 @@ describe('decorators', () => {
             type: 'decorator',
             reason: StringValidationError.NOT_A_NUMBER_STRING,
             value: 'TEST',
+            context: {
+              decorator: {
+                name: 'IsNumber',
+                type: 'string',
+              },
+            },
             previousErrors: [],
           },
         });
@@ -837,6 +925,8 @@ describe('decorators', () => {
             children: [
               {
                 kind: 'decorator',
+                name: 'IsNumberList',
+                type: 'string',
                 children: [],
                 validationFunc: expect.any(Function),
               },
@@ -880,7 +970,13 @@ describe('decorators', () => {
             type: 'decorator',
             reason: StringValidationError.NOT_A_NUMBER_LIST,
             value: '1,X',
-            context: { element: 1 },
+            context: {
+              decorator: {
+                name: 'IsNumberList',
+                type: 'string',
+              },
+              element: 1,
+            },
             previousErrors: [],
           },
         });
@@ -899,7 +995,10 @@ describe('decorators', () => {
             type: 'decorator',
             reason: StringValidationError.NOT_A_NUMBER_LIST,
             value: '1,2,',
-            context: { element: 2 },
+            context: {
+              decorator: { name: 'IsNumberList', type: 'string' },
+              element: 2,
+            },
             previousErrors: [],
           },
         });

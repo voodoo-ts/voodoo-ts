@@ -387,11 +387,33 @@ export class RecordNode extends TypeNodeBase {
 
 export class DecoratorNode extends TypeNodeBase {
   kind = 'decorator' as const;
+  name: string;
+  type: string;
   validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult;
 
-  constructor(validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult) {
+  constructor(
+    name: string,
+    type: string,
+    validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult,
+  ) {
     super();
+    this.name = name;
+    this.type = type;
     this.validationFunc = validationFunc.bind(this);
+  }
+
+  fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
+    const context = extra.context ?? {};
+    if (!context.decorator) {
+      context.decorator = {
+        name: this.name,
+        type: this.type,
+      };
+    }
+
+    extra.context = context;
+
+    return super.fail(value, extra);
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
