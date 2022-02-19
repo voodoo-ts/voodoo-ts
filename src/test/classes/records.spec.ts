@@ -1,4 +1,4 @@
-import { ClassNode, ValidationErrorType } from '../../nodes';
+import { ValidationErrorType } from '../../nodes';
 import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
