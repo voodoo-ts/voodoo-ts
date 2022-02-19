@@ -10,6 +10,27 @@ describe('arrays', () => {
     arrayProperty!: number[];
   }
 
+  it('should construct the correct tree', () => {
+    const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+    expect(tree).toEqual({
+      kind: 'root',
+      optional: false,
+      children: [
+        {
+          kind: 'array',
+          children: [
+            {
+              kind: 'number',
+              reason: expect.anything(),
+              children: [],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
   it('should validate valid number arrays', () => {
     const result = v.validate(Test, { arrayProperty: [1, 2, 3] });
 
