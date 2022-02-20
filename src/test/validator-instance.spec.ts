@@ -1,84 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { Project } from 'ts-morph';
 
 import { ClassNotDecoratedError, ParseError } from '../errors';
-import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey, ValidateIf } from '../validator';
-
-const project = new Project({
-  tsConfigFilePath: 'tsconfig.json',
-});
+import { IClassMeta } from '../source-code-location-decorator';
+import { ValidatorInstance, validatorMetadataKey, ValidateIf } from '../validator';
+import { project } from './utils';
 
 describe('general', () => {
   it('should construct', () => {
     const instance = new ValidatorInstance({ project });
     expect(instance).toBeTruthy();
-  });
-
-  it('should be able to set metadata on classes', () => {
-    const v = new ValidatorInstance({ project });
-
-    @v.validatorDecorator()
-    class Test {}
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-
-    expect(validatorMeta.filename).toMatch('validator-instance.spec');
-    expect(typeof validatorMeta.line).toEqual('number');
-  });
-
-  it('should be able to discover test classes', () => {
-    const v = new ValidatorInstance({ project });
-
-    @v.validatorDecorator()
-    class Test {}
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-
-    expect(classDeclaration).toBeTruthy();
-  });
-
-  it('should be able to discover test classes with multiple decorators', () => {
-    const v = new ValidatorInstance({ project });
-    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    const decorator = () =>
-      Reflect.metadata('foo', {
-        foo: 123,
-      });
-
-    @decorator()
-    @v.validatorDecorator()
-    @decorator()
-    class Test {}
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-
-    expect(classDeclaration).toBeTruthy();
-  });
-
-  it('should be able to discover test classes with multiple multiline decorators', () => {
-    const v = new ValidatorInstance({ project });
-    // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-    const decorator = (...args: unknown[]) =>
-      Reflect.metadata('foo', {
-        foo: 123,
-      });
-
-    @decorator({
-      some: 'property',
-      another: 123,
-    })
-    @v.validatorDecorator({
-      options: {
-        some: 'property',
-      },
-    } as any)
-    @decorator({
-      test: 123,
-    })
-    class Test {}
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-
-    expect(classDeclaration).toBeTruthy();
   });
 
   it('should add inherited properties', () => {
@@ -96,13 +26,11 @@ describe('general', () => {
 
     @v.validatorDecorator()
     class Test extends TestDervied {}
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-    const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
+    const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
-    expect(classTrees.length).toEqual(2);
-    expect(classTrees[0].name).toEqual('baseAttribute');
-    expect(classTrees[1].name).toEqual('derivedAttribute');
+    expect(trees.length).toEqual(2);
+    expect(trees[0].name).toEqual('baseAttribute');
+    expect(trees[1].name).toEqual('derivedAttribute');
   });
 
   it('should throw for unsupported syntax nodes', () => {
@@ -113,9 +41,7 @@ describe('general', () => {
       derivedAttribute!: symbol;
     }
 
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-    const classTreesWrapper = () => v.getPropertyTypeTrees(Test, classDeclaration);
+    const classTreesWrapper = () => v.getPropertyTypeTreesFromConstructor(Test);
 
     expect(classTreesWrapper).toThrow(ParseError);
   });
@@ -125,13 +51,10 @@ describe('general', () => {
 
     @v.validatorDecorator()
     class Test {
-      unknownAttribute!: Pick<{ a: number }, 'a'>;
+      unknownAttribute!: Exclude<1 | 0, 0>;
     }
 
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-    const classTreesWrapper = () => v.getPropertyTypeTrees(Test, classDeclaration);
-
+    const classTreesWrapper = () => v.getPropertyTypeTreesFromConstructor(Test);
     expect(classTreesWrapper).toThrow(ParseError);
   });
 

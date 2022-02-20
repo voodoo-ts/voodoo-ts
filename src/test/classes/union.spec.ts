@@ -1,5 +1,5 @@
 import { ValidationErrorType } from '../../nodes';
-import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../../validator';
+import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
 describe('union', () => {
@@ -79,10 +79,7 @@ describe('union', () => {
     }
 
     it('should remove undefined from the root property', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const trees = v.getPropertyTypeTrees(Test, classDeclaration);
-      const tree = trees[0].tree;
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
       expect(tree).toEqual({
         kind: 'root',
@@ -313,12 +310,9 @@ describe('union', () => {
     }
 
     it('should construct the tree correctly', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const trees = v.getPropertyTypeTrees(Test, classDeclaration);
-      const unionPropertyTree = trees[0].tree;
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-      expect(unionPropertyTree).toEqual({
+      expect(tree).toEqual({
         kind: 'root',
         optional: true,
         children: [
