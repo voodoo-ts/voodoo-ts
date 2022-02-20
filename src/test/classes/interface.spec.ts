@@ -1,5 +1,5 @@
 import { ClassNode } from '../../nodes';
-import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../../validator';
+import { ValidatorInstance } from '../../validator';
 import { project } from '../utils';
 
 describe('interface', () => {
@@ -24,9 +24,7 @@ describe('interface', () => {
   }
 
   it('should construct the correct tree for interfaces', () => {
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-    const trees = v.getPropertyTypeTrees(Test, classDeclaration);
+    const trees = v.getPropertyTypeTreesFromConstructor(Test);
     const { name, tree } = trees[0];
 
     expect(name).toEqual('embedded');
@@ -46,9 +44,7 @@ describe('interface', () => {
   });
 
   it('should construct the correct trees for extending interfaces', () => {
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-    const trees = v.getPropertyTypeTrees(Test, classDeclaration);
+    const trees = v.getPropertyTypeTreesFromConstructor(Test);
     const { name, tree } = trees[2];
 
     expect(name).toEqual('embedded2');
@@ -101,9 +97,7 @@ describe('interface', () => {
   });
 
   it('should construct the correct trees for object literals', () => {
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-    const trees = v.getPropertyTypeTrees(Test, classDeclaration);
+    const trees = v.getPropertyTypeTreesFromConstructor(Test);
     const { name, tree } = trees[3];
 
     expect(name).toEqual('embedded3');

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { Project } from 'ts-morph';
 
 import {
   ArrayLength,
@@ -17,12 +16,8 @@ import {
   Validate,
 } from '../decorators';
 import { DecoratorNode, IValidationContext, ValidationErrorType } from '../nodes';
-import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../validator';
-import { expectValidationError } from './utils';
-
-const project = new Project({
-  tsConfigFilePath: 'tsconfig.json',
-});
+import { ValidatorInstance } from '../validator';
+import { expectValidationError, project } from './utils';
 
 describe('decorators', () => {
   it('should create decorators', () => {
@@ -55,12 +50,10 @@ describe('decorators', () => {
     });
 
     it('should construct the correct tree', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
-      expect(classTrees.length).toEqual(1);
-      expect(classTrees[0].tree).toEqual({
+      expect(trees.length).toEqual(1);
+      expect(trees[0].tree).toEqual({
         kind: 'root',
         optional: false,
         children: [
@@ -125,12 +118,10 @@ describe('decorators', () => {
     });
 
     it('should add a decorator node to the tree', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
-      expect(classTrees.length).toEqual(1);
-      expect(classTrees[0].tree).toEqual({
+      expect(trees.length).toEqual(1);
+      expect(trees[0].tree).toEqual({
         children: [
           {
             kind: 'string',
@@ -225,12 +216,10 @@ describe('decorators', () => {
     });
 
     it('should add a decorator node to the tree', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
-      expect(classTrees.length).toEqual(1);
-      expect(classTrees[0].tree).toEqual({
+      expect(trees.length).toEqual(1);
+      expect(trees[0].tree).toEqual({
         kind: 'root',
         children: [
           {
@@ -344,12 +333,10 @@ describe('decorators', () => {
     });
 
     it('should add a decorator node to the tree', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
-      expect(classTrees.length).toEqual(1);
-      expect(classTrees[0].tree).toEqual({
+      expect(trees.length).toEqual(1);
+      expect(trees[0].tree).toEqual({
         kind: 'root',
         optional: false,
         children: [
@@ -456,12 +443,10 @@ describe('decorators', () => {
     });
 
     it('should add a decorator node to the tree', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const classTrees = v.getPropertyTypeTrees(Test, classDeclaration);
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
-      expect(classTrees.length).toEqual(1);
-      expect(classTrees[0].tree).toEqual({
+      expect(trees.length).toEqual(1);
+      expect(trees[0].tree).toEqual({
         kind: 'root',
         optional: false,
         children: [
@@ -589,9 +574,7 @@ describe('decorators', () => {
     }
 
     it('should construct the correct tree', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const trees = v.getPropertyTypeTrees(Test, classDeclaration);
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
       const { name, tree } = trees[0];
 
       expect(name).toEqual('testProperty');
@@ -617,11 +600,10 @@ describe('decorators', () => {
     });
 
     it('should call the decorator', () => {
-      const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-      const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-      const trees = v.getPropertyTypeTrees(Test, classDeclaration);
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
       const { name, tree } = trees[0];
       const decoratorSpy = jest.spyOn(tree.children[0].children[0] as DecoratorNode, 'validationFunc');
+
       v.validate(Test, { testProperty: 5 });
 
       expect(name).toEqual('testProperty');

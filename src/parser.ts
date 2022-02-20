@@ -189,9 +189,13 @@ export class Parser {
   classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
   classTreeCache = new ClassCache<ITypeAndTree[]>();
 
-  setClassReference(classDeclaration: ClassDeclaration, cls: Constructor<unknown>): void {
-    this.classDeclarationToClassReference.set(classDeclaration, cls);
+  constructor(classDeclarationToClassReference: ClassCache<Constructor<unknown>>) {
+    this.classDeclarationToClassReference = classDeclarationToClassReference;
   }
+
+  // setClassReference(classDeclaration: ClassDeclaration, cls: Constructor<unknown>): void {
+  //   this.classDeclarationToClassReference.set(classDeclaration, cls);
+  // }
 
   handleRootNode(type: Type, hasQuestionToken: boolean): [TypeNode, Type] {
     const tree = new RootNode(hasQuestionToken);

@@ -1,4 +1,4 @@
-import { IValidatorClassMeta, ValidatorInstance, validatorMetadataKey } from '../../validator';
+import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
 describe('tuple', () => {
@@ -10,12 +10,9 @@ describe('tuple', () => {
   }
 
   it('should construct the correct tree', () => {
-    const validatorMeta = Reflect.getMetadata(validatorMetadataKey, Test) as IValidatorClassMeta;
-    const classDeclaration = v.classDiscovery.getClass(Test.name, validatorMeta.filename, validatorMeta.line);
-    const trees = v.getPropertyTypeTrees(Test, classDeclaration);
-    const tupleTree = trees[0];
+    const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-    expect(tupleTree.tree).toEqual({
+    expect(tree).toEqual({
       kind: 'root',
       children: [
         {
