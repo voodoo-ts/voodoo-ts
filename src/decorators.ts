@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { DecoratorNode, INodeValidationResult, IValidationContext, TypeNode } from './nodes';
+import { enumerate } from './utils';
 
 export const typeDecoratorMetadataKey = Symbol('typeDecoratorMetadataKey');
 
@@ -20,6 +21,16 @@ interface IDecoratorOptions<T extends DecoratorFactory> {
 
 export enum LengthValidationError {
   LENGTH_FAILED = 'LENGTH_FAILED',
+}
+
+export enum StringValidationError {
+  NOT_A_NUMBER_STRING = 'NOT_A_NUMBER_STRING',
+  LENGTH_FAILED = 'LENGTH_FAILED',
+  NOT_A_NUMBER_LIST = 'NOT_A_NUMBER_LIST',
+}
+
+export enum NumberValidationError {
+  OUT_OF_RANGE = 'OUT_OF_RANGE',
 }
 
 export function createValidationDecorator<T extends DecoratorFactory, U extends any[] = any[]>(
@@ -95,15 +106,18 @@ export const Length = LengthFactory('root');
 export const StringLength = LengthFactory('string');
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ArrayLength = LengthFactory('array');
+
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const IsNumber = createValidationDecorator<DecoratorFactory, []>({
   name: 'IsNumber',
   type: 'string',
-  validate(raidx: number = 10) {
+  validate() {
     return function (this: DecoratorNode, value: string) {
-      const n = parseInt(value, raidx);
+      const n = parseFloat(value);
       if (Number.isNaN(n)) {
-        return this.fail(value);
+        return this.fail(value, {
+          reason: StringValidationError.NOT_A_NUMBER_STRING,
+        });
       }
       return this.success();
     };
@@ -111,16 +125,33 @@ export const IsNumber = createValidationDecorator<DecoratorFactory, []>({
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Range = createValidationDecorator<DecoratorFactory, [min: number, max: number]>({
+export const IsInteger = createValidationDecorator<DecoratorFactory, []>({
+  name: 'IsNumber',
+  type: 'string',
+  validate(radix: number = 10) {
+    return function (this: DecoratorNode, value: string) {
+      const n = parseInt(value, radix);
+      if (Number.isNaN(n)) {
+        return this.fail(value, {
+          reason: StringValidationError.NOT_A_NUMBER_STRING,
+        });
+      }
+      return this.success();
+    };
+  },
+});
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const Range = createValidationDecorator<DecoratorFactory, [min: number, max?: number]>({
   name: 'Range',
   type: 'number',
   validate(min: number, max?: number) {
     return function (this: DecoratorNode, value: number) {
       if (value < min) {
-        return this.fail(value, { reason: '' });
+        return this.fail(value, { reason: NumberValidationError.OUT_OF_RANGE });
       }
       if (max !== undefined && value > max) {
-        return this.fail(value, { reason: '' });
+        return this.fail(value, { reason: NumberValidationError.OUT_OF_RANGE });
       }
       return this.success();
     };
@@ -128,17 +159,22 @@ export const Range = createValidationDecorator<DecoratorFactory, [min: number, m
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const IsNumberList = createValidationDecorator<DecoratorFactory, [min: number, max: number]>({
+export const IsNumberList = createValidationDecorator<DecoratorFactory, [splitter?: Parameters<string['split']>[0]]>({
   name: 'IsNumberList',
   type: 'string',
-  validate(splitter: Parameters<string['split']>[0] = /,\s*/) {
+  validate(splitter: Parameters<string['split']>[0] = /,\s*/, radix: number = 10) {
     return function (this: DecoratorNode, value: string) {
       const splitted = value.split(splitter);
-      if (!splitted.every((v) => !Number.isNaN(Number(v)))) {
-        return this.fail(value, { reason: '' });
-      } else {
-        return this.success();
+      for (const [i, item] of enumerate(splitted)) {
+        if (Number.isNaN(parseInt(item, radix))) {
+          return this.fail(value, {
+            reason: StringValidationError.NOT_A_NUMBER_LIST,
+            context: { element: i },
+          });
+        }
       }
+
+      return this.success();
     };
   },
 });

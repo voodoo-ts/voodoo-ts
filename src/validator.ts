@@ -5,8 +5,8 @@ import { ClassDeclaration, Node, Project } from 'ts-morph';
 
 import { flattenValidationError, IErrorMessage } from './error-formatter';
 import { ClassNotDecoratedError, ClassNotFoundError } from './errors';
-import { ITypeAndTree } from './nodes';
-import { isClass, Parser } from './parser';
+import { INodeValidationError, ITypeAndTree, RootNode } from './nodes';
+import { ClassCache, isClass, Parser } from './parser';
 import { Constructor } from './types';
 
 export const validatorMetadataKey = Symbol('format');
@@ -25,15 +25,23 @@ export interface IValidatorClassMeta {
   options: IValidatorOptions;
 }
 
-interface IValidationSuccess<T> {
+export interface IClassMeta<Options> {
+  filename: string;
+  line: number;
+
+  options: Options;
+}
+
+export interface IValidationSuccess<T> {
   success: true;
   object: T;
 }
 
-interface IValidationError<T> {
+export interface IValidationError<T> {
   success: false;
   object: null;
-  errors: Record<string | number | symbol, IErrorMessage[]>;
+  errors: Record<string, IErrorMessage[]>;
+  rawErrors: Record<string, INodeValidationError>;
 }
 
 type ValidateIfFunc = (obj: any) => boolean;
@@ -42,7 +50,7 @@ export function ValidateIf(func: ValidateIfFunc): ReturnType<typeof Reflect['met
   return Reflect.metadata(validateIfMetadataKey, func);
 }
 
-type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
+export type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
 
 type MaybePartial<T> = Partial<T> & Record<any, any>;
 
@@ -51,35 +59,12 @@ export interface IValidatorConstructorOptions {
   defaultOptions?: IValidationOptions;
 }
 
-export class ValidatorInstance {
+export class ClassDiscovery {
   project: Project;
-  parser: Parser;
-  defaultOptions: IValidationOptions;
-
   classCache = new Map<string, ClassDeclaration>(); // TODO: Better name
 
-  constructor(options: IValidatorConstructorOptions) {
-    this.project = options.project;
-    this.parser = new Parser();
-
-    this.defaultOptions = Object.assign(
-      {
-        allowUnknownFields: false,
-      } as IValidationOptions,
-      options.defaultOptions ?? {},
-    );
-  }
-
-  static withDefaultProject(): ValidatorInstance {
-    return new ValidatorInstance({
-      project: new Project({
-        tsConfigFilePath: 'tsconfig.json',
-        // Optionally specify compiler options, tsconfig.json, in-memory file system, and more here.
-        // If you initialize with a tsconfig.json, then it will automatically populate the project
-        // with the associated source files.
-        // Read more: https://ts-morph.com/setup/
-      }),
-    });
+  constructor(project: Project) {
+    this.project = project;
   }
 
   /**
@@ -103,7 +88,7 @@ export class ValidatorInstance {
    * @param line The line where the @Decorator() call occurred
    * @returns
    */
-  getClass(filename: string, className: string, line: number): ClassDeclaration {
+  getClass(className: string, filename: string, line: number): ClassDeclaration {
     const cacheKey = `${line}:${filename}`;
     const cached = this.classCache.get(cacheKey);
     if (cached) {
@@ -147,16 +132,56 @@ export class ValidatorInstance {
 
     return cls;
   }
+}
+
+export class ValidatorInstance {
+  project: Project;
+  parser: Parser;
+  classDiscovery: ClassDiscovery;
+
+  defaultOptions: IValidationOptions;
+
+  constructor(options: IValidatorConstructorOptions) {
+    this.project = options.project;
+    this.parser = new Parser();
+    this.classDiscovery = new ClassDiscovery(options.project);
+
+    this.defaultOptions = Object.assign(
+      {
+        allowUnknownFields: false,
+      } as IValidationOptions,
+      options.defaultOptions ?? {},
+    );
+  }
+
+  static withDefaultProject(): ValidatorInstance {
+    return new ValidatorInstance({
+      project: new Project({
+        tsConfigFilePath: 'tsconfig.json',
+        // Optionally specify compiler options, tsconfig.json, in-memory file system, and more here.
+        // If you initialize with a tsconfig.json, then it will automatically populate the project
+        // with the associated source files.
+        // Read more: https://ts-morph.com/setup/
+      }),
+    });
+  }
 
   /**
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
+   * @param cls Class reference
    * @param classDeclaration A ts-morph class declaration whose members will be processed
    */
   getPropertyTypeTrees<T>(cls: Constructor<T>, classDeclaration: ClassDeclaration): ITypeAndTree[] {
     const trees = this.parser.getPropertyTypeTrees(classDeclaration);
     return trees;
+  }
+
+  getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
+    const validatorMeta = this.getClassMetadata(cls);
+    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
+    return this.getPropertyTypeTrees(cls, classDeclaration);
   }
 
   getValidateIfFunc<T>(cls: Constructor<T>, propertyKey: string): ValidateIfFunc | undefined {
@@ -172,7 +197,8 @@ export class ValidatorInstance {
     const propertyTypeTrees = this.getPropertyTypeTrees(cls, classDeclaration);
 
     let allFieldsAreValid = true;
-    const errors: Record<string | number | symbol, IErrorMessage[]> = {};
+    const errors: Record<string, IErrorMessage[]> = {};
+    const rawErrors: Record<string, INodeValidationError> = {};
     const properties = new Set(Object.keys(values));
     for (const { name, tree } of propertyTypeTrees) {
       properties.delete(name);
@@ -184,6 +210,7 @@ export class ValidatorInstance {
 
       const result = tree.validate(values[name], { propertyName: name });
       if (!result.success) {
+        rawErrors[name] = result;
         errors[name] = flattenValidationError(result, [name]);
         allFieldsAreValid = false;
       }
@@ -192,16 +219,9 @@ export class ValidatorInstance {
     const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;
     if (!allowUnknownFields && properties.size) {
       for (const name of properties.values()) {
-        errors[name] = flattenValidationError(
-          {
-            success: false,
-            type: 'root',
-            value: values[name],
-            reason: 'UNKNOWN_FIELD',
-            previousErrors: [],
-          },
-          [name],
-        );
+        const error = RootNode.unknownFieldError(values[name]);
+        rawErrors[name] = error;
+        errors[name] = flattenValidationError(error, [name]);
       }
 
       allFieldsAreValid = false;
@@ -217,6 +237,7 @@ export class ValidatorInstance {
         success: false,
         object: null,
         errors,
+        rawErrors,
       };
     }
   }
@@ -224,7 +245,7 @@ export class ValidatorInstance {
   validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
     // Get metadata + types
     const validatorMeta = this.getClassMetadata(cls);
-    const classDeclaration = this.getClass(validatorMeta.filename, cls.name, validatorMeta.line);
+    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
 
     return this.validateClassDeclaration<T>(cls, classDeclaration, values, options);
   }
@@ -243,7 +264,7 @@ export class ValidatorInstance {
     };
 
     return (target: object) => {
-      const classDeclaration = this.getClass(filename, target.constructor.name, line);
+      const classDeclaration = this.classDiscovery.getClass(target.constructor.name, filename, line);
       this.parser.setClassReference(classDeclaration, target as Constructor<unknown>);
       Reflect.defineMetadata(validatorMetadataKey, classMetadata, target);
     };

@@ -266,7 +266,11 @@ export class Parser {
         const referencedDeclaration = getFirstSymbolDeclaration(type);
         const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration);
 
-        tree.children.push(new ClassNode(getName(referencedDeclaration), getClassTrees));
+        tree.children.push(
+          new ClassNode(getName(referencedDeclaration), getClassTrees, {
+            from: type.isInterface() ? 'interface' : 'object',
+          }),
+        );
       } else {
         const tupleNode = new TupleNode();
         tree.children.push(tupleNode);
@@ -287,7 +291,11 @@ export class Parser {
           return classTrees;
         };
 
-        tree.children.push(new ClassNode(getName(referencedClassDeclaration), getClassTrees));
+        tree.children.push(
+          new ClassNode(getName(referencedClassDeclaration), getClassTrees, {
+            omitted: propertyNames,
+          }),
+        );
       } else if (name === 'Record') {
         const recordNode = new RecordNode();
         const [keyType, valueType] = type.getAliasTypeArguments();
@@ -327,15 +335,15 @@ export class Parser {
     // We need to merge in all attributes from base classes, so start with the supplied class
     // and walk up until there is no base class
     const trees: ITypeAndTree[] = [];
-    let currentClass: ClassOrInterfaceOrLiteral | undefined = classDeclaration;
-    while (currentClass) {
-      const properties = isClass(currentClass) ? currentClass.getInstanceProperties() : currentClass.getProperties();
+
+    for (const declaration of this.getAllDeclarations(classDeclaration)) {
+      const properties = isClass(declaration) ? declaration.getInstanceProperties() : declaration.getProperties();
       for (const prop of properties) {
         const name = prop.getName();
-        const tree = this.buildTypeTree(currentClass, prop as PropertyDeclaration);
+        const tree = this.buildTypeTree(declaration, prop as PropertyDeclaration);
 
-        if (isClass(currentClass)) {
-          this.applyDecorators(currentClass, name, tree);
+        if (isClass(declaration)) {
+          this.applyDecorators(declaration, name, tree);
         }
 
         trees.push({
@@ -343,13 +351,25 @@ export class Parser {
           tree,
         });
       }
-
-      currentClass = getBaseDeclaration(currentClass);
     }
 
     this.classTreeCache.set(classDeclaration, trees);
 
     return trees;
+  }
+
+  getAllDeclarations(classDeclaration: ClassOrInterfaceOrLiteral): ClassOrInterfaceOrLiteral[] {
+    const declarations: ClassOrInterfaceOrLiteral[] = [];
+
+    let currentDeclaration: ClassOrInterfaceOrLiteral | undefined = classDeclaration;
+    while (currentDeclaration) {
+      declarations.push(currentDeclaration);
+      currentDeclaration = getBaseDeclaration(currentDeclaration);
+    }
+
+    declarations.reverse();
+
+    return declarations;
   }
 
   buildTypeTree(currentClass: ClassOrInterfaceOrLiteral, prop: PropertyDeclaration): TypeNode {
@@ -382,7 +402,7 @@ export class Parser {
       walkPropertyTypeTree(tree, (node) => {
         const decoratorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
         const decoratorNodes = decoratorsForNodeKind.map(
-          (decorator) => new DecoratorNode(decorator.validate(...decorator.options!)),
+          (decorator) => new DecoratorNode(decorator.name, decorator.type, decorator.validate(...decorator.options!)),
         );
         node.children.push(...decoratorNodes);
       });

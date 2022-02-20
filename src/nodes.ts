@@ -11,6 +11,9 @@ export interface ITypeAndTree {
 }
 
 export enum ValidationErrorType {
+  VALUE_REQUIRED = 'VALUE_REQUIRED',
+  UNKNOWN_FIELD = 'UNKNOWN_FIELD',
+
   // String
   NOT_A_STRING = 'NOT_A_STRING',
 
@@ -23,6 +26,9 @@ export enum ValidationErrorType {
   // Boolean
   NOT_A_BOOLEAN = 'NOT_A_BOOLEAN',
 
+  // Null
+  NOT_NULL = 'NOT_NULL',
+
   // Union
   NO_UNION_MATCH = 'NO_UNION_MATCH',
 
@@ -32,11 +38,11 @@ export enum ValidationErrorType {
 
   // Arrays / Tuple
   ELEMENT_TYPE_FAILED = 'ELEMENT_TYPE_FAILED',
+  ARRAY_TYPE_FAILED = 'ARRAY_TYPE_FAILED',
   NOT_AN_ARRAY = 'NOT_AN_ARRAY',
   NO_LENGTH_MATCH = 'NO_LENGTH_MATCH',
 
   CUSTOM = 'CUSTOM',
-  VALUE_REQUIRED = 'VALUE_REQUIRED',
 }
 
 export interface INodeValidationSuccess {
@@ -120,6 +126,20 @@ export class RootNode extends TypeNodeBase {
 
     return this.validateAllChildren(value, context);
   }
+
+  static rootError(value: unknown, reason: ValidationErrorType): INodeValidationError {
+    return {
+      success: false,
+      type: 'root',
+      value,
+      reason,
+      previousErrors: [],
+    };
+  }
+
+  static unknownFieldError(value: unknown): INodeValidationError {
+    return this.rootError(value, ValidationErrorType.UNKNOWN_FIELD);
+  }
 }
 
 abstract class LeafNode extends TypeNodeBase {
@@ -167,7 +187,7 @@ export class BooleanNode extends LeafNode {
 
 export class NullNode extends LeafNode {
   kind = 'null' as const;
-  reason = ValidationErrorType.CUSTOM;
+  reason = ValidationErrorType.NOT_NULL;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     return this.wrapBoolean(value, value === null);
@@ -236,18 +256,28 @@ export class ArrayNode extends TypeNodeBase {
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (Array.isArray(value)) {
+      const [arrayTypeNode, ...children] = this.children;
       for (const [i, item] of enumerate(value)) {
-        for (const child of this.children) {
-          const result = child.validate(item, context);
-          if (!result.success) {
-            return this.fail(value, {
-              reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
-              context: { element: i },
-              previousErrors: [result],
-            });
-          }
+        const result = arrayTypeNode.validate(item, context);
+        if (!result.success) {
+          return this.fail(value, {
+            reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+            context: { element: i },
+            previousErrors: [result],
+          });
         }
       }
+
+      for (const child of children) {
+        const result = child.validate(value, context);
+        if (!result.success) {
+          return this.fail(value, {
+            reason: ValidationErrorType.ARRAY_TYPE_FAILED,
+            previousErrors: [result],
+          });
+        }
+      }
+
       return this.success();
     } else {
       return this.fail(value, { reason: ValidationErrorType.NOT_AN_ARRAY });
@@ -259,11 +289,13 @@ export class ClassNode extends TypeNodeBase {
   kind = 'class' as const;
   name: string;
   getClassTrees: () => ITypeAndTree[];
+  meta: Record<string, unknown> = {};
 
-  constructor(fullReference: string, getClassTrees: () => ITypeAndTree[]) {
+  constructor(name: string, getClassTrees: () => ITypeAndTree[], meta: Record<string, unknown> = {}) {
     super();
-    this.name = fullReference;
+    this.name = name;
     this.getClassTrees = getClassTrees;
+    this.meta = meta;
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
@@ -355,11 +387,33 @@ export class RecordNode extends TypeNodeBase {
 
 export class DecoratorNode extends TypeNodeBase {
   kind = 'decorator' as const;
+  name: string;
+  type: string;
   validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult;
 
-  constructor(validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult) {
+  constructor(
+    name: string,
+    type: string,
+    validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult,
+  ) {
     super();
+    this.name = name;
+    this.type = type;
     this.validationFunc = validationFunc.bind(this);
+  }
+
+  fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
+    const context = extra.context ?? {};
+    if (!context.decorator) {
+      context.decorator = {
+        name: this.name,
+        type: this.type,
+      };
+    }
+
+    extra.context = context;
+
+    return super.fail(value, extra);
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
