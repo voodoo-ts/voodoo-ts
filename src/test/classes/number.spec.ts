@@ -15,7 +15,7 @@ describe('numbers', () => {
     expect(result.success).toEqual(true);
   });
 
-  it('should fail for invalid numbers', () => {
+  describe('should fail for invalid numbers', () => {
     const v = new ValidatorInstance({ project });
 
     @v.validatorDecorator()
@@ -24,15 +24,32 @@ describe('numbers', () => {
     }
     const result = v.validate(Test, { numberProperty: '123' } as any);
 
-    expectValidationError(result, (result) => {
-      expect(result.rawErrors).toEqual({
-        numberProperty: {
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
           success: false,
-          type: 'number',
-          reason: ValidationErrorType.NOT_A_NUMBER,
-          value: '123',
-          previousErrors: [],
-        },
+          type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          value: { numberProperty: '123' },
+          context: { className: 'Test' },
+          previousErrors: [
+            {
+              success: false,
+              type: 'number',
+              reason: ValidationErrorType.NOT_A_NUMBER,
+              value: '123',
+              context: {
+                className: 'Test',
+                propertyName: 'numberProperty',
+              },
+              previousErrors: [],
+            },
+          ],
+        });
       });
     });
   });

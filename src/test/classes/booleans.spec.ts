@@ -1,3 +1,4 @@
+import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
@@ -21,18 +22,35 @@ describe('booleans', () => {
     expect(result.success).toEqual(true);
   });
 
-  it('should fail for invalid booleans', () => {
+  describe('should fail for invalid booleans', () => {
     const result = v.validate(Test, { booleanProperty: 123 } as any);
 
-    expectValidationError(result, (result) => {
-      expect(result.rawErrors).toEqual({
-        booleanProperty: {
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
           success: false,
-          type: 'boolean',
-          value: 123,
-          previousErrors: [],
-          reason: 'NOT_A_BOOLEAN',
-        },
+          type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          value: { booleanProperty: 123 },
+          previousErrors: [
+            {
+              success: false,
+              type: 'boolean',
+              value: 123,
+              reason: ValidationErrorType.NOT_A_BOOLEAN,
+              previousErrors: [],
+              context: {
+                className: 'Test',
+                propertyName: 'booleanProperty',
+              },
+            },
+          ],
+          context: { className: 'Test' },
+        });
       });
     });
   });

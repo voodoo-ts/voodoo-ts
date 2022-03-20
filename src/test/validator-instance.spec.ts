@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
+import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
-import { IClassMeta } from '../source-code-location-decorator';
-import { ValidatorInstance, validatorMetadataKey, ValidateIf } from '../validator';
-import { project } from './utils';
+import { TypeNodeData, ValidationErrorType } from '../nodes';
+import { ValidatorInstance } from '../validator';
+import { expectValidationError, project } from './utils';
 
 describe('general', () => {
   it('should construct', () => {
@@ -92,6 +93,25 @@ describe('general', () => {
       otherAttribute!: boolean;
     }
 
+    it('should construct the tree correctly', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+      expect(tree).toEqual({
+        kind: 'root',
+        children: [
+          {
+            kind: 'string',
+            reason: expect.anything(),
+            children: [],
+            annotations: {},
+          },
+        ],
+        annotations: {
+          validateIf: expect.any(Function),
+        },
+        optional: false,
+      } as TypeNodeData);
+    });
+
     it('should validate with valid string and otherAttribute = true', () => {
       const result = v.validate(Test, {
         firstAttribute: 'string',
@@ -101,13 +121,40 @@ describe('general', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate with invalid string and otherAttribute = true', () => {
+    describe('should not validate with invalid string and otherAttribute = true', () => {
       const result = v.validate(Test, {
         firstAttribute: 123,
         otherAttribute: true,
       } as any);
 
-      expect(result.success).toEqual(false);
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
+            success: false,
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { firstAttribute: 123, otherAttribute: true },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                reason: ValidationErrorType.NOT_A_STRING,
+                value: 123,
+                previousErrors: [],
+                context: {
+                  className: 'Test',
+                  propertyName: 'firstAttribute',
+                },
+              },
+            ],
+          });
+        });
+      });
     });
 
     it('should validate with invalid string and otherAttribute = false', () => {
@@ -128,7 +175,7 @@ describe('general', () => {
       attribute!: string;
     }
     it('should not allow unknown attributes by default', () => {
-      const result = v.validate(Test, { notTheAttribute: 'blorb' });
+      const result = v.validate(Test, { attribute: '123', notTheAttribute: 'blorb' });
 
       expect(result.success).toEqual(false);
     });

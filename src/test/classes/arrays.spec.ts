@@ -1,4 +1,4 @@
-import { ValidationErrorType } from '../../nodes';
+import { TypeNodeData, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
@@ -24,11 +24,14 @@ describe('arrays', () => {
               kind: 'number',
               reason: expect.anything(),
               children: [],
+              annotations: {},
             },
           ],
+          annotations: {},
         },
       ],
-    });
+      annotations: {},
+    } as TypeNodeData);
   });
 
   it('should validate valid number arrays', () => {
@@ -43,43 +46,79 @@ describe('arrays', () => {
     expect(result.success).toEqual(true);
   });
 
-  it('should fail for invalid array elements', () => {
+  describe('should fail for invalid array elements', () => {
     const result = v.validate(Test, { arrayProperty: [1, 'Two'] } as any);
 
-    expectValidationError(result, (result) => {
-      expect(result.rawErrors).toEqual({
-        arrayProperty: {
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
           success: false,
-          type: 'array',
-          reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
-          value: [1, 'Two'],
-          context: { element: 1 },
+          type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          value: { arrayProperty: [1, 'Two'] },
           previousErrors: [
             {
               success: false,
-              type: 'number',
-              reason: ValidationErrorType.NOT_A_NUMBER,
-              value: 'Two',
-              previousErrors: [],
+              type: 'array',
+              reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+              value: [1, 'Two'],
+              previousErrors: [
+                {
+                  success: false,
+                  type: 'number',
+                  reason: ValidationErrorType.NOT_A_NUMBER,
+                  value: 'Two',
+                  previousErrors: [],
+                },
+              ],
+              context: {
+                element: 1,
+                className: 'Test',
+                propertyName: 'arrayProperty',
+              },
             },
           ],
-        },
+          context: {
+            className: 'Test',
+          },
+        });
       });
     });
   });
 
-  it('should fail for invalid arrays', () => {
+  describe('should fail for invalid arrays', () => {
     const result = v.validate(Test, { arrayProperty: 123 } as any);
 
-    expectValidationError(result, (result) => {
-      expect(result.rawErrors).toEqual({
-        arrayProperty: {
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
           success: false,
-          type: 'array',
-          value: 123,
-          previousErrors: [],
-          reason: ValidationErrorType.NOT_AN_ARRAY,
-        },
+          type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          value: { arrayProperty: 123 },
+          previousErrors: [
+            {
+              success: false,
+              type: 'array',
+              reason: ValidationErrorType.NOT_AN_ARRAY,
+              value: 123,
+              previousErrors: [],
+              context: {
+                className: 'Test',
+                propertyName: 'arrayProperty',
+              },
+            },
+          ],
+          context: { className: 'Test' },
+        });
       });
     });
   });

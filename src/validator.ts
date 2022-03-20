@@ -3,20 +3,16 @@ import 'reflect-metadata';
 import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { flattenValidationError, IErrorMessage } from './error-formatter';
-import { INodeValidationError, ITypeAndTree, RootNode } from './nodes';
+import { IErrorMessage } from './error-formatter';
+import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
 import { Parser } from './parser';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
 import { Constructor } from './types';
 
-export const validatorMetadataKey = Symbol('format');
-export const validateIfMetadataKey = Symbol('validateIfMetadataKey');
+export const validatorMetadataKey = Symbol('validatorMetadata');
 
 interface IValidatorOptions {}
 
-export interface IValidationOptions {
-  allowUnknownFields?: boolean;
-}
 export interface IValidationSuccess<T> {
   success: true;
   object: T;
@@ -26,13 +22,7 @@ export interface IValidationError<T> {
   success: false;
   object: null;
   errors: Record<string, IErrorMessage[]>;
-  rawErrors: Record<string, INodeValidationError>;
-}
-
-type ValidateIfFunc = (obj: any) => boolean;
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function ValidateIf(func: ValidateIfFunc): ReturnType<typeof Reflect['metadata']> {
-  return Reflect.metadata(validateIfMetadataKey, func);
+  rawErrors: INodeValidationError;
 }
 
 export type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
@@ -97,50 +87,23 @@ export class ValidatorInstance {
     return this.getPropertyTypeTrees(cls, classDeclaration);
   }
 
-  getValidateIfFunc<T>(cls: Constructor<T>, propertyKey: string): ValidateIfFunc | undefined {
-    return Reflect.getMetadata(validateIfMetadataKey, cls.prototype, propertyKey);
-  }
-
   validateClassDeclaration<T>(
     cls: Constructor<T>,
     classDeclaration: ClassDeclaration,
     values: MaybePartial<T>,
     options: IValidationOptions = {},
   ): IValidationResult<T> {
-    const propertyTypeTrees = this.getPropertyTypeTrees(cls, classDeclaration);
-
-    let allFieldsAreValid = true;
     const errors: Record<string, IErrorMessage[]> = {};
-    const rawErrors: Record<string, INodeValidationError> = {};
-    const properties = new Set(Object.keys(values));
-    for (const { name, tree } of propertyTypeTrees) {
-      properties.delete(name);
 
-      const validateIf = this.getValidateIfFunc(cls, name);
-      if (validateIf && !validateIf(values)) {
-        continue;
-      }
-
-      const result = tree.validate(values[name], { propertyName: name });
-      if (!result.success) {
-        rawErrors[name] = result;
-        errors[name] = flattenValidationError(result, [name]);
-        allFieldsAreValid = false;
-      }
-    }
+    const validatorClass = this.parser.getClassNode(classDeclaration);
 
     const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;
-    if (!allowUnknownFields && properties.size) {
-      for (const name of properties.values()) {
-        const error = RootNode.unknownFieldError(values[name]);
-        rawErrors[name] = error;
-        errors[name] = flattenValidationError(error, [name]);
-      }
+    const result = validatorClass.validate(values, {
+      options: { allowUnknownFields },
+      values,
+    });
 
-      allFieldsAreValid = false;
-    }
-
-    if (allFieldsAreValid) {
+    if (result.success) {
       return {
         success: true,
         object: values as T,
@@ -150,7 +113,7 @@ export class ValidatorInstance {
         success: false,
         object: null,
         errors,
-        rawErrors,
+        rawErrors: result,
       };
     }
   }
