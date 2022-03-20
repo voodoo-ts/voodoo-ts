@@ -1,3 +1,4 @@
+import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
@@ -19,19 +20,37 @@ describe('enums', () => {
     expect(result.success).toEqual(true);
   });
 
-  it('should format invalid enum errors correctly', () => {
+  describe('should not validate values with different type from enum', () => {
     const result = v.validate(Test, { enumProperty: 123 } as any);
 
-    expectValidationError(result, (result) => {
-      expect(result.rawErrors).toEqual({
-        enumProperty: {
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
           success: false,
-          type: 'enum',
-          value: 123,
-          reason: 'NOT_AN_ENUM',
-          context: { name: 'TestEnum', allowedValues: ['yes', 'no'] },
-          previousErrors: [],
-        },
+          type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          value: { enumProperty: 123 },
+          previousErrors: [
+            {
+              success: false,
+              type: 'enum',
+              reason: ValidationErrorType.NOT_AN_ENUM,
+              value: 123,
+              previousErrors: [],
+              context: {
+                className: 'Test',
+                propertyName: 'enumProperty',
+                enumName: 'TestEnum',
+                allowedValues: ['yes', 'no'],
+              },
+            },
+          ],
+          context: { className: 'Test' },
+        });
       });
     });
   });

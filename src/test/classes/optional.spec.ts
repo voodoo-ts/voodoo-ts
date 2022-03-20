@@ -1,3 +1,4 @@
+import { TypeNodeData, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
@@ -18,11 +19,13 @@ describe('optional', () => {
         {
           kind: 'string',
           children: [],
+          annotations: {},
           reason: expect.anything(),
         },
       ],
+      annotations: {},
       optional: true,
-    });
+    } as TypeNodeData);
   });
 
   it('should validate optional string with valid string', () => {
@@ -36,34 +39,65 @@ describe('optional', () => {
     expect(result.success).toEqual(true);
   });
 
-  it('should fail optional string for invalid strings', () => {
+  describe('should fail optional string for invalid strings', () => {
     const result = v.validate(Test, { stringProperty: 123 } as any);
 
-    expectValidationError(result, (result) => {
-      expect(result.rawErrors).toEqual({
-        stringProperty: {
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
           success: false,
-          type: 'string',
-          value: 123,
-          previousErrors: [],
-          reason: 'NOT_A_STRING',
-        },
+          type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          value: { stringProperty: 123 },
+          context: { className: 'Test' },
+          previousErrors: [
+            {
+              success: false,
+              type: 'string',
+              reason: ValidationErrorType.NOT_A_STRING,
+              value: 123,
+              context: { className: 'Test', propertyName: 'stringProperty' },
+              previousErrors: [],
+            },
+          ],
+        });
       });
     });
   });
 
-  it('should fail optional string for null', () => {
+  describe('should fail optional string for null', () => {
     const result = v.validate(Test, { stringProperty: null } as any);
 
-    expectValidationError(result, (result) => {
-      expect(result.rawErrors).toEqual({
-        stringProperty: {
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual({
           success: false,
-          type: 'string',
-          value: null,
-          previousErrors: [],
-          reason: 'NOT_A_STRING',
-        },
+          type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          value: { stringProperty: null },
+          context: { className: 'Test' },
+          previousErrors: [
+            {
+              success: false,
+              type: 'string',
+              value: null,
+              previousErrors: [],
+              reason: ValidationErrorType.NOT_A_STRING,
+              context: {
+                className: 'Test',
+                propertyName: 'stringProperty',
+              },
+            },
+          ],
+        });
       });
     });
   });

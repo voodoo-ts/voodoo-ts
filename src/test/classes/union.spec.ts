@@ -1,4 +1,4 @@
-import { ValidationErrorType } from '../../nodes';
+import { TypeNodeData, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
 
@@ -23,49 +23,82 @@ describe('union', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate undefined', () => {
+    describe('should not validate undefined', () => {
       const result = v.validate(Test, {});
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
-            success: false,
-            type: 'root',
-            reason: ValidationErrorType.VALUE_REQUIRED,
-            previousErrors: [],
-          },
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      describe('should construct the correct error', () => {
+        it('should not validate', () => {
+          expect(result.success).toEqual(false);
+        });
+
+        it('should construct the correct error', () => {
+          expectValidationError(result, (result) => {
+            expect(result.rawErrors).toEqual({
+              success: false,
+              type: 'class',
+              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+              value: {},
+              context: { className: 'Test' },
+              previousErrors: [
+                {
+                  success: false,
+                  type: 'root',
+                  previousErrors: [],
+                  reason: ValidationErrorType.VALUE_REQUIRED,
+                  context: {
+                    className: 'Test',
+                    propertyName: 'unionProperty',
+                  },
+                },
+              ],
+            });
+          });
         });
       });
-    });
 
-    it('should not validate boolean', () => {
-      const result = v.validate(Test, { unionProperty: false } as any);
+      describe('should not validate boolean', () => {
+        const result = v.validate(Test, { unionProperty: false } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'union',
-            reason: ValidationErrorType.NO_UNION_MATCH,
-            value: false,
-            context: {},
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { unionProperty: false },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'string',
-                reason: ValidationErrorType.NOT_A_STRING,
+                type: 'union',
+                reason: ValidationErrorType.NO_UNION_MATCH,
+                context: {
+                  className: 'Test',
+                  propertyName: 'unionProperty',
+                },
                 value: false,
-                previousErrors: [],
-              },
-              {
-                success: false,
-                type: 'number',
-                reason: ValidationErrorType.NOT_A_NUMBER,
-                value: false,
-                previousErrors: [],
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'string',
+                    reason: ValidationErrorType.NOT_A_STRING,
+                    value: false,
+                    previousErrors: [],
+                  },
+                  {
+                    success: false,
+                    type: 'number',
+                    reason: ValidationErrorType.NOT_A_NUMBER,
+                    value: false,
+                    previousErrors: [],
+                  },
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
@@ -90,17 +123,21 @@ describe('union', () => {
             children: [
               {
                 children: [],
+                annotations: {},
                 kind: 'string',
                 reason: ValidationErrorType.NOT_A_STRING,
               },
               {
                 children: [],
+                annotations: {},
                 kind: 'number',
                 reason: ValidationErrorType.NOT_A_NUMBER,
               },
             ],
+            annotations: {},
           },
         ],
+        annotations: {},
       });
     });
 
@@ -122,34 +159,50 @@ describe('union', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate boolean', () => {
+    describe('should not validate boolean', () => {
       const result = v.validate(Test, { unionProperty: false } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'union',
-            reason: ValidationErrorType.NO_UNION_MATCH,
-            context: {},
-            value: false,
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { unionProperty: false },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'string',
-                reason: ValidationErrorType.NOT_A_STRING,
+                type: 'union',
+                reason: ValidationErrorType.NO_UNION_MATCH,
                 value: false,
-                previousErrors: [],
-              },
-              {
-                success: false,
-                type: 'number',
-                reason: ValidationErrorType.NOT_A_NUMBER,
-                value: false,
-                previousErrors: [],
+                context: {
+                  className: 'Test',
+                  propertyName: 'unionProperty',
+                },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'string',
+                    reason: ValidationErrorType.NOT_A_STRING,
+                    value: false,
+                    previousErrors: [],
+                  },
+                  {
+                    success: false,
+                    type: 'number',
+                    reason: ValidationErrorType.NOT_A_NUMBER,
+                    value: false,
+                    previousErrors: [],
+                  },
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
@@ -192,42 +245,57 @@ describe('union', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate boolean', () => {
+    describe('should not validate boolean', () => {
       const result = v.validate(Test, { unionProperty: false } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'union',
-            reason: ValidationErrorType.NO_UNION_MATCH,
-            context: {},
-            value: false,
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { unionProperty: false },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'string',
-                reason: ValidationErrorType.NOT_A_STRING,
+                type: 'union',
+                reason: ValidationErrorType.NO_UNION_MATCH,
                 value: false,
-                previousErrors: [],
-              },
-              {
-                success: false,
-                type: 'number',
-                reason: ValidationErrorType.NOT_A_NUMBER,
-                value: false,
-                previousErrors: [],
-              },
-              {
-                success: false,
-                type: 'class',
-                reason: ValidationErrorType.NOT_AN_OBJECT,
-                value: false,
-                context: { name: 'TestEmbed' },
-                previousErrors: [],
+                context: {
+                  className: 'Test',
+                  propertyName: 'unionProperty',
+                },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'string',
+                    reason: ValidationErrorType.NOT_A_STRING,
+                    value: false,
+                    previousErrors: [],
+                  },
+                  {
+                    success: false,
+                    type: 'number',
+                    reason: ValidationErrorType.NOT_A_NUMBER,
+                    value: false,
+                    previousErrors: [],
+                  },
+                  {
+                    success: false,
+                    type: 'class',
+                    reason: ValidationErrorType.NOT_AN_OBJECT,
+                    value: false,
+                    previousErrors: [],
+                    context: { className: 'TestEmbed' },
+                  },
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
@@ -253,49 +321,78 @@ describe('union', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate undefined', () => {
+    describe('should not validate undefined', () => {
       const result = v.validate(Test, {});
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'root',
-            reason: ValidationErrorType.VALUE_REQUIRED,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: {},
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'root',
+                reason: ValidationErrorType.VALUE_REQUIRED,
+                previousErrors: [],
+                context: {
+                  className: 'Test',
+                  propertyName: 'unionProperty',
+                },
+              },
+            ],
+          });
         });
       });
     });
 
-    it('should not validate boolean', () => {
+    describe('should not validate boolean', () => {
       const result = v.validate(Test, { unionProperty: false } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'union',
-            reason: ValidationErrorType.NO_UNION_MATCH,
-            value: false,
-            context: {},
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { unionProperty: false },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'null',
-                reason: ValidationErrorType.NOT_NULL,
+                type: 'union',
+                reason: ValidationErrorType.NO_UNION_MATCH,
                 value: false,
-                previousErrors: [],
-              },
-              {
-                success: false,
-                type: 'string',
-                reason: ValidationErrorType.NOT_A_STRING,
-                value: false,
-                previousErrors: [],
+                context: { className: 'Test', propertyName: 'unionProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'null',
+                    reason: ValidationErrorType.NOT_NULL,
+                    value: false,
+                    previousErrors: [],
+                  },
+                  {
+                    success: false,
+                    type: 'string',
+                    reason: ValidationErrorType.NOT_A_STRING,
+                    value: false,
+                    previousErrors: [],
+                  },
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
@@ -317,12 +414,14 @@ describe('union', () => {
         optional: true,
         children: [
           {
-            children: [],
-            reason: ValidationErrorType.NOT_A_STRING,
             kind: 'string',
+            reason: ValidationErrorType.NOT_A_STRING,
+            annotations: {},
+            children: [],
           },
         ],
-      });
+        annotations: {},
+      } as TypeNodeData);
     });
 
     it('should validate string', () => {
@@ -337,34 +436,64 @@ describe('union', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate null', () => {
+    describe('should not validate null', () => {
       const result = v.validate(Test, { unionProperty: null } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'string',
-            reason: ValidationErrorType.NOT_A_STRING,
-            value: null,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { unionProperty: null },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                reason: ValidationErrorType.NOT_A_STRING,
+                value: null,
+                previousErrors: [],
+                context: {
+                  className: 'Test',
+                  propertyName: 'unionProperty',
+                },
+              },
+            ],
+          });
         });
       });
     });
 
-    it('should not validate boolean', () => {
+    describe('should not validate boolean', () => {
       const result = v.validate(Test, { unionProperty: false } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          unionProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'string',
-            reason: ValidationErrorType.NOT_A_STRING,
-            value: false,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { unionProperty: false },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                reason: ValidationErrorType.NOT_A_STRING,
+                value: false,
+                previousErrors: [],
+                context: { className: 'Test', propertyName: 'unionProperty' },
+              },
+            ],
+          });
         });
       });
     });

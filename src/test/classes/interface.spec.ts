@@ -1,4 +1,4 @@
-import { ClassNode } from '../../nodes';
+import { ClassNode, TypeNodeData } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { project } from '../utils';
 
@@ -38,9 +38,11 @@ describe('interface', () => {
           getClassTrees: expect.any(Function),
           meta: { from: 'interface' },
           children: [],
+          annotations: {},
         },
       ],
-    });
+      annotations: {},
+    } as TypeNodeData);
   });
 
   it('should construct the correct trees for extending interfaces', () => {
@@ -60,9 +62,11 @@ describe('interface', () => {
             from: 'interface',
           },
           children: [],
+          annotations: {},
         },
       ],
-    });
+      annotations: {},
+    } as TypeNodeData);
 
     expect((tree.children[0] as ClassNode).getClassTrees()).toEqual([
       {
@@ -75,9 +79,11 @@ describe('interface', () => {
               kind: 'number',
               reason: expect.anything(),
               children: [],
+              annotations: {},
             },
           ],
-        },
+          annotations: {},
+        } as TypeNodeData,
       },
       {
         name: 'stringProperty',
@@ -89,9 +95,11 @@ describe('interface', () => {
               kind: 'string',
               reason: expect.anything(),
               children: [],
+              annotations: {},
             },
           ],
-        },
+          annotations: {},
+        } as TypeNodeData,
       },
     ]);
   });
@@ -112,9 +120,11 @@ describe('interface', () => {
           getClassTrees: expect.any(Function),
           meta: { from: 'object' },
           children: [],
+          annotations: {},
         },
       ],
-    });
+      annotations: {},
+    } as TypeNodeData);
   });
 
   it('should validate', () => {
