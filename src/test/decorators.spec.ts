@@ -3,7 +3,6 @@
 import {
   ArrayLength,
   createValidationDecorator,
-  DecoratorFactory,
   getDecorators,
   IsInteger,
   IsNumber,
@@ -15,13 +14,13 @@ import {
   StringValidationError,
   Validate,
 } from '../decorators';
-import { DecoratorNode, IValidationContext, ValidationErrorType } from '../nodes';
+import { DecoratorNode, IValidationContext, TypeNodeData, ValidationErrorType } from '../nodes';
 import { ValidatorInstance } from '../validator';
 import { expectValidationError, project } from './utils';
 
 describe('decorators', () => {
   it('should create decorators', () => {
-    const decorator = createValidationDecorator<DecoratorFactory>({
+    const decorator = createValidationDecorator({
       name: 'Test',
       type: 'root',
       validate(testOption: string) {
@@ -46,7 +45,7 @@ describe('decorators', () => {
     it('should decorate', () => {
       const decorators = getDecorators(Test.prototype, 'testProperty');
       expect(decorators).toBeInstanceOf(Array);
-      expect(decorators!.length).toEqual(1);
+      expect(decorators.length).toEqual(1);
     });
 
     it('should construct the correct tree', () => {
@@ -57,24 +56,54 @@ describe('decorators', () => {
         kind: 'root',
         optional: false,
         children: [
-          { kind: 'string', children: [], reason: expect.anything() },
-          { kind: 'decorator', type: 'root', name: 'Validate', children: [], validationFunc: expect.any(Function) },
+          {
+            kind: 'string',
+            reason: expect.anything(),
+            children: [],
+            annotations: {},
+          },
+          {
+            kind: 'decorator',
+            type: 'root',
+            name: 'Validate',
+            children: [],
+            annotations: {},
+            validationFunc: expect.any(Function),
+          },
         ],
-      });
+        annotations: {},
+      } as TypeNodeData);
     });
 
-    it('should not validate an invalid string', () => {
+    describe('should not validate an invalid string', () => {
       const result = v.validate(Test, { testProperty: 'NOT_TEST' });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should have the correct result', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should throw the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            value: 'NOT_TEST',
-            context: { decorator: { name: 'Validate', type: 'root' } },
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 'NOT_TEST' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'decorator',
+                value: 'NOT_TEST',
+                previousErrors: [],
+                context: {
+                  decorator: { name: 'Validate', type: 'root' },
+                  className: 'Test',
+                  propertyName: 'testProperty',
+                },
+              },
+            ],
+          });
         });
       });
     });
@@ -85,18 +114,32 @@ describe('decorators', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate an invalid type', () => {
+    describe('should not validate an invalid type', () => {
       const result = v.validate(Test, { testProperty: 123 as any });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'string',
-            reason: ValidationErrorType.NOT_A_STRING,
-            value: 123,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 123 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                reason: ValidationErrorType.NOT_A_STRING,
+                value: 123,
+                previousErrors: [],
+                context: { className: 'Test', propertyName: 'testProperty' },
+              },
+            ],
+          });
         });
       });
     });
@@ -131,70 +174,94 @@ describe('decorators', () => {
                 name: 'Length',
                 type: 'string',
                 children: [],
+                annotations: {},
                 validationFunc: expect.any(Function),
               },
             ],
+            annotations: {},
             reason: expect.anything(),
           },
         ],
+        annotations: {},
         kind: 'root',
         optional: false,
-      });
+      } as TypeNodeData);
     });
 
-    it('should not validate a too short string', () => {
+    describe('should not validate below minimum length', () => {
       const result = v.validate(Test, { testProperty: '' });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: LengthValidationError.LENGTH_FAILED,
-            value: '',
-            previousErrors: [],
-            context: {
-              decorator: {
-                name: 'Length',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: '' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'string',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: '',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: LengthValidationError.LENGTH_FAILED,
+                    value: '',
+                    previousErrors: [],
+                    context: {
+                      min: 1,
+                      length: 0,
+                      decorator: { name: 'Length', type: 'string' },
+                    },
+                  },
+                ],
               },
-              min: 1,
-            },
-          },
+            ],
+          });
         });
       });
     });
 
-    it('should validate a valid string (l = min)', () => {
+    it('should have an inclusive minimum length', () => {
       const result = v.validate(Test, { testProperty: '1' });
 
       expect(result.success).toEqual(true);
     });
 
-    it('should validate a valid string (l = min + 1)', () => {
-      const result = v.validate(Test, { testProperty: '12' });
-
-      expect(result.success).toEqual(true);
-    });
-
-    it('should validate a valid string (l = min + 2)', () => {
-      const result = v.validate(Test, { testProperty: '123' });
-
-      expect(result.success).toEqual(true);
-    });
-
-    it('should not validate an invalid type', () => {
+    describe('should not validate an invalid type', () => {
       const result = v.validate(Test, { testProperty: 123 as any });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'string',
-            reason: ValidationErrorType.NOT_A_STRING,
-            value: 123,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 123 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                value: 123,
+                previousErrors: [],
+                reason: ValidationErrorType.NOT_A_STRING,
+                context: { className: 'Test', propertyName: 'testProperty' },
+              },
+            ],
+          });
         });
       });
     });
@@ -215,7 +282,7 @@ describe('decorators', () => {
       expect(decorators!.length).toEqual(1);
     });
 
-    it('should add a decorator node to the tree', () => {
+    it('should construct the correct tree', () => {
       const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
       expect(trees.length).toEqual(1);
@@ -232,86 +299,137 @@ describe('decorators', () => {
                 type: 'string',
                 validationFunc: expect.any(Function),
                 children: [],
+                annotations: {},
               },
             ],
+            annotations: {},
           },
         ],
+        annotations: {},
         optional: false,
-      });
+      } as TypeNodeData);
     });
 
-    it('should not validate a too short string', () => {
+    describe('should not validate below minimum length', () => {
       const result = v.validate(Test, { testProperty: '' });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: LengthValidationError.LENGTH_FAILED,
-            value: '',
-            previousErrors: [],
-            context: {
-              decorator: {
-                name: 'Length',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: '' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'string',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: '',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: LengthValidationError.LENGTH_FAILED,
+                    value: '',
+                    previousErrors: [],
+                    context: { min: 1, max: 2, length: 0, decorator: { name: 'Length', type: 'string' } },
+                  },
+                ],
               },
-              min: 1,
-              max: 2,
-            },
-          },
+            ],
+          });
         });
       });
     });
 
-    it('should not validate a too long string', () => {
+    describe('should not validate above maximum length', () => {
       const result = v.validate(Test, { testProperty: '123' });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: LengthValidationError.LENGTH_FAILED,
-            value: '123',
-            previousErrors: [],
-            context: {
-              decorator: {
-                name: 'Length',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: '123' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'string',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: '123',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: LengthValidationError.LENGTH_FAILED,
+                    value: '123',
+                    previousErrors: [],
+                    context: {
+                      min: 1,
+                      max: 2,
+                      length: 3,
+                      decorator: { name: 'Length', type: 'string' },
+                    },
+                  },
+                ],
               },
-              min: 1,
-              max: 2,
-            },
-          },
+            ],
+          });
         });
       });
     });
 
-    it('should validate a valid string (l = min)', () => {
+    it('should have an inclusive minimum length', () => {
       const result = v.validate(Test, { testProperty: '1' });
 
       expect(result.success).toEqual(true);
     });
 
-    it('should validate a valid string (l = max)', () => {
+    it('should have an inclusive maximum length', () => {
       const result = v.validate(Test, { testProperty: '12' });
 
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate an invalid type', () => {
+    describe('should not validate an invalid type', () => {
       const result = v.validate(Test, { testProperty: 123 as any });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'string',
-            reason: ValidationErrorType.NOT_A_STRING,
-            value: 123,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 123 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                value: 123,
+                previousErrors: [],
+                reason: ValidationErrorType.NOT_A_STRING,
+                context: { className: 'Test', propertyName: 'testProperty' },
+              },
+            ],
+          });
         });
       });
     });
@@ -332,7 +450,7 @@ describe('decorators', () => {
       expect(decorators!.length).toEqual(1);
     });
 
-    it('should add a decorator node to the tree', () => {
+    it('should construct the correct tree', () => {
       const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
       expect(trees.length).toEqual(1);
@@ -347,6 +465,7 @@ describe('decorators', () => {
                 kind: 'string',
                 reason: expect.anything(),
                 children: [],
+                annotations: {},
               },
               {
                 kind: 'decorator',
@@ -354,74 +473,91 @@ describe('decorators', () => {
                 type: 'array',
                 validationFunc: expect.any(Function),
                 children: [],
+                annotations: {},
               },
             ],
+            annotations: {},
           },
         ],
-      });
+        annotations: {},
+      } as TypeNodeData);
     });
 
-    it('should not validate a too short array', () => {
+    describe('should not validate below minimum length', () => {
       const result = v.validate(Test, { testProperty: [] });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'array',
-            reason: ValidationErrorType.ARRAY_TYPE_FAILED,
-            value: [],
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: [] },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'decorator',
-                reason: LengthValidationError.LENGTH_FAILED,
+                type: 'array',
+                reason: ValidationErrorType.ARRAY_TYPE_FAILED,
                 value: [],
-                previousErrors: [],
-                context: {
-                  decorator: {
-                    name: 'Length',
-                    type: 'array',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: LengthValidationError.LENGTH_FAILED,
+                    value: [],
+                    previousErrors: [],
+                    context: {
+                      min: 1,
+                      length: 0,
+                      decorator: { name: 'Length', type: 'array' },
+                    },
                   },
-                  min: 1,
-                },
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
 
-    it('should validate a valid array (l = min)', () => {
+    it('should have an inclusive minimum length', () => {
       const result = v.validate(Test, { testProperty: ['1'] });
 
       expect(result.success).toEqual(true);
     });
 
-    it('should validate a valid array (l = min + 1)', () => {
-      const result = v.validate(Test, { testProperty: ['1', '2'] });
-
-      expect(result.success).toEqual(true);
-    });
-
-    it('should validate a valid array (l = min + 2)', () => {
-      const result = v.validate(Test, { testProperty: ['1', '2', '3'] });
-
-      expect(result.success).toEqual(true);
-    });
-
-    it('should not validate an invalid type', () => {
+    describe('should not validate an invalid type', () => {
       const result = v.validate(Test, { testProperty: 123 as any });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'array',
-            reason: ValidationErrorType.NOT_AN_ARRAY,
-            value: 123,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 123 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'array',
+                reason: ValidationErrorType.NOT_AN_ARRAY,
+                value: 123,
+                previousErrors: [],
+                context: { className: 'Test', propertyName: 'testProperty' },
+              },
+            ],
+          });
         });
       });
     });
@@ -457,6 +593,7 @@ describe('decorators', () => {
                 kind: 'string',
                 reason: expect.anything(),
                 children: [],
+                annotations: {},
               },
               {
                 kind: 'decorator',
@@ -464,73 +601,98 @@ describe('decorators', () => {
                 type: 'array',
                 validationFunc: expect.any(Function),
                 children: [],
+                annotations: {},
               },
             ],
+            annotations: {},
           },
         ],
-      });
+        annotations: {},
+      } as TypeNodeData);
     });
 
-    it('should not validate a too short array', () => {
+    describe('should not validate a too short array', () => {
       const result = v.validate(Test, { testProperty: [] });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'array',
-            reason: ValidationErrorType.ARRAY_TYPE_FAILED,
-            value: [],
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: [] },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'decorator',
-                reason: LengthValidationError.LENGTH_FAILED,
+                type: 'array',
+                reason: ValidationErrorType.ARRAY_TYPE_FAILED,
                 value: [],
-                previousErrors: [],
-                context: {
-                  decorator: {
-                    name: 'Length',
-                    type: 'array',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: LengthValidationError.LENGTH_FAILED,
+                    value: [],
+                    previousErrors: [],
+                    context: {
+                      min: 1,
+                      max: 2,
+                      length: 0,
+                      decorator: { name: 'Length', type: 'array' },
+                    },
                   },
-                  min: 1,
-                  max: 2,
-                },
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
 
-    it('should not validate a too long array', () => {
+    describe('should not validate a too long array', () => {
       const result = v.validate(Test, { testProperty: ['1', '2', '3'] });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'array',
-            reason: ValidationErrorType.ARRAY_TYPE_FAILED,
-            value: ['1', '2', '3'],
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: ['1', '2', '3'] },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'decorator',
-                reason: LengthValidationError.LENGTH_FAILED,
+                type: 'array',
+                reason: ValidationErrorType.ARRAY_TYPE_FAILED,
                 value: ['1', '2', '3'],
-                context: {
-                  decorator: {
-                    name: 'Length',
-                    type: 'array',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: LengthValidationError.LENGTH_FAILED,
+                    value: ['1', '2', '3'],
+                    previousErrors: [],
+                    context: {
+                      min: 1,
+                      max: 2,
+                      length: 3,
+                      decorator: { name: 'Length', type: 'array' },
+                    },
                   },
-                  min: 1,
-                  max: 2,
-                },
-                previousErrors: [],
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
@@ -547,18 +709,32 @@ describe('decorators', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate an invalid type', () => {
+    describe('should not validate an invalid type', () => {
       const result = v.validate(Test, { testProperty: 123 as any });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'array',
-            reason: ValidationErrorType.NOT_AN_ARRAY,
-            value: 123,
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 123 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'array',
+                reason: ValidationErrorType.NOT_AN_ARRAY,
+                value: 123,
+                previousErrors: [],
+                context: { className: 'Test', propertyName: 'testProperty' },
+              },
+            ],
+          });
         });
       });
     });
@@ -591,12 +767,15 @@ describe('decorators', () => {
                 name: 'Range',
                 type: 'number',
                 children: [],
+                annotations: {},
                 validationFunc: expect.any(Function),
               },
             ],
+            annotations: {},
           },
         ],
-      });
+        annotations: {},
+      } as TypeNodeData);
     });
 
     it('should call the decorator', () => {
@@ -616,24 +795,41 @@ describe('decorators', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate below range', () => {
+    describe('should not validate below range', () => {
       const result = v.validate(Test, { testProperty: 4 });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: NumberValidationError.OUT_OF_RANGE,
-            value: 4,
-            context: {
-              decorator: {
-                name: 'Range',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 4 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'number',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: 4,
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: NumberValidationError.OUT_OF_RANGE,
+                    value: 4,
+                    previousErrors: [],
+                    context: { decorator: { name: 'Range', type: 'number' } },
+                  },
+                ],
               },
-            },
-            previousErrors: [],
-          },
+            ],
+          });
         });
       });
     });
@@ -660,46 +856,79 @@ describe('decorators', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate below range', () => {
+    describe('should not validate below range', () => {
       const result = v.validate(Test, { testProperty: 4 });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: NumberValidationError.OUT_OF_RANGE,
-            value: 4,
-            context: {
-              decorator: {
-                name: 'Range',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 4 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'number',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                context: { className: 'Test', propertyName: 'testProperty' },
+                value: 4,
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: NumberValidationError.OUT_OF_RANGE,
+                    value: 4,
+                    previousErrors: [],
+                    context: { decorator: { name: 'Range', type: 'number' } },
+                  },
+                ],
               },
-            },
-            previousErrors: [],
-          },
+            ],
+          });
         });
       });
     });
 
-    it('should not validate above range', () => {
+    describe('should not validate above range', () => {
       const result = v.validate(Test, { testProperty: 11 });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: NumberValidationError.OUT_OF_RANGE,
-            value: 11,
-            context: {
-              decorator: {
-                name: 'Range',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 11 },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'number',
+                value: 11,
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: NumberValidationError.OUT_OF_RANGE,
+                    value: 11,
+                    previousErrors: [],
+                    context: { decorator: { name: 'Range', type: 'number' } },
+                  },
+                ],
               },
-            },
-            previousErrors: [],
-          },
+            ],
+          });
         });
       });
     });
@@ -730,11 +959,14 @@ describe('decorators', () => {
                 name: 'IsNumber',
                 type: 'string',
                 children: [],
+                annotations: {},
                 validationFunc: expect.any(Function),
               },
             ],
+            annotations: {},
           },
         ],
+        annotations: {},
       });
     });
 
@@ -772,24 +1004,41 @@ describe('decorators', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate invalid number strings', () => {
+    describe('should not validate invalid number strings', () => {
       const result = v.validate(Test, { testProperty: 'TEST' });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: StringValidationError.NOT_A_NUMBER_STRING,
-            value: 'TEST',
-            context: {
-              decorator: {
-                name: 'IsNumber',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 'TEST' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'string',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: 'TEST',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: StringValidationError.NOT_A_NUMBER_STRING,
+                    value: 'TEST',
+                    previousErrors: [],
+                    context: { decorator: { name: 'IsNumber', type: 'string' } },
+                  },
+                ],
               },
-            },
-            previousErrors: [],
-          },
+            ],
+          });
         });
       });
     });
@@ -820,11 +1069,14 @@ describe('decorators', () => {
                 name: 'IsNumber',
                 type: 'string',
                 children: [],
+                annotations: {},
                 validationFunc: expect.any(Function),
               },
             ],
+            annotations: {},
           },
         ],
+        annotations: {},
       });
     });
 
@@ -862,24 +1114,43 @@ describe('decorators', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate invalid number strings', () => {
+    describe('should not validate invalid number strings', () => {
       const result = v.validate(Test, { testProperty: 'TEST' });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: StringValidationError.NOT_A_NUMBER_STRING,
-            value: 'TEST',
-            context: {
-              decorator: {
-                name: 'IsNumber',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: 'TEST' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'string',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: 'TEST',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: StringValidationError.NOT_A_NUMBER_STRING,
+                    value: 'TEST',
+                    previousErrors: [],
+                    context: {
+                      decorator: { name: 'IsNumber', type: 'string' },
+                    },
+                  },
+                ],
               },
-            },
-            previousErrors: [],
-          },
+            ],
+          });
         });
       });
     });
@@ -910,12 +1181,15 @@ describe('decorators', () => {
                 name: 'IsNumberList',
                 type: 'string',
                 children: [],
+                annotations: {},
                 validationFunc: expect.any(Function),
               },
             ],
+            annotations: {},
           },
         ],
-      });
+        annotations: {},
+      } as TypeNodeData);
     });
 
     it('should call the decorator', () => {
@@ -940,49 +1214,83 @@ describe('decorators', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate list with invalid numbers', () => {
+    describe('should not validate list with invalid numbers', () => {
       const result = v.validate(Test, { testProperty: '1,X' });
 
-      expect(result.success).toEqual(false);
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: StringValidationError.NOT_A_NUMBER_LIST,
-            value: '1,X',
-            context: {
-              decorator: {
-                name: 'IsNumberList',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            type: 'class',
+            value: { testProperty: '1,X' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
                 type: 'string',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: '1,X',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: StringValidationError.NOT_A_NUMBER_LIST,
+                    context: {
+                      element: 1,
+                      decorator: { name: 'IsNumberList', type: 'string' },
+                    },
+                    value: '1,X',
+                    previousErrors: [],
+                  },
+                ],
               },
-              element: 1,
-            },
-            previousErrors: [],
-          },
+            ],
+          });
         });
       });
     });
 
-    it('should not validate list with trailing comma', () => {
+    describe('should not validate list with trailing comma', () => {
       const result = v.validate(Test, { testProperty: '1,2,' });
 
-      expect(result.success).toEqual(false);
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          testProperty: {
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'decorator',
-            reason: StringValidationError.NOT_A_NUMBER_LIST,
-            value: '1,2,',
-            context: {
-              decorator: { name: 'IsNumberList', type: 'string' },
-              element: 2,
-            },
-            previousErrors: [],
-          },
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { testProperty: '1,2,' },
+            context: { className: 'Test' },
+            previousErrors: [
+              {
+                success: false,
+                type: 'string',
+                reason: ValidationErrorType.DECORATORS_FAILED,
+                value: '1,2,',
+                context: { className: 'Test', propertyName: 'testProperty' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'decorator',
+                    reason: StringValidationError.NOT_A_NUMBER_LIST,
+                    value: '1,2,',
+                    previousErrors: [],
+                    context: { element: 2, decorator: { name: 'IsNumberList', type: 'string' } },
+                  },
+                ],
+              },
+            ],
+          });
         });
       });
     });
