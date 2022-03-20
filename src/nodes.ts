@@ -1,8 +1,14 @@
 import { enumerate, zip } from './utils';
 
+export interface IAnnotationMap {}
+
+export interface IValidationOptions {
+  allowUnknownFields?: boolean;
+}
 export interface IValidationContext {
   propertyName?: string;
-  level?: number;
+  values: Record<string, unknown>;
+  options: IValidationOptions;
 }
 
 export interface ITypeAndTree {
@@ -33,7 +39,7 @@ export enum ValidationErrorType {
   NO_UNION_MATCH = 'NO_UNION_MATCH',
 
   // Class
-  OBJECT_PROPERTY_FAILED = 'OBJECT_PROPERTY_FAILED',
+  OBJECT_PROPERTY_FAILED = 'OBJECT_PROPERTY_FAILED', // An property in an embedded class failed
   NOT_AN_OBJECT = 'NOT_AN_OBJECT',
 
   // Arrays / Tuple
@@ -41,6 +47,9 @@ export enum ValidationErrorType {
   ARRAY_TYPE_FAILED = 'ARRAY_TYPE_FAILED',
   NOT_AN_ARRAY = 'NOT_AN_ARRAY',
   NO_LENGTH_MATCH = 'NO_LENGTH_MATCH',
+
+  // Decorators
+  DECORATORS_FAILED = 'DECORATORS_FAILED',
 
   CUSTOM = 'CUSTOM',
 }
@@ -65,6 +74,7 @@ abstract class TypeNodeBase {
   abstract kind: string;
   abstract validate(value: unknown, context: IValidationContext): INodeValidationResult;
   children: TypeNode[] = [];
+  annotations: IAnnotationMap = {};
 
   wrapBoolean(value: unknown, result: boolean, extra: Partial<INodeValidationError> = {}): INodeValidationResult {
     if (result) {
@@ -88,15 +98,28 @@ abstract class TypeNodeBase {
     };
   }
 
-  validateAllChildren(value: unknown, context: IValidationContext): INodeValidationResult {
+  validateAllChildren(
+    value: unknown,
+    context: IValidationContext,
+    errorExtra: Partial<INodeValidationError> = {},
+  ): INodeValidationResult {
+    const errors: INodeValidationError[] = [];
     for (const child of this.children) {
       const result = child.validate(value, context);
       if (!result.success) {
-        return result;
+        errors.push(result);
       }
     }
 
-    return this.success();
+    if (!errors.length) {
+      return this.success();
+    } else {
+      if (!errorExtra.reason) {
+        errorExtra.reason = ValidationErrorType.DECORATORS_FAILED;
+      }
+
+      return this.fail(value, { ...errorExtra, previousErrors: errors });
+    }
   }
 }
 
@@ -110,10 +133,6 @@ export class RootNode extends TypeNodeBase {
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-    if (context.level === undefined) {
-      context.level = 0;
-    }
-
     if (!this.optional && value === undefined) {
       return this.fail(value, {
         reason: ValidationErrorType.VALUE_REQUIRED,
@@ -124,21 +143,14 @@ export class RootNode extends TypeNodeBase {
       return this.success();
     }
 
-    return this.validateAllChildren(value, context);
-  }
-
-  static rootError(value: unknown, reason: ValidationErrorType): INodeValidationError {
-    return {
-      success: false,
-      type: 'root',
-      value,
-      reason,
-      previousErrors: [],
-    };
-  }
-
-  static unknownFieldError(value: unknown): INodeValidationError {
-    return this.rootError(value, ValidationErrorType.UNKNOWN_FIELD);
+    // return this.validateAllChildren(value, context);
+    for (const child of this.children) {
+      const result = child.validate(value, context);
+      if (!result.success) {
+        return result;
+      }
+    }
+    return this.success();
   }
 }
 
@@ -146,7 +158,7 @@ abstract class LeafNode extends TypeNodeBase {
   abstract reason: ValidationErrorType;
 
   fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
-    return super.fail(value, { reason: this.reason });
+    return super.fail(value, { reason: this.reason, ...extra });
   }
 }
 
@@ -221,7 +233,7 @@ export class EnumNode extends TypeNodeBase {
       return this.fail(value, {
         reason: ValidationErrorType.NOT_AN_ENUM,
         context: {
-          name: this.name,
+          enumName: this.name,
           allowedValues: this.allowedValues,
         },
       });
@@ -285,50 +297,87 @@ export class ArrayNode extends TypeNodeBase {
   }
 }
 
+export interface IClassOptions {
+  name: string;
+  meta?: Record<string, unknown>;
+  validationOptions?: IValidationOptions;
+}
+
 export class ClassNode extends TypeNodeBase {
   kind = 'class' as const;
-  name: string;
-  getClassTrees: () => ITypeAndTree[];
-  meta: Record<string, unknown> = {};
 
-  constructor(name: string, getClassTrees: () => ITypeAndTree[], meta: Record<string, unknown> = {}) {
+  name: string;
+  meta: Record<string, unknown> = {};
+  getClassTrees: () => ITypeAndTree[];
+
+  constructor(options: IClassOptions, getClassTrees: () => ITypeAndTree[]) {
     super();
-    this.name = name;
+    this.name = options.name;
     this.getClassTrees = getClassTrees;
-    this.meta = meta;
+    this.meta = options.meta ?? {};
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (typeof value === 'object' && value !== null) {
+      const values = value as Record<string, unknown>;
+      const properties = new Set(Object.keys(value));
+
       const errors: INodeValidationError[] = [];
       for (const { name, tree } of this.getClassTrees()) {
-        const result = tree.validate((value as any)[name], {
-          level: (context.level ?? 0) + 1,
-        });
+        properties.delete(name);
+        if (tree.annotations.validateIf) {
+          if (!tree.annotations.validateIf(value, context.values)) {
+            continue;
+          }
+        }
+        const result = tree.validate(values[name], context);
         if (!result.success) {
           if (!result.context) {
             result.context = {};
           }
+          result.context.className = this.name;
           result.context.propertyName = name;
-          result.context.name = this.name;
           errors.push(result);
         }
 
-        this.validateAllChildren(value, context);
+        const childrenResult = this.validateAllChildren(value, context);
+        if (!childrenResult.success) {
+          errors.push(childrenResult);
+        }
       }
+
+      const allowUnknownFields = context.options.allowUnknownFields;
+      if (!allowUnknownFields && properties.size) {
+        for (const name of properties.values()) {
+          const error = this.fail(values[name], {
+            reason: ValidationErrorType.UNKNOWN_FIELD,
+            context: {
+              className: this.name,
+              propertyName: name,
+            },
+          });
+          errors.push(error);
+        }
+      }
+
       if (errors.length) {
         return this.fail(value, {
           reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
           previousErrors: errors,
           context: {
-            name: this.name,
+            className: this.name,
           },
         });
       } else {
         return this.success();
       }
     } else {
-      return this.fail(value, { reason: ValidationErrorType.NOT_AN_OBJECT, context: { name: this.name } });
+      return this.fail(value, {
+        reason: ValidationErrorType.NOT_AN_OBJECT,
+        context: {
+          className: this.name,
+        },
+      });
     }
   }
 }
@@ -435,3 +484,10 @@ export type TypeNode =
   | DecoratorNode
   | BooleanNode
   | UndefinedNode;
+
+export type TypeNodeData = Omit<
+  TypeNode,
+  'validate' | 'wrapBoolean' | 'success' | 'fail' | 'validateAllChildren' | 'children' | 'getAnnotation'
+> & {
+  children: TypeNodeData[];
+};

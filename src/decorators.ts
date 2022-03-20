@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 
-import { DecoratorNode, INodeValidationResult, IValidationContext, TypeNode } from './nodes';
+import { DecoratorNode, IAnnotationMap, INodeValidationResult, IValidationContext, TypeNode } from './nodes';
 import { enumerate } from './utils';
 
 export const typeDecoratorMetadataKey = Symbol('typeDecoratorMetadataKey');
+export const annotationDecoratorMetadataKey = Symbol('annotationDecoratorMetadataKey');
 
 export type DecoratorFactory<T extends any[] = any[]> = (
   ...args: T
@@ -12,11 +13,44 @@ export type DecoratorFactory<T extends any[] = any[]> = (
 // eslint-disable-next-line @typescript-eslint/ban-types
 type PropertyDecorator = (target: object, propertyKey: string) => void;
 
-interface IDecoratorOptions<T extends DecoratorFactory> {
-  name: string;
+export interface IDecoratorOptions {
+  decoratorType: 'validator' | 'annotation';
   type: TypeNode['kind'];
-  validate: T;
+}
+
+export interface IValidationDecoratorOptions extends IDecoratorOptions {
+  name: string;
+  validate: DecoratorFactory;
   options?: unknown[];
+}
+
+export interface IAnnotationDecoratorOptions extends IDecoratorOptions {
+  name: keyof IAnnotationMap;
+  transformParameters?: (args: unknown[], previous: unknown) => unknown;
+}
+
+export interface IDecoratorMeta {
+  type: TypeNode['kind'];
+  name: string;
+}
+
+export interface IValidationDecoratorMeta extends IDecoratorMeta {
+  decoratorType: 'validator';
+  validator: (this: DecoratorNode, value: any, context: IValidationContext) => INodeValidationResult;
+  options: unknown[];
+}
+
+export interface IAnnotationDecoratorMeta extends IDecoratorMeta {
+  decoratorType: 'annotation';
+  value: unknown;
+}
+
+export type TDecoratorMeta = IValidationDecoratorMeta | IAnnotationDecoratorMeta;
+
+declare module './nodes' {
+  export interface IAnnotationMap {
+    validateIf?: (value: unknown, values: unknown) => boolean;
+  }
 }
 
 export enum LengthValidationError {
@@ -33,28 +67,66 @@ export enum NumberValidationError {
   OUT_OF_RANGE = 'OUT_OF_RANGE',
 }
 
-export function createValidationDecorator<T extends DecoratorFactory, U extends any[] = any[]>(
-  decoratorOptions: IDecoratorOptions<T>,
+export function createValidationDecorator<U extends any[] = any[]>(
+  decoratorOptions: Omit<IValidationDecoratorOptions, 'decoratorType'>,
 ): (...options: U) => PropertyDecorator {
   return (...options: U) => {
     return (target, propertyKey) => {
       const propertyDecorators = getDecorators(target, propertyKey) ?? [];
-      propertyDecorators.push({ ...decoratorOptions, options: options ?? [] });
+      const { name, type, validate: validatorFactory } = decoratorOptions;
+      propertyDecorators.push({
+        decoratorType: 'validator',
+        name,
+        type,
+        options,
+        validator: validatorFactory(...options),
+      });
       Reflect.defineMetadata(typeDecoratorMetadataKey, propertyDecorators, target, propertyKey);
     };
   };
 }
 
-export function getDecorators(target: object, propertyKey: string): IDecoratorOptions<DecoratorFactory>[] | undefined {
-  return Reflect.getMetadata(typeDecoratorMetadataKey, target, propertyKey) as
-    | IDecoratorOptions<DecoratorFactory>[]
-    | undefined;
+export function defaultTransform(args: unknown[], previous: unknown | undefined): unknown {
+  return args[0];
 }
 
-export type PropertyDecoratorMap = Map<TypeNode['kind'], IDecoratorOptions<DecoratorFactory>[]>;
-export type DecoratorMap = Map<string, PropertyDecoratorMap>;
-export function groupDecorators(decorators: IDecoratorOptions<DecoratorFactory>[]): PropertyDecoratorMap {
-  const map: PropertyDecoratorMap = new Map();
+export function stackingTransform(args: unknown[], previous: unknown): unknown[] {
+  if (!Array.isArray(previous)) {
+    return [args];
+  } else {
+    return [...previous, args[0]];
+  }
+}
+
+export function createAnnotationDecorator<U extends any[] = any[]>(
+  decoratorOptions: Omit<IAnnotationDecoratorOptions, 'decoratorType'>,
+): (...options: U) => PropertyDecorator {
+  return (...args: U) => {
+    return (target, propertyKey) => {
+      const annotations = getAnnotations(target, propertyKey) ?? [];
+      const existingAnnotationValue = annotations.find((d) => [d.type, d.name] === [type, name])?.value;
+      const { name, type } = decoratorOptions;
+      const transformParameters = decoratorOptions.transformParameters ?? defaultTransform;
+      const value = transformParameters(args, existingAnnotationValue);
+      annotations.push({ decoratorType: 'annotation', name, type, value });
+      console.log(annotations);
+      Reflect.defineMetadata(annotationDecoratorMetadataKey, annotations, target, propertyKey);
+    };
+  };
+}
+
+export function getDecorators(target: object, propertyKey: string): IValidationDecoratorMeta[] {
+  return (Reflect.getMetadata(typeDecoratorMetadataKey, target, propertyKey) ?? []) as IValidationDecoratorMeta[];
+}
+
+export function getAnnotations(target: object, propertyKey: string): IAnnotationDecoratorMeta[] {
+  return (Reflect.getMetadata(annotationDecoratorMetadataKey, target, propertyKey) ?? []) as IAnnotationDecoratorMeta[];
+}
+
+export type PropertyDecoratorMap<T extends IDecoratorMeta> = Map<TypeNode['kind'], T[]>;
+export type DecoratorMap<T extends IDecoratorMeta> = Map<string, PropertyDecoratorMap<T>>;
+export function groupDecorators<T extends IDecoratorMeta>(decorators: T[]): PropertyDecoratorMap<T> {
+  const map: PropertyDecoratorMap<T> = new Map();
   for (const decorator of decorators) {
     const decoratorList = map.get(decorator.type) ?? [];
     decoratorList.push(decorator);
@@ -65,7 +137,7 @@ export function groupDecorators(decorators: IDecoratorOptions<DecoratorFactory>[
 
 type ValidateFunc<T> = (node: DecoratorNode, value: T, context: IValidationContext) => INodeValidationResult;
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Validate = createValidationDecorator<DecoratorFactory, [validateFunc: ValidateFunc<any>]>({
+export const Validate = createValidationDecorator<[validateFunc: ValidateFunc<any>]>({
   name: 'Validate',
   type: 'root',
   validate(func: ValidateFunc<unknown>) {
@@ -77,7 +149,7 @@ export const Validate = createValidationDecorator<DecoratorFactory, [validateFun
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/naming-convention
 export const LengthFactory = (type: TypeNode['kind']) =>
-  createValidationDecorator<DecoratorFactory, [min: number, max?: number]>({
+  createValidationDecorator<[min: number, max?: number]>({
     name: 'Length',
     type,
     validate(this: DecoratorNode, min: number, max?: number) {
@@ -86,13 +158,13 @@ export const LengthFactory = (type: TypeNode['kind']) =>
         if (length < min) {
           return this.fail(value, {
             reason: LengthValidationError.LENGTH_FAILED,
-            context: { min, max },
+            context: { min, max, length },
           });
         }
         if (max !== undefined && length > max) {
           return this.fail(value, {
             reason: LengthValidationError.LENGTH_FAILED,
-            context: { min, max },
+            context: { min, max, length },
           });
         }
         return this.success();
@@ -108,7 +180,7 @@ export const StringLength = LengthFactory('string');
 export const ArrayLength = LengthFactory('array');
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const IsNumber = createValidationDecorator<DecoratorFactory, []>({
+export const IsNumber = createValidationDecorator<[]>({
   name: 'IsNumber',
   type: 'string',
   validate() {
@@ -125,7 +197,7 @@ export const IsNumber = createValidationDecorator<DecoratorFactory, []>({
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const IsInteger = createValidationDecorator<DecoratorFactory, []>({
+export const IsInteger = createValidationDecorator<[]>({
   name: 'IsNumber',
   type: 'string',
   validate(radix: number = 10) {
@@ -142,7 +214,7 @@ export const IsInteger = createValidationDecorator<DecoratorFactory, []>({
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Range = createValidationDecorator<DecoratorFactory, [min: number, max?: number]>({
+export const Range = createValidationDecorator<[min: number, max?: number]>({
   name: 'Range',
   type: 'number',
   validate(min: number, max?: number) {
@@ -159,7 +231,7 @@ export const Range = createValidationDecorator<DecoratorFactory, [min: number, m
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const IsNumberList = createValidationDecorator<DecoratorFactory, [splitter?: Parameters<string['split']>[0]]>({
+export const IsNumberList = createValidationDecorator<[splitter?: Parameters<string['split']>[0]]>({
   name: 'IsNumberList',
   type: 'string',
   validate(splitter: Parameters<string['split']>[0] = /,\s*/, radix: number = 10) {
@@ -177,4 +249,12 @@ export const IsNumberList = createValidationDecorator<DecoratorFactory, [splitte
       return this.success();
     };
   },
+});
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const ValidateIf = createAnnotationDecorator<
+  [validateIf?: (value: any, values: Record<string, any>) => boolean]
+>({
+  name: 'validateIf' as const,
+  type: 'root',
 });

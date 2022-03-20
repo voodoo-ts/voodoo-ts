@@ -12,7 +12,6 @@ export function expectValidationError(
   result: IValidationResult<unknown>,
   cb: (result: IValidationError<unknown>) => unknown,
 ): void {
-  expect(result.success).toEqual(false);
   if (!result.success) {
     cb(result);
   }
@@ -20,8 +19,13 @@ export function expectValidationError(
 
 export function genValidationErrorTest(result: IValidationResult<unknown>): void {
   console.log(`
-  expectValidationError(result, (result) => {
-    expect(result.rawErrors).toEqual(${!result.success ? JSON.stringify(result.rawErrors) : '!'});
+  it('should not validate', () => {
+    expect(result.success).toEqual(false);
+  });
+  it('should construct the correct error', () => {
+    expectValidationError(result, (result) => {
+      expect(result.rawErrors).toEqual(${!result.success ? JSON.stringify(result.rawErrors) : '!'});
+    });
   });
 `);
 }
