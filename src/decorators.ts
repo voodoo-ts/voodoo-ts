@@ -109,7 +109,7 @@ export function createAnnotationDecorator<U extends any[] = any[]>(
       const transformParameters = decoratorOptions.transformParameters ?? defaultTransform;
       const value = transformParameters(args, existingAnnotationValue);
       annotations.push({ decoratorType: 'annotation', name, type, value });
-      console.log(annotations);
+
       Reflect.defineMetadata(annotationDecoratorMetadataKey, annotations, target, propertyKey);
     };
   };
