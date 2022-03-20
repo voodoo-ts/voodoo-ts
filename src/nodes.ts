@@ -143,7 +143,6 @@ export class RootNode extends TypeNodeBase {
       return this.success();
     }
 
-    // return this.validateAllChildren(value, context);
     for (const child of this.children) {
       const result = child.validate(value, context);
       if (!result.success) {
