@@ -4,7 +4,7 @@ import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
 import { IErrorMessage } from './error-formatter';
-import { INodeValidationError, ITypeAndTree, IValidationOptions, RootNode } from './nodes';
+import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
 import { Parser } from './parser';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
 import { Constructor } from './types';

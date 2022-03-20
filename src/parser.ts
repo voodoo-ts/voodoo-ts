@@ -14,7 +14,6 @@ import {
   groupDecorators,
   IAnnotationDecoratorMeta,
   IValidationDecoratorMeta,
-  IValidationDecoratorOptions,
 } from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
