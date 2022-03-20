@@ -199,6 +199,10 @@ module.exports = {
             group: 'internal',
           },
           {
+            pattern: '../../**',
+            group: 'internal',
+          },
+          {
             pattern: '@/**',
             group: 'internal',
           },
