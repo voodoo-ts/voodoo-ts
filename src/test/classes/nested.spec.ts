@@ -1,4 +1,5 @@
 import { ParseError } from '../../errors';
+import { ClassNode, ValidationErrorType } from '../../nodes';
 import { isParseError } from '../../parser';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
@@ -23,53 +24,79 @@ describe('nested', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate if attribute is missing', () => {
+    describe('should not validate if attribute is missing', () => {
       const result = v.validate(Test, { embeddedObject: {} } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          embeddedObject: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
             type: 'class',
-            value: {},
-            reason: 'OBJECT_PROPERTY_FAILED',
-            context: { name: 'TestEmbed' },
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { embeddedObject: {} },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'root',
-                reason: 'VALUE_REQUIRED',
-                context: { propertyName: 'embeddedProperty', name: 'TestEmbed' },
-                previousErrors: [],
+                type: 'class',
+                reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                value: {},
+                context: { className: 'Test', propertyName: 'embeddedObject' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'root',
+                    previousErrors: [],
+                    reason: ValidationErrorType.VALUE_REQUIRED,
+                    context: { className: 'TestEmbed', propertyName: 'embeddedProperty' },
+                  },
+                ],
               },
             ],
-          },
+          });
         });
       });
     });
 
-    it('should not validate if attribute has invalid type', () => {
+    describe('should not validate if attribute has invalid type', () => {
       const result = v.validate(Test, { embeddedObject: { embeddedProperty: null } } as any);
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          embeddedObject: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
             type: 'class',
-            reason: 'OBJECT_PROPERTY_FAILED',
-            value: { embeddedProperty: null },
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            value: { embeddedObject: { embeddedProperty: null } },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'number',
-                reason: 'NOT_A_NUMBER',
-                value: null,
-                previousErrors: [],
-                context: { propertyName: 'embeddedProperty', name: 'TestEmbed' },
+                type: 'class',
+                reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                value: { embeddedProperty: null },
+                context: { className: 'Test', propertyName: 'embeddedObject' },
+                previousErrors: [
+                  {
+                    success: false,
+                    type: 'number',
+                    reason: ValidationErrorType.NOT_A_NUMBER,
+                    value: null,
+                    previousErrors: [],
+                    context: { className: 'TestEmbed', propertyName: 'embeddedProperty' },
+                  },
+                ],
               },
             ],
-            context: { name: 'TestEmbed' },
-          },
+          });
         });
       });
     });
@@ -96,7 +123,7 @@ describe('nested', () => {
       expect(result.success).toEqual(true);
     });
 
-    it('should not validate invalid input', () => {
+    describe('should not validate invalid input', () => {
       const result = v.validate(Test, {
         name: 'root',
         children: [
@@ -106,58 +133,71 @@ describe('nested', () => {
         ],
       });
 
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          children: {
+      it('should not validate', () => {
+        expect(result.success).toEqual(false);
+      });
+
+      it('should construct the correct error', () => {
+        expectValidationError(result, (result) => {
+          expect(result.rawErrors).toEqual({
             success: false,
-            type: 'array',
-            reason: 'ELEMENT_TYPE_FAILED',
+            type: 'class',
+            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
             value: expect.anything(),
-            context: { element: 1 },
+            context: { className: 'Test' },
             previousErrors: [
               {
                 success: false,
-                type: 'class',
-                reason: 'OBJECT_PROPERTY_FAILED',
-                value: { name: 'Child2', children: [{ name: 123, children: [1337] }] },
-                context: { name: 'Test' },
+                type: 'array',
+                reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+                value: expect.anything(),
+                context: { element: 1, className: 'Test', propertyName: 'children' },
                 previousErrors: [
                   {
                     success: false,
-                    type: 'array',
-                    reason: 'ELEMENT_TYPE_FAILED',
-                    value: [{ name: 123, children: [1337] }],
-                    context: { element: 0, propertyName: 'children', name: 'Test' },
+                    type: 'class',
+                    reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                    value: expect.anything(),
+                    context: { className: 'Test' },
                     previousErrors: [
                       {
                         success: false,
-                        type: 'class',
-                        reason: 'OBJECT_PROPERTY_FAILED',
-                        value: { name: 123, children: [1337] },
-                        context: { name: 'Test' },
+                        type: 'array',
+                        reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+                        value: expect.anything(),
+                        context: { element: 0, className: 'Test', propertyName: 'children' },
                         previousErrors: [
                           {
                             success: false,
-                            type: 'string',
-                            reason: 'NOT_A_STRING',
-                            value: 123,
-                            context: { propertyName: 'name', name: 'Test' },
-                            previousErrors: [],
-                          },
-                          {
-                            success: false,
-                            type: 'array',
-                            value: [1337],
-                            reason: 'ELEMENT_TYPE_FAILED',
-                            context: { element: 0, propertyName: 'children', name: 'Test' },
+                            type: 'class',
+                            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                            value: { name: 123, children: [1337] },
+                            context: { className: 'Test' },
                             previousErrors: [
                               {
                                 success: false,
-                                type: 'class',
-                                value: 1337,
+                                type: 'string',
+                                reason: ValidationErrorType.NOT_A_STRING,
+                                value: 123,
                                 previousErrors: [],
-                                reason: 'NOT_AN_OBJECT',
-                                context: { name: 'Test' },
+                                context: { className: 'Test', propertyName: 'name' },
+                              },
+                              {
+                                success: false,
+                                type: 'array',
+                                reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
+                                value: [1337],
+                                context: { element: 0, className: 'Test', propertyName: 'children' },
+                                previousErrors: [
+                                  {
+                                    success: false,
+                                    type: 'class',
+                                    reason: ValidationErrorType.NOT_AN_OBJECT,
+                                    value: 1337,
+                                    previousErrors: [],
+                                    context: { className: 'Test' },
+                                  },
+                                ],
                               },
                             ],
                           },
@@ -168,7 +208,7 @@ describe('nested', () => {
                 ],
               },
             ],
-          },
+          });
         });
       });
     });
@@ -208,13 +248,20 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               children: [],
+              annotations: {},
               getClassTrees: expect.any(Function),
               meta: {
                 omitted: new Set(['embeddedProperty2']),
               },
             },
           ],
+          annotations: {},
         });
+
+        expect((tree.children[0] as ClassNode).getClassTrees().map((t) => t.name)).toEqual([
+          'embeddedProperty1',
+          'embeddedProperty3',
+        ]);
       });
 
       it('should construct the tree correctly (multiple properties omitted)', () => {
@@ -235,8 +282,10 @@ describe('nested', () => {
               },
               getClassTrees: expect.any(Function),
               children: [],
+              annotations: {},
             },
           ],
+          annotations: {},
         });
       });
 
@@ -258,8 +307,10 @@ describe('nested', () => {
               },
               getClassTrees: expect.any(Function),
               children: [],
+              annotations: {},
             },
           ],
+          annotations: {},
         });
       });
 
@@ -271,6 +322,103 @@ describe('nested', () => {
         });
 
         expect(result.success).toEqual(true);
+      });
+
+      describe('should not validate if attribute is missing', () => {
+        const result = v.validate(Test, {
+          embeddedObject: { embeddedProperty3: 123 } as any,
+          embeddedObjectMultikey: {},
+          embeddedObjectMultikeyAlias: {},
+        });
+
+        it('should not validate', () => {
+          expect(result.success).toEqual(false);
+        });
+
+        it('should construct the correct error', () => {
+          expectValidationError(result, (result) => {
+            expect(result.rawErrors).toEqual({
+              success: false,
+              type: 'class',
+              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+              value: expect.anything(),
+              previousErrors: [
+                {
+                  success: false,
+                  type: 'class',
+                  value: { embeddedProperty3: 123 },
+                  context: {
+                    className: 'Test',
+                    propertyName: 'embeddedObject',
+                  },
+                  previousErrors: [
+                    {
+                      success: false,
+                      type: 'root',
+                      reason: ValidationErrorType.VALUE_REQUIRED,
+                      previousErrors: [],
+                      context: {
+                        className: 'TestEmbed',
+                        propertyName: 'embeddedProperty1',
+                      },
+                    },
+                  ],
+                  reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                },
+              ],
+              context: { className: 'Test' },
+            });
+          });
+        });
+      });
+
+      describe('should not validate if omitted attribute is supplied', () => {
+        const result = v.validate(Test, {
+          embeddedObject: { embeddedProperty1: 123, embeddedProperty2: 123 } as any,
+          embeddedObjectMultikey: {},
+          embeddedObjectMultikeyAlias: {},
+        });
+
+        it('should not validate', () => {
+          expect(result.success).toEqual(false);
+        });
+
+        it('should construct the correct error', () => {
+          expectValidationError(result, (result) => {
+            expect(result.rawErrors).toEqual({
+              success: false,
+              type: 'class',
+              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+              value: expect.anything(),
+              previousErrors: [
+                {
+                  success: false,
+                  type: 'class',
+                  reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                  value: { embeddedProperty1: 123, embeddedProperty2: 123 },
+                  previousErrors: [
+                    {
+                      success: false,
+                      type: 'class',
+                      reason: ValidationErrorType.UNKNOWN_FIELD,
+                      value: 123,
+                      previousErrors: [],
+                      context: {
+                        className: 'TestEmbed',
+                        propertyName: 'embeddedProperty2',
+                      },
+                    },
+                  ],
+                  context: {
+                    className: 'Test',
+                    propertyName: 'embeddedObject',
+                  },
+                },
+              ],
+              context: { className: 'Test' },
+            });
+          });
+        });
       });
     });
 
@@ -294,6 +442,173 @@ describe('nested', () => {
             expect(error.context.asText).toBeTruthy();
           }
         }
+      });
+    });
+  });
+
+  describe('Pick<T, U>', () => {
+    describe('basic', () => {
+      const v = new ValidatorInstance({ project });
+
+      type SkippedKeys = 'embeddedProperty1' | 'embeddedProperty2';
+
+      @v.validatorDecorator()
+      class TestEmbed {
+        embeddedProperty1!: number;
+        embeddedProperty2!: number;
+        embeddedProperty3?: number;
+      }
+
+      @v.validatorDecorator()
+      class Test {
+        embeddedObject!: Pick<TestEmbed, 'embeddedProperty2'>;
+        embeddedObjectMultikey!: Pick<TestEmbed, 'embeddedProperty1' | 'embeddedProperty2'>;
+        embeddedObjectMultikeyAlias!: Pick<TestEmbed, SkippedKeys>;
+      }
+
+      it('should construct the tree correctly (single propery picked)', () => {
+        const { filename, line } = v.getClassMetadata(Test);
+        const cls = v.classDiscovery.getClass('Test', filename, line);
+        const trees = v.getPropertyTypeTrees(Test, cls);
+        const tree = trees[0].tree;
+
+        expect(tree).toEqual({
+          kind: 'root',
+          optional: false,
+          children: [
+            {
+              kind: 'class',
+              name: 'TestEmbed',
+              children: [],
+              getClassTrees: expect.any(Function),
+              meta: {
+                picked: new Set(['embeddedProperty2']),
+              },
+              annotations: {},
+            },
+          ],
+          annotations: {},
+        });
+      });
+
+      it('should construct the tree correctly (multiple properties picked)', () => {
+        const { filename, line } = v.getClassMetadata(Test);
+        const cls = v.classDiscovery.getClass('Test', filename, line);
+        const trees = v.getPropertyTypeTrees(Test, cls);
+        const tree = trees[1].tree;
+
+        expect(tree).toEqual({
+          kind: 'root',
+          optional: false,
+          children: [
+            {
+              kind: 'class',
+              name: 'TestEmbed',
+              meta: {
+                picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
+              },
+              getClassTrees: expect.any(Function),
+              children: [],
+              annotations: {},
+            },
+          ],
+          annotations: {},
+        });
+      });
+
+      it('should construct the tree correctly (aliased)', () => {
+        const { filename, line } = v.getClassMetadata(Test);
+        const cls = v.classDiscovery.getClass('Test', filename, line);
+        const trees = v.getPropertyTypeTrees(Test, cls);
+        const tree = trees[2].tree;
+
+        expect(tree).toEqual({
+          kind: 'root',
+          optional: false,
+          children: [
+            {
+              kind: 'class',
+              name: 'TestEmbed',
+              meta: {
+                picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
+              },
+              getClassTrees: expect.any(Function),
+              children: [],
+              annotations: {},
+            },
+          ],
+          annotations: {},
+        });
+      });
+
+      it('should validate', () => {
+        const result = v.validate(Test, {
+          embeddedObject: { embeddedProperty2: 123 },
+          embeddedObjectMultikey: { embeddedProperty1: 1, embeddedProperty2: 2 },
+          embeddedObjectMultikeyAlias: { embeddedProperty1: 1, embeddedProperty2: 2 },
+        });
+
+        expect(result.success).toEqual(true);
+      });
+
+      describe('should not validate', () => {
+        const result = v.validate(Test, {
+          embeddedObject: { embeddedProperty1: '123', embeddedProperty2: '123', embeddedProperty3: '123' } as any,
+          embeddedObjectMultikey: { embeddedProperty1: 1, embeddedProperty2: 2 },
+          embeddedObjectMultikeyAlias: { embeddedProperty1: 1, embeddedProperty2: 2 },
+        });
+
+        it('should not validate', () => {
+          expect(result.success).toEqual(false);
+        });
+        it('should construct the correct error', () => {
+          expectValidationError(result, (result) => {
+            expect(result.rawErrors).toEqual({
+              success: false,
+              type: 'class',
+              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+              value: expect.anything(),
+              previousErrors: [
+                {
+                  success: false,
+                  type: 'class',
+                  reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                  value: expect.anything(),
+                  previousErrors: [
+                    {
+                      success: false,
+                      type: 'number',
+                      reason: ValidationErrorType.NOT_A_NUMBER,
+                      value: '123',
+                      previousErrors: [],
+                      context: { className: 'TestEmbed', propertyName: 'embeddedProperty2' },
+                    },
+                    {
+                      success: false,
+                      type: 'class',
+                      reason: ValidationErrorType.UNKNOWN_FIELD,
+                      value: '123',
+                      previousErrors: [],
+                      context: { className: 'TestEmbed', propertyName: 'embeddedProperty1' },
+                    },
+
+                    {
+                      success: false,
+                      type: 'class',
+                      reason: ValidationErrorType.UNKNOWN_FIELD,
+                      value: '123',
+                      previousErrors: [],
+                      context: { className: 'TestEmbed', propertyName: 'embeddedProperty3' },
+                    },
+                  ],
+
+                  context: { className: 'Test', propertyName: 'embeddedObject' },
+                },
+              ],
+              context: { className: 'Test' },
+            });
+          });
+        });
       });
     });
   });

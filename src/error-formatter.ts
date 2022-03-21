@@ -7,17 +7,14 @@ export interface IErrorMessage {
   context?: Record<string, unknown>;
 }
 
-export function flattenValidationError(
-  error: INodeValidationError,
-  path: string[] = [],
-  messages: IErrorMessage[] = [],
-): IErrorMessage[] {
+export function flattenValidationError(error: INodeValidationError, path: string[] = []): IErrorMessage[] {
+  const messages: IErrorMessage[] = [];
   switch (error.type) {
     case 'array':
       if (error.reason === ValidationErrorType.ELEMENT_TYPE_FAILED) {
         path = [...path, `[${error?.context?.element}]`];
         for (const previousError of error.previousErrors) {
-          flattenValidationError(previousError, path, messages);
+          messages.push(...flattenValidationError(previousError, path));
         }
       } else {
         //
@@ -28,7 +25,7 @@ export function flattenValidationError(
         const classErrors = error.previousErrors;
         for (const classError of classErrors) {
           const propertyPath = [...path, classError.context!.propertyName! as string];
-          flattenValidationError(classError, propertyPath, messages);
+          messages.push(...flattenValidationError(classError, propertyPath));
         }
       } else {
         messages.push({
@@ -72,11 +69,16 @@ export function flattenValidationError(
     }
 
     default:
-      messages.push({
-        path,
-        reason: error.reason!,
-        value: error.value,
-      });
+      if (error.reason !== ValidationErrorType.DECORATORS_FAILED) {
+        messages.push({
+          path,
+          reason: error.reason!,
+          value: error.value,
+        });
+      }
+      for (const classError of error.previousErrors) {
+        messages.push(...flattenValidationError(classError, path));
+      }
   }
   return messages;
 }

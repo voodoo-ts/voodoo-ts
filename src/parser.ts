@@ -8,7 +8,13 @@ import {
   TypeLiteralNode,
 } from 'ts-morph';
 
-import { getDecorators, groupDecorators } from './decorators';
+import {
+  getAnnotations,
+  getDecorators,
+  groupDecorators,
+  IAnnotationDecoratorMeta,
+  IValidationDecoratorMeta,
+} from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
   ArrayNode,
@@ -189,8 +195,8 @@ export class Parser {
   classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
   classTreeCache = new ClassCache<ITypeAndTree[]>();
 
-  setClassReference(classDeclaration: ClassDeclaration, cls: Constructor<unknown>): void {
-    this.classDeclarationToClassReference.set(classDeclaration, cls);
+  constructor(classDeclarationToClassReference: ClassCache<Constructor<unknown>>) {
+    this.classDeclarationToClassReference = classDeclarationToClassReference;
   }
 
   handleRootNode(type: Type, hasQuestionToken: boolean): [TypeNode, Type] {
@@ -199,15 +205,15 @@ export class Parser {
     if (type.isUnion()) {
       const unionTypes = type.getUnionTypes();
       const hasUndefined = unionTypes.find((t) => t.isUndefined());
-      const unionTypedWithoutUndefined = unionTypes.filter((unionType) => !unionType.isUndefined());
+      const unionTypesWithoutUndefined = unionTypes.filter((unionType) => !unionType.isUndefined());
 
       if (hasUndefined) {
         tree.optional = true;
       }
 
-      if (unionTypedWithoutUndefined.length === 1) {
+      if (unionTypesWithoutUndefined.length === 1) {
         // Prevent unnecessary UnionNode
-        return [tree, unionTypedWithoutUndefined[0]];
+        return [tree, unionTypesWithoutUndefined[0]];
       } else {
         return [tree, type];
       }
@@ -260,16 +266,22 @@ export class Parser {
 
       const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedClassDeclaration);
 
-      tree.children.push(new ClassNode(className, getClassTrees));
+      tree.children.push(new ClassNode({ name: className }, getClassTrees));
     } else if ((type.isInterface() || type.isObject()) && !type.getAliasSymbol()) {
       if (!type.isTuple()) {
         const referencedDeclaration = getFirstSymbolDeclaration(type);
         const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration);
 
         tree.children.push(
-          new ClassNode(getName(referencedDeclaration), getClassTrees, {
-            from: type.isInterface() ? 'interface' : 'object',
-          }),
+          new ClassNode(
+            {
+              name: getName(referencedDeclaration),
+              meta: {
+                from: type.isInterface() ? 'interface' : 'object',
+              },
+            },
+            getClassTrees,
+          ),
         );
       } else {
         const tupleNode = new TupleNode();
@@ -281,20 +293,27 @@ export class Parser {
     } else if (type.getAliasSymbol()) {
       const name = type.getAliasSymbol()?.getFullyQualifiedName();
 
-      if (name === 'Omit') {
+      if (name === 'Omit' || name === 'Pick') {
         const { referencedClassDeclaration, propertyNames } = getOmitParameters(type);
+        const propertyFilter = (tree: ITypeAndTree): boolean =>
+          (propertyNames.has(tree.name) && name === 'Pick') || (!propertyNames.has(tree.name) && name === 'Omit');
 
         const getClassTrees: GetClassTrees = () => {
-          const classTrees = this.getPropertyTypeTrees(referencedClassDeclaration).filter(
-            (tree) => !propertyNames.has(tree.name),
-          );
+          const classTrees = this.getPropertyTypeTrees(referencedClassDeclaration).filter(propertyFilter);
           return classTrees;
         };
 
+        const contextProperty = name === 'Pick' ? 'picked' : 'omitted';
         tree.children.push(
-          new ClassNode(getName(referencedClassDeclaration), getClassTrees, {
-            omitted: propertyNames,
-          }),
+          new ClassNode(
+            {
+              name: getName(referencedClassDeclaration),
+              meta: {
+                [contextProperty]: propertyNames,
+              },
+            },
+            getClassTrees,
+          ),
         );
       } else if (name === 'Record') {
         const recordNode = new RecordNode();
@@ -306,14 +325,12 @@ export class Parser {
         throw new ParseError('Syntax not supported', {
           asText: type.getText(),
           hasAliasSymbol: true,
-          type,
         });
       }
     } else {
       throw new ParseError('Syntax not supported', {
         asText: type.getText(),
         noBranchMatched: true,
-        type,
       });
     }
 
@@ -358,6 +375,13 @@ export class Parser {
     return trees;
   }
 
+  getClassNode(classDeclaration: ClassOrInterfaceOrLiteral): ClassNode {
+    const trees = this.getPropertyTypeTrees(classDeclaration);
+    const classNode = new ClassNode({ name: getName(classDeclaration) }, () => trees);
+
+    return classNode;
+  }
+
   getAllDeclarations(classDeclaration: ClassOrInterfaceOrLiteral): ClassOrInterfaceOrLiteral[] {
     const declarations: ClassOrInterfaceOrLiteral[] = [];
 
@@ -395,17 +419,27 @@ export class Parser {
     }
 
     const decorators = getDecorators(cls.prototype, propertyKey);
+    const annotations = getAnnotations(cls.prototype, propertyKey);
 
-    if (decorators) {
-      const propertyDecoratorMap = groupDecorators(decorators);
+    const propertyDecoratorMap = groupDecorators<IValidationDecoratorMeta>(decorators);
+    const annotationDecoratorMap = groupDecorators<IAnnotationDecoratorMeta>(annotations);
 
-      walkPropertyTypeTree(tree, (node) => {
-        const decoratorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
-        const decoratorNodes = decoratorsForNodeKind.map(
-          (decorator) => new DecoratorNode(decorator.name, decorator.type, decorator.validate(...decorator.options!)),
-        );
-        node.children.push(...decoratorNodes);
-      });
-    }
+    walkPropertyTypeTree(tree, (node) => {
+      const validatorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
+
+      const decoratorNodes = validatorsForNodeKind.map(
+        (decorator) => new DecoratorNode(decorator.name, decorator.type, decorator.validator),
+      );
+      node.children.push(...decoratorNodes);
+
+      const annotationsForNodeKind = annotationDecoratorMap.get(node.kind) ?? [];
+      // Treat note.annotations as a record from here to allow assignment
+      // Invalid fields should not be possible due to typechecking
+      const nodeAnnotations = node.annotations as Record<string, unknown>;
+
+      for (const annotation of annotationsForNodeKind) {
+        nodeAnnotations[annotation.name] = annotation.value;
+      }
+    });
   }
 }
