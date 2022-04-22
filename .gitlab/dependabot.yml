@@ -8,5 +8,5 @@ updates:
     pull-request-branch-name:
       separator: "/"
     commit-message:
-      prefix: "chore(dependencies:)"
-      prefix-development: "chore(dev-dependencies)"
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps)"
