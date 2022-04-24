@@ -93,8 +93,6 @@ export class ValidatorInstance {
     values: MaybePartial<T>,
     options: IValidationOptions = {},
   ): IValidationResult<T> {
-    const errors: Record<string, IErrorMessage[]> = {};
-
     const validatorClass = this.parser.getClassNode(classDeclaration);
 
     const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;

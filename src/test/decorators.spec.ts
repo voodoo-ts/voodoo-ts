@@ -502,7 +502,7 @@ describe('decorators', () => {
               {
                 success: false,
                 type: 'array',
-                reason: ValidationErrorType.ARRAY_TYPE_FAILED,
+                reason: ValidationErrorType.DECORATORS_FAILED,
                 value: [],
                 context: { className: 'Test', propertyName: 'testProperty' },
                 previousErrors: [
@@ -629,7 +629,7 @@ describe('decorators', () => {
               {
                 success: false,
                 type: 'array',
-                reason: ValidationErrorType.ARRAY_TYPE_FAILED,
+                reason: ValidationErrorType.DECORATORS_FAILED,
                 value: [],
                 context: { className: 'Test', propertyName: 'testProperty' },
                 previousErrors: [
@@ -672,7 +672,7 @@ describe('decorators', () => {
               {
                 success: false,
                 type: 'array',
-                reason: ValidationErrorType.ARRAY_TYPE_FAILED,
+                reason: ValidationErrorType.DECORATORS_FAILED,
                 value: ['1', '2', '3'],
                 context: { className: 'Test', propertyName: 'testProperty' },
                 previousErrors: [
