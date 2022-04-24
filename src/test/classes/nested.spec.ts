@@ -1,5 +1,5 @@
 import { ParseError } from '../../errors';
-import { ClassNode, ValidationErrorType } from '../../nodes';
+import { ClassNode, TypeNodeData, ValidationErrorType } from '../../nodes';
 import { isParseError } from '../../parser';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
@@ -110,6 +110,32 @@ describe('nested', () => {
       name!: string;
       children!: Test[];
     }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
+
+      expect(tree).toEqual({
+        kind: 'root',
+        optional: false,
+        children: [
+          {
+            kind: 'array',
+            children: [
+              {
+                kind: 'class',
+                name: 'Test',
+                children: [],
+                annotations: {},
+                meta: expect.anything(),
+                getClassTrees: expect.any(Function),
+              },
+            ],
+            annotations: {},
+          },
+        ],
+        annotations: {},
+      } as TypeNodeData);
+    });
 
     it('should validate', () => {
       const result = v.validate(Test, {
@@ -251,6 +277,8 @@ describe('nested', () => {
               annotations: {},
               getClassTrees: expect.any(Function),
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 omitted: new Set(['embeddedProperty2']),
               },
             },
@@ -278,6 +306,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),
@@ -303,6 +333,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),
@@ -482,6 +514,8 @@ describe('nested', () => {
               children: [],
               getClassTrees: expect.any(Function),
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 picked: new Set(['embeddedProperty2']),
               },
               annotations: {},
@@ -505,6 +539,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),
@@ -530,6 +566,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),

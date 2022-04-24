@@ -498,4 +498,45 @@ describe('union', () => {
       });
     });
   });
+
+  describe('optional boolean -> boolean | undefined', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      unionProperty?: boolean | undefined;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+      expect(tree).toEqual({
+        kind: 'root',
+        optional: true,
+        children: [
+          {
+            annotations: {},
+            kind: 'union',
+            children: [
+              {
+                kind: 'literal',
+                reason: expect.anything(),
+                expected: false,
+                children: [],
+                annotations: {},
+              },
+              {
+                kind: 'literal',
+                reason: expect.anything(),
+                expected: true,
+                children: [],
+                annotations: {},
+              },
+            ],
+          },
+        ],
+        annotations: {},
+      });
+    });
+  });
 });

@@ -1,9 +1,5 @@
 /* istanbul ignore file */
-import ErrorStackParser from 'error-stack-parser';
-
-function getLineNumber(): number {
-  return ErrorStackParser.parse(new Error())[1].lineNumber! + 1;
-}
+import { getLineNumber } from './utils';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-empty-function
 const Decorator =

@@ -36,7 +36,10 @@ describe('interface', () => {
           kind: 'class',
           name: 'ITest',
           getClassTrees: expect.any(Function),
-          meta: { from: 'interface' },
+          meta: {
+            reference: expect.any(String),
+            from: 'interface',
+          },
           children: [],
           annotations: {},
         },
@@ -59,6 +62,7 @@ describe('interface', () => {
           name: 'ITest2',
           getClassTrees: expect.any(Function),
           meta: {
+            reference: expect.any(String),
             from: 'interface',
           },
           children: [],
@@ -118,7 +122,10 @@ describe('interface', () => {
           kind: 'class',
           name: expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/),
           getClassTrees: expect.any(Function),
-          meta: { from: 'object' },
+          meta: {
+            reference: expect.any(String),
+            from: 'object',
+          },
           children: [],
           annotations: {},
         },
