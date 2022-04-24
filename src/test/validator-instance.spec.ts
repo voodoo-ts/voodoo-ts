@@ -47,7 +47,7 @@ describe('general', () => {
     expect(classTreesWrapper).toThrow(ParseError);
   });
 
-  it('should throw for unsupported type symbols', () => {
+  it.skip('should throw for unsupported type symbols', () => {
     const v = new ValidatorInstance({ project });
 
     @v.validatorDecorator()

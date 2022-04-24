@@ -1,5 +1,6 @@
 /* istanbul ignore file */
 
+import ErrorStackParser from 'error-stack-parser';
 import { Project } from 'ts-morph';
 
 import { IValidationError, IValidationResult } from '../validator';
@@ -28,4 +29,8 @@ export function genValidationErrorTest(result: IValidationResult<unknown>): void
     });
   });
 `);
+}
+
+export function getLineNumber(): number {
+  return ErrorStackParser.parse(new Error())[1].lineNumber! + 1;
 }
