@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { IErrorMessage } from './error-formatter';
+import { flattenValidationError, IErrorMessage } from './error-formatter';
 import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
 import { Parser } from './parser';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
@@ -21,7 +21,7 @@ export interface IValidationSuccess<T> {
 export interface IValidationError<T> {
   success: false;
   object: null;
-  errors: Record<string, IErrorMessage[]>;
+  errors: IErrorMessage[];
   rawErrors: INodeValidationError;
 }
 
@@ -112,7 +112,7 @@ export class ValidatorInstance {
       return {
         success: false,
         object: null,
-        errors,
+        errors: flattenValidationError(result),
         rawErrors: result,
       };
     }
