@@ -29,6 +29,23 @@ jest:
     - npm install
     - npm run coverage
 
+commitlint:
+  stage: test
+  image: node:17
+  only:
+    - merge_requests
+  script:
+    - git fetch origin ${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}:${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+    - npm clean-install
+    - |
+      git log \
+        --no-merges \
+        --pretty='format:%h %s' \
+        ^${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} \
+        HEAD | while read line || [[ -n $line ]]; do \
+          echo "👓 Checking ${line}"; echo "${line:8}" | npx commitlint || true; true; \
+        done;
+
 .sonarqube:
   stage: test
   needs:
