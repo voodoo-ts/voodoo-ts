@@ -111,6 +111,15 @@ function getName(obj: ClassOrInterfaceOrLiteral): string {
   return `${obj.getSourceFile().getFilePath()}:${obj.getStartLineNumber()}`;
 }
 
+function getTypeId(type: Type): number {
+  // eslint-disable-next-line no-underscore-dangle
+  const compilerType = (type as any)._compilerType;
+  if (typeof compilerType?.id === 'number') {
+    return compilerType.id;
+  }
+  throw new ParseError(`Can't get type id for: ${type.getText()}`);
+}
+
 function getFirstSymbolDeclaration(type: Type): ClassOrInterfaceOrLiteral {
   const declaration = type.getSymbol()?.getDeclarations()[0];
   if (!declaration) {
@@ -407,7 +416,7 @@ export class Parser {
 
     const typeSignature = JSON.stringify({
       declaration: ClassCache.getKey(referencedDeclaration),
-      parameters: type.getTypeArguments().map((t) => (t as any)._compilerType.id as number),
+      parameters: type.getTypeArguments().map(getTypeId),
     });
 
     if (!this.declarationsDiscovered.has(typeSignature)) {
@@ -443,7 +452,7 @@ export class Parser {
    * @param classDeclaration A ts-morph class declaration whose members will be processed
    */
   getPropertyTypeTrees(classDeclaration: ClassOrInterfaceOrLiteral, typeMap?: TypeMap): ITypeAndTree[] {
-    const types = typeMap ? Array.from(typeMap?.values()).map((t) => (t as any)._compilerType.id as number) : [];
+    const types = typeMap ? Array.from(typeMap?.values()).map(getTypeId) : [];
     const cached = this.classTreeCache.get(classDeclaration, types);
     if (cached) {
       return cached;
