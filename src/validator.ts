@@ -76,7 +76,7 @@ export class ValidatorInstance {
    * @param cls - Class reference
    * @param classDeclaration - A ts-morph class declaration whose members will be processed
    */
-  getPropertyTypeTrees<T>(cls: Constructor<T>, classDeclaration: ClassDeclaration): ITypeAndTree[] {
+  getPropertyTypeTrees(classDeclaration: ClassDeclaration): ITypeAndTree[] {
     const trees = this.parser.getPropertyTypeTrees(classDeclaration);
     return trees;
   }
@@ -84,7 +84,7 @@ export class ValidatorInstance {
   getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
     const validatorMeta = this.getClassMetadata(cls);
     const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
-    return this.getPropertyTypeTrees(cls, classDeclaration);
+    return this.getPropertyTypeTrees(classDeclaration);
   }
 
   validateClassDeclaration<T>(
