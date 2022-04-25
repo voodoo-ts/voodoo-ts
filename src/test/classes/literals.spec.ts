@@ -1,8 +1,7 @@
-import { TypeNodeData, ValidationErrorType } from '../../nodes';
+import { ValidationErrorType } from '../../nodes';
 import { Constructor } from '../../types';
-import { zip } from '../../utils';
 import { ValidatorInstance } from '../../validator';
-import { expectValidationError, genValidationErrorTest, project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 interface ITests {
   property: string;

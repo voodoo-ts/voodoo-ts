@@ -316,7 +316,7 @@ export class ArrayNode extends TypeNodeBase {
         const result = child.validate(value, context);
         if (!result.success) {
           return this.fail(value, {
-            reason: ValidationErrorType.ARRAY_TYPE_FAILED,
+            reason: ValidationErrorType.DECORATORS_FAILED,
             previousErrors: [result],
           });
         }

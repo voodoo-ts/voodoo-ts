@@ -11,13 +11,22 @@ export function flattenValidationError(error: INodeValidationError, path: string
   const messages: IErrorMessage[] = [];
   switch (error.type) {
     case 'array':
+    case 'tuple':
       if (error.reason === ValidationErrorType.ELEMENT_TYPE_FAILED) {
         path = [...path, `[${error?.context?.element}]`];
         for (const previousError of error.previousErrors) {
           messages.push(...flattenValidationError(previousError, path));
         }
+      } else if (error.reason === ValidationErrorType.DECORATORS_FAILED) {
+        for (const classError of error.previousErrors) {
+          messages.push(...flattenValidationError(classError, path));
+        }
       } else {
-        //
+        messages.push({
+          path,
+          reason: error.reason!,
+          value: error.value,
+        });
       }
       break;
     case 'class':
@@ -67,6 +76,15 @@ export function flattenValidationError(error: INodeValidationError, path: string
       });
       break;
     }
+
+    case 'decorator':
+      messages.push({
+        path,
+        reason: error.reason!,
+        value: error.value,
+        context: error.context,
+      });
+      break;
 
     default:
       if (error.reason !== ValidationErrorType.DECORATORS_FAILED) {
