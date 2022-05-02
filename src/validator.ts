@@ -73,22 +73,24 @@ export class ValidatorInstance {
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
-   * @param cls - Class reference
    * @param classDeclaration - A ts-morph class declaration whose members will be processed
    */
   getPropertyTypeTrees(classDeclaration: ClassDeclaration): ITypeAndTree[] {
-    const trees = this.parser.getPropertyTypeTrees(classDeclaration);
-    return trees;
+    return this.parser.getPropertyTypeTrees(classDeclaration);
   }
 
   getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
     const validatorMeta = this.getClassMetadata(cls);
-    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
+    const classDeclaration = this.classDiscovery.getClass(
+      cls.name,
+      validatorMeta.filename,
+      validatorMeta.line,
+      validatorMeta.column,
+    );
     return this.getPropertyTypeTrees(classDeclaration);
   }
 
   validateClassDeclaration<T>(
-    cls: Constructor<T>,
     classDeclaration: ClassDeclaration,
     values: MaybePartial<T>,
     options: IValidationOptions = {},
@@ -119,9 +121,14 @@ export class ValidatorInstance {
   validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
     // Get metadata + types
     const validatorMeta = this.getClassMetadata(cls);
-    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
+    const classDeclaration = this.classDiscovery.getClass(
+      cls.name,
+      validatorMeta.filename,
+      validatorMeta.line,
+      validatorMeta.column,
+    );
 
-    return this.validateClassDeclaration<T>(cls, classDeclaration, values, options);
+    return this.validateClassDeclaration<T>(classDeclaration, values, options);
   }
 
   validatorDecorator(options: IValidatorOptions = {}): ReturnType<typeof Reflect['metadata']> {
