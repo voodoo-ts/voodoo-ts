@@ -25,6 +25,7 @@ import {
   ClassNode,
   DecoratorNode,
   EnumNode,
+  IntersectionNode,
   ITypeAndTree,
   LiteralNode,
   NullNode,
@@ -223,7 +224,10 @@ export class TypeCache<T> {
     const line = classDeclaration.getStartLineNumber();
     const filename = path.relative(process.cwd(), sourceFile.getFilePath());
 
-    return JSON.stringify({ reference: `${line}:${filename}`, parameters: typeParameters });
+    return JSON.stringify({
+      reference: `${line}:${classDeclaration.getPos()}:${filename}`,
+      parameters: typeParameters,
+    });
   }
 
   getByKey(key: string): T | undefined {
@@ -333,6 +337,8 @@ export class Parser {
       const items = type.getUnionTypes().map((t) => t.getLiteralValueOrThrow()) as string[];
 
       tree.children.push(new EnumNode(name, items));
+    } else if (type.isIntersection()) {
+      tree.children.push(this.createIntersectionNode(type, typeMap));
     } else if (type.isUnion()) {
       const unionNode = new UnionNode();
       tree.children.push(unionNode);
@@ -393,6 +399,28 @@ export class Parser {
     return tree;
   }
 
+  createIntersectionNode(type: Type, typeMap?: TypeMap): IntersectionNode {
+    const childRootNodes = type
+      .getIntersectionTypes()
+      .map((intersectionType) => this.walkTypeNodes(intersectionType, { typeMap }));
+    const classNodes = childRootNodes.flatMap((rootNode) => rootNode.children as ClassNode[]);
+
+    if (classNodes.some((c) => c.kind !== 'class')) {
+      throw new ParseError(
+        `Intersections can only consist of known classes, interface and/or objects. Type: ${type.getText()}`,
+      );
+    }
+
+    const getAllowedFields = (): Set<string> =>
+      new Set<string>(classNodes.flatMap((classNode) => classNode.getClassTrees()).flatMap(({ name }) => name));
+    const references = classNodes.map((c) => c.meta.reference as string);
+
+    const intersectionNode = new IntersectionNode(type.getText(), getAllowedFields, references);
+
+    intersectionNode.children.push(...classNodes);
+    return intersectionNode;
+  }
+
   createClassNode(
     type: Type,
     filter: (t: ITypeAndTree) => boolean = () => true,
@@ -414,10 +442,7 @@ export class Parser {
 
     const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration, typeMap).filter(filter);
 
-    const typeSignature = JSON.stringify({
-      declaration: ClassCache.getKey(referencedDeclaration),
-      parameters: type.getTypeArguments().map(getTypeId),
-    });
+    const typeSignature = TypeCache.getKey(referencedDeclaration, type.getTypeArguments().map(getTypeId));
 
     if (!this.declarationsDiscovered.has(typeSignature)) {
       this.declarationsDiscovered.add(typeSignature);
@@ -450,6 +475,7 @@ export class Parser {
    * TypeNode tree format
    *
    * @param classDeclaration A ts-morph class declaration whose members will be processed
+   * @param typeMap Maps the type parameter name to the type it represents
    */
   getPropertyTypeTrees(classDeclaration: ClassOrInterfaceOrLiteral, typeMap?: TypeMap): ITypeAndTree[] {
     const types = typeMap ? Array.from(typeMap?.values()).map(getTypeId) : [];

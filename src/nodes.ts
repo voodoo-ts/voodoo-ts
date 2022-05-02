@@ -295,6 +295,69 @@ export class UnionNode extends TypeNodeBase {
   }
 }
 
+export interface IIntersectionMeta {
+  references: string[];
+}
+export class IntersectionNode extends TypeNodeBase {
+  kind = 'intersection' as const;
+
+  name: string;
+  getAllowedFields: () => Set<string>;
+
+  meta: IIntersectionMeta;
+
+  constructor(name: string, getAllowedFields: () => Set<string>, references: string[]) {
+    super();
+    this.name = name;
+    this.getAllowedFields = getAllowedFields;
+    this.meta = { references };
+  }
+
+  validate(value: unknown, context: IValidationContext): INodeValidationResult {
+    const errors: INodeValidationError[] = [];
+    for (const child of this.children) {
+      const result = child.validate(value, context);
+      if (!result.success) {
+        if (result.reason === ValidationErrorType.OBJECT_PROPERTY_FAILED) {
+          const previousErrors = result.previousErrors.filter((e) => e.reason !== ValidationErrorType.UNKNOWN_FIELD);
+
+          if (!previousErrors.length) {
+            continue;
+          } else {
+            result.previousErrors = previousErrors;
+          }
+        }
+        errors.push(result);
+      }
+    }
+
+    const values = value as Record<string, unknown>;
+    const allowedFields = this.getAllowedFields();
+    for (const name of Object.keys(values)) {
+      if (!allowedFields.has(name)) {
+        const error = this.fail(values[name], {
+          reason: ValidationErrorType.UNKNOWN_FIELD,
+          context: {
+            className: this.name,
+            propertyName: name,
+          },
+        });
+        errors.push(error);
+      }
+    }
+
+    if (errors.length) {
+      return this.fail(value, {
+        reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+        previousErrors: errors,
+        context: {},
+      });
+    }
+
+    return this.success();
+  }
+}
+
 export class ArrayNode extends TypeNodeBase {
   kind = 'array' as const;
 
@@ -518,7 +581,8 @@ export type TypeNode =
   | BooleanNode
   | UndefinedNode
   | LiteralNode
-  | AnyNode;
+  | AnyNode
+  | IntersectionNode;
 
 export type TypeNodeData = Omit<
   TypeNode,

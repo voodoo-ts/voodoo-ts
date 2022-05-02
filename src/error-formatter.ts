@@ -30,6 +30,7 @@ export function flattenValidationError(error: INodeValidationError, path: string
       }
       break;
     case 'class':
+    case 'intersection':
       if (error.reason === ValidationErrorType.OBJECT_PROPERTY_FAILED) {
         const classErrors = error.previousErrors;
         for (const classError of classErrors) {
