@@ -1,6 +1,7 @@
-import { TypeNodeData, ValidationErrorType } from '../../nodes';
+import { ParseError } from '../../errors';
+import { TypeNodeData } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
-import { expectValidationError, getLineNumber, project } from '../utils';
+import { getLineNumber, project } from '../utils';
 
 describe('generics', () => {
   const v = new ValidatorInstance({ project });
@@ -87,5 +88,9 @@ describe('generics', () => {
     });
 
     expect(result.success).toEqual(true);
+  });
+
+  it('should not validate generic classes', () => {
+    expect(() => v.validate(Generic, { property1: 1, property2: 2, property3: 3 })).toThrowError(ParseError);
   });
 });
