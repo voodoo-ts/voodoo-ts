@@ -261,10 +261,7 @@ describe('nested', () => {
       }
 
       it('should construct the tree correctly (single propery omitted)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[0].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
         expect(tree).toEqual({
           kind: 'root',
@@ -284,7 +281,7 @@ describe('nested', () => {
             },
           ],
           annotations: {},
-        });
+        } as TypeNodeData);
 
         expect((tree.children[0] as ClassNode).getClassTrees().map((t) => t.name)).toEqual([
           'embeddedProperty1',
@@ -293,10 +290,7 @@ describe('nested', () => {
       });
 
       it('should construct the tree correctly (multiple properties omitted)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[1].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
 
         expect(tree).toEqual({
           kind: 'root',
@@ -316,14 +310,11 @@ describe('nested', () => {
             },
           ],
           annotations: {},
-        });
+        } as TypeNodeData);
       });
 
       it('should construct the tree correctly (aliased)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[2].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[2];
 
         expect(tree).toEqual({
           kind: 'root',
@@ -499,10 +490,7 @@ describe('nested', () => {
       }
 
       it('should construct the tree correctly (single propery picked)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[0].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
         expect(tree).toEqual({
           kind: 'root',
@@ -522,14 +510,11 @@ describe('nested', () => {
             },
           ],
           annotations: {},
-        });
+        } as TypeNodeData);
       });
 
       it('should construct the tree correctly (multiple properties picked)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[1].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
 
         expect(tree).toEqual({
           kind: 'root',
@@ -553,10 +538,7 @@ describe('nested', () => {
       });
 
       it('should construct the tree correctly (aliased)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[2].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[2];
 
         expect(tree).toEqual({
           kind: 'root',
