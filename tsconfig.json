@@ -1,5 +1,5 @@
 {
-  "exclude": ["node_modules", "scripts", "dist"],
+  "exclude": ["node_modules", "scripts", "dist", "commitlint.config.ts"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
 

@@ -1,5 +1,5 @@
 import { ParseError } from '../../errors';
-import { ClassNode, ValidationErrorType } from '../../nodes';
+import { ClassNode, TypeNodeData, ValidationErrorType } from '../../nodes';
 import { isParseError } from '../../parser';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
@@ -110,6 +110,32 @@ describe('nested', () => {
       name!: string;
       children!: Test[];
     }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
+
+      expect(tree).toEqual({
+        kind: 'root',
+        optional: false,
+        children: [
+          {
+            kind: 'array',
+            children: [
+              {
+                kind: 'class',
+                name: 'Test',
+                children: [],
+                annotations: {},
+                meta: expect.anything(),
+                getClassTrees: expect.any(Function),
+              },
+            ],
+            annotations: {},
+          },
+        ],
+        annotations: {},
+      } as TypeNodeData);
+    });
 
     it('should validate', () => {
       const result = v.validate(Test, {
@@ -237,7 +263,7 @@ describe('nested', () => {
       it('should construct the tree correctly (single propery omitted)', () => {
         const { filename, line } = v.getClassMetadata(Test);
         const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(Test, cls);
+        const trees = v.getPropertyTypeTrees(cls);
         const tree = trees[0].tree;
 
         expect(tree).toEqual({
@@ -251,6 +277,8 @@ describe('nested', () => {
               annotations: {},
               getClassTrees: expect.any(Function),
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 omitted: new Set(['embeddedProperty2']),
               },
             },
@@ -267,7 +295,7 @@ describe('nested', () => {
       it('should construct the tree correctly (multiple properties omitted)', () => {
         const { filename, line } = v.getClassMetadata(Test);
         const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(Test, cls);
+        const trees = v.getPropertyTypeTrees(cls);
         const tree = trees[1].tree;
 
         expect(tree).toEqual({
@@ -278,6 +306,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),
@@ -292,7 +322,7 @@ describe('nested', () => {
       it('should construct the tree correctly (aliased)', () => {
         const { filename, line } = v.getClassMetadata(Test);
         const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(Test, cls);
+        const trees = v.getPropertyTypeTrees(cls);
         const tree = trees[2].tree;
 
         expect(tree).toEqual({
@@ -303,6 +333,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),
@@ -469,7 +501,7 @@ describe('nested', () => {
       it('should construct the tree correctly (single propery picked)', () => {
         const { filename, line } = v.getClassMetadata(Test);
         const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(Test, cls);
+        const trees = v.getPropertyTypeTrees(cls);
         const tree = trees[0].tree;
 
         expect(tree).toEqual({
@@ -482,6 +514,8 @@ describe('nested', () => {
               children: [],
               getClassTrees: expect.any(Function),
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 picked: new Set(['embeddedProperty2']),
               },
               annotations: {},
@@ -494,7 +528,7 @@ describe('nested', () => {
       it('should construct the tree correctly (multiple properties picked)', () => {
         const { filename, line } = v.getClassMetadata(Test);
         const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(Test, cls);
+        const trees = v.getPropertyTypeTrees(cls);
         const tree = trees[1].tree;
 
         expect(tree).toEqual({
@@ -505,6 +539,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),
@@ -519,7 +555,7 @@ describe('nested', () => {
       it('should construct the tree correctly (aliased)', () => {
         const { filename, line } = v.getClassMetadata(Test);
         const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(Test, cls);
+        const trees = v.getPropertyTypeTrees(cls);
         const tree = trees[2].tree;
 
         expect(tree).toEqual({
@@ -530,6 +566,8 @@ describe('nested', () => {
               kind: 'class',
               name: 'TestEmbed',
               meta: {
+                from: 'class',
+                reference: expect.any(String),
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
               },
               getClassTrees: expect.any(Function),

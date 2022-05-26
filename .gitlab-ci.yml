@@ -7,10 +7,11 @@ publish:
   only: ['main']
   image: node:17
   script:
-    - echo "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}" > .npmrc
+    - echo "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}" >> .npmrc
     - echo "@${CI_PROJECT_NAMESPACE}:registry=https://${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/" >> .npmrc
+    - npm config set update-notifier false
     - npm config set cache /var/cache/ci/npm --global
-    - npm install
+    - npm clean-install --no-audit --no-fund
     - npm publish
   when: manual
 
@@ -26,8 +27,25 @@ jest:
       - coverage
   script:
     - npm config set cache /var/cache/ci/npm --global
-    - npm install
+    - npm config set update-notifier false
+    - npm clean-install --no-audit --no-fund
     - npm run coverage
+
+commitlint:
+  stage: test
+  image: ${CI_REGISTRY}/docker/commitlint:17
+  only:
+    - merge_requests
+  script:
+    - git fetch origin ${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}:${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+    - |
+      git log \
+        --no-merges \
+        --pretty='format:%h %s' \
+        ^${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} \
+        HEAD | while read line || [[ -n $line ]]; do \
+          echo "👓 Checking ${line}"; echo "${line:8}" | commitlint || true; true; \
+        done;
 
 .sonarqube:
   stage: test

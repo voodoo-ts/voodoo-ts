@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { IErrorMessage } from './error-formatter';
+import { flattenValidationError, IErrorMessage } from './error-formatter';
 import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
 import { Parser } from './parser';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
@@ -21,7 +21,7 @@ export interface IValidationSuccess<T> {
 export interface IValidationError<T> {
   success: false;
   object: null;
-  errors: Record<string, IErrorMessage[]>;
+  errors: IErrorMessage[];
   rawErrors: INodeValidationError;
 }
 
@@ -76,7 +76,7 @@ export class ValidatorInstance {
    * @param cls - Class reference
    * @param classDeclaration - A ts-morph class declaration whose members will be processed
    */
-  getPropertyTypeTrees<T>(cls: Constructor<T>, classDeclaration: ClassDeclaration): ITypeAndTree[] {
+  getPropertyTypeTrees(classDeclaration: ClassDeclaration): ITypeAndTree[] {
     const trees = this.parser.getPropertyTypeTrees(classDeclaration);
     return trees;
   }
@@ -84,7 +84,7 @@ export class ValidatorInstance {
   getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
     const validatorMeta = this.getClassMetadata(cls);
     const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
-    return this.getPropertyTypeTrees(cls, classDeclaration);
+    return this.getPropertyTypeTrees(classDeclaration);
   }
 
   validateClassDeclaration<T>(
@@ -93,8 +93,6 @@ export class ValidatorInstance {
     values: MaybePartial<T>,
     options: IValidationOptions = {},
   ): IValidationResult<T> {
-    const errors: Record<string, IErrorMessage[]> = {};
-
     const validatorClass = this.parser.getClassNode(classDeclaration);
 
     const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;
@@ -112,7 +110,7 @@ export class ValidatorInstance {
       return {
         success: false,
         object: null,
-        errors,
+        errors: flattenValidationError(result),
         rawErrors: result,
       };
     }

@@ -39,7 +39,7 @@ export enum ValidationErrorType {
   NO_UNION_MATCH = 'NO_UNION_MATCH',
 
   // Class
-  OBJECT_PROPERTY_FAILED = 'OBJECT_PROPERTY_FAILED', // An property in an embedded class failed
+  OBJECT_PROPERTY_FAILED = 'OBJECT_PROPERTY_FAILED',
   NOT_AN_OBJECT = 'NOT_AN_OBJECT',
 
   // Arrays / Tuple
@@ -47,6 +47,9 @@ export enum ValidationErrorType {
   ARRAY_TYPE_FAILED = 'ARRAY_TYPE_FAILED',
   NOT_AN_ARRAY = 'NOT_AN_ARRAY',
   NO_LENGTH_MATCH = 'NO_LENGTH_MATCH',
+
+  // Literals
+  LITERAL_NOT_MATCHING = 'LITERAL_NOT_MATCHING',
 
   // Decorators
   DECORATORS_FAILED = 'DECORATORS_FAILED',
@@ -214,6 +217,36 @@ export class UndefinedNode extends LeafNode {
   }
 }
 
+export class LiteralNode extends LeafNode {
+  kind = 'literal' as const;
+  reason = ValidationErrorType.LITERAL_NOT_MATCHING;
+
+  expected: unknown;
+
+  constructor(expected: unknown) {
+    super();
+    this.expected = expected;
+  }
+
+  validate(value: unknown): INodeValidationResult {
+    return this.wrapBoolean(value, value === this.expected, {
+      context: {
+        type: typeof this.expected,
+        expected: this.expected,
+      },
+    });
+  }
+}
+
+export class AnyNode extends LeafNode {
+  kind = 'any' as const;
+  reason = ValidationErrorType.CUSTOM;
+
+  validate(value: unknown, context: IValidationContext): INodeValidationResult {
+    return this.validateAllChildren(value, context);
+  }
+}
+
 export class EnumNode extends TypeNodeBase {
   kind = 'enum' as const;
   name: string;
@@ -283,7 +316,7 @@ export class ArrayNode extends TypeNodeBase {
         const result = child.validate(value, context);
         if (!result.success) {
           return this.fail(value, {
-            reason: ValidationErrorType.ARRAY_TYPE_FAILED,
+            reason: ValidationErrorType.DECORATORS_FAILED,
             previousErrors: [result],
           });
         }
@@ -383,6 +416,7 @@ export class ClassNode extends TypeNodeBase {
 
 export class TupleNode extends TypeNodeBase {
   kind = 'tuple' as const;
+
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (!Array.isArray(value)) {
       return this.fail(value, { reason: ValidationErrorType.NOT_AN_ARRAY });
@@ -482,7 +516,9 @@ export type TypeNode =
   | RecordNode
   | DecoratorNode
   | BooleanNode
-  | UndefinedNode;
+  | UndefinedNode
+  | LiteralNode
+  | AnyNode;
 
 export type TypeNodeData = Omit<
   TypeNode,

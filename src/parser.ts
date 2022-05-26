@@ -1,3 +1,5 @@
+import path from 'path';
+import process from 'process';
 import {
   ClassDeclaration,
   InterfaceDeclaration,
@@ -17,12 +19,14 @@ import {
 } from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
+  AnyNode,
   ArrayNode,
   BooleanNode,
   ClassNode,
   DecoratorNode,
   EnumNode,
   ITypeAndTree,
+  LiteralNode,
   NullNode,
   NumberNode,
   RecordNode,
@@ -34,6 +38,7 @@ import {
   UnionNode,
 } from './nodes';
 import { Constructor } from './types';
+import { zip } from './utils';
 
 type GetClassTrees = () => ITypeAndTree[];
 
@@ -41,6 +46,7 @@ type ClassOrInterfaceOrLiteral = ClassDeclaration | InterfaceDeclaration | TypeL
 
 interface IOmitParameters {
   referencedClassDeclaration: ClassOrInterfaceOrLiteral;
+  targetType: Type;
   propertyNames: Set<string>;
 }
 
@@ -105,6 +111,15 @@ function getName(obj: ClassOrInterfaceOrLiteral): string {
   return `${obj.getSourceFile().getFilePath()}:${obj.getStartLineNumber()}`;
 }
 
+function getTypeId(type: Type): number {
+  // eslint-disable-next-line no-underscore-dangle
+  const compilerType = (type as any)._compilerType;
+  if (typeof compilerType?.id === 'number') {
+    return compilerType.id;
+  }
+  throw new ParseError(`Can't get type id for: ${type.getText()}`);
+}
+
 function getFirstSymbolDeclaration(type: Type): ClassOrInterfaceOrLiteral {
   const declaration = type.getSymbol()?.getDeclarations()[0];
   if (!declaration) {
@@ -153,7 +168,7 @@ function getOmitParameters(type: Type): IOmitParameters {
     });
   }
 
-  return { referencedClassDeclaration, propertyNames };
+  return { referencedClassDeclaration, propertyNames, targetType };
 }
 
 function walkPropertyTypeTree(node: TypeNode, callback: (n: TypeNode) => unknown): void {
@@ -175,25 +190,66 @@ export class ClassCache<T> {
    * @param classDeclaration
    * @returns
    */
-  getKey(classDeclaration: ClassOrInterfaceOrLiteral): string {
+  static getKey(classDeclaration: ClassOrInterfaceOrLiteral): string {
     const sourceFile = classDeclaration.getSourceFile();
     const line = classDeclaration.getStartLineNumber();
-    const filename = sourceFile.getFilePath();
-    return `${line}::${filename}`;
+    const filename = path.relative(process.cwd(), sourceFile.getFilePath());
+    return `${line}:${filename}`;
+  }
+
+  getByKey(key: string): T | undefined {
+    return this.map.get(key);
   }
 
   get(classDeclaration: ClassOrInterfaceOrLiteral): T | undefined {
-    return this.map.get(this.getKey(classDeclaration)) as T;
+    return this.map.get(ClassCache.getKey(classDeclaration)) as T;
   }
 
   set(classDeclaration: ClassOrInterfaceOrLiteral, classTrees: T): void {
-    this.map.set(this.getKey(classDeclaration), classTrees);
+    this.map.set(ClassCache.getKey(classDeclaration), classTrees);
   }
 }
 
+export class TypeCache<T> {
+  map = new Map<string, T>();
+
+  /**
+   * Computes a cache key for a class or file, this also considers type arguments for generics
+   * @param classDeclaration
+   * @returns
+   */
+  static getKey(classDeclaration: ClassOrInterfaceOrLiteral, typeParameters: number[]): string {
+    const sourceFile = classDeclaration.getSourceFile();
+    const line = classDeclaration.getStartLineNumber();
+    const filename = path.relative(process.cwd(), sourceFile.getFilePath());
+
+    return JSON.stringify({ reference: `${line}:${filename}`, parameters: typeParameters });
+  }
+
+  getByKey(key: string): T | undefined {
+    return this.map.get(key);
+  }
+
+  get(classDeclaration: ClassOrInterfaceOrLiteral, typeParameters: number[]): T | undefined {
+    return this.map.get(TypeCache.getKey(classDeclaration, typeParameters)) as T;
+  }
+
+  set(classDeclaration: ClassOrInterfaceOrLiteral, typeParameters: number[], classTrees: T): void {
+    this.map.set(TypeCache.getKey(classDeclaration, typeParameters), classTrees);
+  }
+}
+
+export interface ITypeSignature {
+  declaration: ClassOrInterfaceOrLiteral;
+  parameters: Type[];
+}
+
+type TypeMap = Map<string, Type>;
+
 export class Parser {
   classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
-  classTreeCache = new ClassCache<ITypeAndTree[]>();
+  classTreeCache = new TypeCache<ITypeAndTree[]>();
+  declarationsDiscovered = new Set<string>();
 
   constructor(classDeclarationToClassReference: ClassCache<Constructor<unknown>>) {
     this.classDeclarationToClassReference = classDeclarationToClassReference;
@@ -221,14 +277,39 @@ export class Parser {
     return [tree, type];
   }
 
-  walkTypeNodes(type: Type, hasQuestionToken: boolean, tree?: TypeNode): TypeNode {
+  handleTypeParameter(type: Type, typeMap?: TypeMap): Type {
+    if (type.isTypeParameter()) {
+      const typeName = type.getSymbolOrThrow().getName();
+
+      if (!typeMap) {
+        throw new ParseError(`No typeMap supplied, can't resolve "${typeName}"`);
+      }
+
+      const aliasedType = typeMap.get(typeName);
+
+      if (aliasedType) {
+        return aliasedType;
+      } else {
+        throw new ParseError(`Can't find type in "${typeName}" in typeMap`);
+      }
+    }
+
+    return type;
+  }
+
+  walkTypeNodes(
+    type: Type,
+    { tree, typeMap, ...params }: { hasQuestionToken?: boolean; tree?: TypeNode; typeMap?: TypeMap } = {},
+  ): TypeNode {
     // Walk the syntax nodes for a type recursively and try to build a tree of validators from it
 
     if (!tree) {
       // First function call, set up root node. If our property is defined as optional, the result type is T | undefined
       // If this is the case, unwrap the union to allow for nicer error reporting
-      [tree, type] = this.handleRootNode(type, hasQuestionToken);
+      [tree, type] = this.handleRootNode(type, Boolean(params.hasQuestionToken));
     }
+
+    type = this.handleTypeParameter(type, typeMap);
 
     if (type.isNumber()) {
       tree.children.push(new NumberNode());
@@ -240,6 +321,13 @@ export class Parser {
       tree.children.push(new NullNode());
     } else if (type.isUndefined()) {
       tree.children.push(new UndefinedNode());
+    } else if (type.isNumberLiteral() || type.isStringLiteral()) {
+      tree.children.push(new LiteralNode(type.getLiteralValue()));
+    } else if (type.isBooleanLiteral()) {
+      const expected = type.getText() === 'true';
+      tree.children.push(new LiteralNode(expected));
+    } else if (type.isAny() || type.isUnknown()) {
+      tree.children.push(new AnyNode());
     } else if (type.isEnum()) {
       const name = type.getText();
       const items = type.getUnionTypes().map((t) => t.getLiteralValueOrThrow()) as string[];
@@ -253,82 +341,50 @@ export class Parser {
         if (tree.kind === 'root' && unionType.isUndefined()) {
           continue;
         }
-        this.walkTypeNodes(unionType, false, unionNode);
+        this.walkTypeNodes(unionType, { tree: unionNode });
       }
     } else if (type.isArray()) {
       const arrayNode = new ArrayNode();
       tree.children.push(arrayNode);
-      this.walkTypeNodes(type.getArrayElementTypeOrThrow(), false, arrayNode);
-    } else if (type.isClass()) {
-      // Get the class declaration for the referenced class
-      const referencedClassDeclaration = getFirstSymbolDeclaration(type);
-      const className = type.getText();
-
-      const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedClassDeclaration);
-
-      tree.children.push(new ClassNode({ name: className }, getClassTrees));
-    } else if ((type.isInterface() || type.isObject()) && !type.getAliasSymbol()) {
+      this.walkTypeNodes(type.getArrayElementTypeOrThrow(), { tree: arrayNode });
+    } else if ((type.isInterface() || type.isObject() || type.isClass()) && !type.getAliasSymbol()) {
       if (!type.isTuple()) {
-        const referencedDeclaration = getFirstSymbolDeclaration(type);
-        const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration);
-
-        tree.children.push(
-          new ClassNode(
-            {
-              name: getName(referencedDeclaration),
-              meta: {
-                from: type.isInterface() ? 'interface' : 'object',
-              },
-            },
-            getClassTrees,
-          ),
-        );
+        tree.children.push(this.createClassNode(type));
       } else {
         const tupleNode = new TupleNode();
         tree.children.push(tupleNode);
         for (const tupleElementType of type.getTypeArguments()) {
-          this.walkTypeNodes(tupleElementType, false, tupleNode);
+          this.walkTypeNodes(tupleElementType, { tree: tupleNode });
         }
       }
     } else if (type.getAliasSymbol()) {
       const name = type.getAliasSymbol()?.getFullyQualifiedName();
 
       if (name === 'Omit' || name === 'Pick') {
-        const { referencedClassDeclaration, propertyNames } = getOmitParameters(type);
+        const { targetType, propertyNames } = getOmitParameters(type);
         const propertyFilter = (tree: ITypeAndTree): boolean =>
           (propertyNames.has(tree.name) && name === 'Pick') || (!propertyNames.has(tree.name) && name === 'Omit');
 
-        const getClassTrees: GetClassTrees = () => {
-          const classTrees = this.getPropertyTypeTrees(referencedClassDeclaration).filter(propertyFilter);
-          return classTrees;
-        };
-
         const contextProperty = name === 'Pick' ? 'picked' : 'omitted';
         tree.children.push(
-          new ClassNode(
-            {
-              name: getName(referencedClassDeclaration),
-              meta: {
-                [contextProperty]: propertyNames,
-              },
-            },
-            getClassTrees,
-          ),
+          this.createClassNode(targetType, propertyFilter, {
+            [contextProperty]: propertyNames,
+          }),
         );
       } else if (name === 'Record') {
         const recordNode = new RecordNode();
         const [keyType, valueType] = type.getAliasTypeArguments();
-        this.walkTypeNodes(keyType, false, recordNode);
-        this.walkTypeNodes(valueType, false, recordNode);
+        this.walkTypeNodes(keyType, { tree: recordNode });
+        this.walkTypeNodes(valueType, { tree: recordNode });
         tree.children.push(recordNode);
       } else {
-        throw new ParseError('Syntax not supported', {
+        throw new ParseError(`Syntax not supported: ${type.getText()}`, {
           asText: type.getText(),
           hasAliasSymbol: true,
         });
       }
     } else {
-      throw new ParseError('Syntax not supported', {
+      throw new ParseError(`Syntax not supported: ${type.getText()}`, {
         asText: type.getText(),
         noBranchMatched: true,
       });
@@ -337,14 +393,67 @@ export class Parser {
     return tree;
   }
 
+  createClassNode(
+    type: Type,
+    filter: (t: ITypeAndTree) => boolean = () => true,
+    meta: Record<string, unknown> = {},
+  ): ClassNode {
+    const referencedDeclaration = getFirstSymbolDeclaration(type);
+
+    let typeMap: TypeMap | undefined;
+    if (isClass(referencedDeclaration) || isInterface(referencedDeclaration)) {
+      const declarationTypeParameters = referencedDeclaration.getTypeParameters();
+
+      typeMap = new Map(
+        zip(
+          declarationTypeParameters.map((t) => t.getName()),
+          type.getTypeArguments(),
+        ),
+      );
+    }
+
+    const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration, typeMap).filter(filter);
+
+    const typeSignature = JSON.stringify({
+      declaration: ClassCache.getKey(referencedDeclaration),
+      parameters: type.getTypeArguments().map(getTypeId),
+    });
+
+    if (!this.declarationsDiscovered.has(typeSignature)) {
+      this.declarationsDiscovered.add(typeSignature);
+      // Discover embedded interfaces / objects in references declaration, but only once
+      getClassTrees();
+    }
+
+    const from =
+      {
+        [SyntaxKind.ClassDeclaration]: 'class',
+        [SyntaxKind.InterfaceDeclaration]: 'interface',
+        [SyntaxKind.TypeLiteral]: 'object',
+      }[referencedDeclaration.getKind() as number] ?? 'unknown';
+
+    return new ClassNode(
+      {
+        name: getName(referencedDeclaration),
+        meta: {
+          ...meta,
+          reference: typeSignature,
+          from,
+        },
+      },
+      getClassTrees,
+    );
+  }
+
   /**
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
    * @param classDeclaration A ts-morph class declaration whose members will be processed
    */
-  getPropertyTypeTrees(classDeclaration: ClassOrInterfaceOrLiteral): ITypeAndTree[] {
-    const cached = this.classTreeCache.get(classDeclaration);
+  getPropertyTypeTrees(classDeclaration: ClassOrInterfaceOrLiteral, typeMap?: TypeMap): ITypeAndTree[] {
+    const types = typeMap ? Array.from(typeMap?.values()).map(getTypeId) : [];
+    const cached = this.classTreeCache.get(classDeclaration, types);
     if (cached) {
       return cached;
     }
@@ -357,7 +466,7 @@ export class Parser {
       const properties = isClass(declaration) ? declaration.getInstanceProperties() : declaration.getProperties();
       for (const prop of properties) {
         const name = prop.getName();
-        const tree = this.buildTypeTree(declaration, prop as PropertyDeclaration);
+        const tree = this.buildTypeTree(declaration, prop as PropertyDeclaration, typeMap);
 
         if (isClass(declaration)) {
           this.applyDecorators(declaration, name, tree);
@@ -370,7 +479,7 @@ export class Parser {
       }
     }
 
-    this.classTreeCache.set(classDeclaration, trees);
+    this.classTreeCache.set(classDeclaration, types, trees);
 
     return trees;
   }
@@ -396,16 +505,20 @@ export class Parser {
     return declarations;
   }
 
-  buildTypeTree(currentClass: ClassOrInterfaceOrLiteral, prop: PropertyDeclaration): TypeNode {
+  buildTypeTree(currentClass: ClassOrInterfaceOrLiteral, prop: PropertyDeclaration, typeMap?: TypeMap): TypeNode {
     const type = prop.getType();
     const hasQuestionToken = prop.hasQuestionToken();
 
     try {
-      return this.walkTypeNodes(type, hasQuestionToken);
+      return this.walkTypeNodes(type, { hasQuestionToken, typeMap });
     } catch (error) {
       if (isParseError(error)) {
         // Enrich context
+        error.message += `\n  ${getName(currentClass)}.${prop.getName()} at ${prop
+          .getSourceFile()
+          .getFilePath()}:${prop.getStartLineNumber()}`;
         error.context.class = getName(currentClass);
+        error.context.property = prop.getName();
       }
       throw error;
     }
