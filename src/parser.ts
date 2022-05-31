@@ -5,6 +5,7 @@ import {
   InterfaceDeclaration,
   Node,
   PropertyDeclaration,
+  SourceFile,
   SyntaxKind,
   Type,
   TypeLiteralNode,
@@ -37,6 +38,7 @@ import {
   TypeNode,
   UndefinedNode,
   UnionNode,
+  walkPropertyTypeTree,
 } from './nodes';
 import { Constructor } from './types';
 import { zip } from './utils';
@@ -49,6 +51,20 @@ interface IOmitParameters {
   referencedClassDeclaration: ClassOrInterfaceOrLiteral;
   targetType: Type;
   propertyNames: Set<string>;
+}
+
+interface IMinimalProperty {
+  getName(): string;
+  getType(): Type;
+  getStartLineNumber(...args: unknown[]): number;
+  getSourceFile(): SourceFile;
+  hasQuestionToken?(): boolean;
+}
+
+interface IPropertyListItem {
+  declaration: ClassOrInterfaceOrLiteral | null;
+  props: IMinimalProperty[];
+  typeMap?: TypeMap;
 }
 
 /**
@@ -66,21 +82,30 @@ export function isParseError(error: unknown): error is ParseError {
  * @returns
  */
 export function isClass(obj: Node): obj is ClassDeclaration {
-  return obj.getKind() === SyntaxKind.ClassDeclaration;
+  return obj?.getKind && obj.getKind() === SyntaxKind.ClassDeclaration;
 }
 
 /**
  * Typeguard to ensure obj is an interface declaration
- * @param obj Must be a ts-morph node
+ * @param obj - Must be a ts-morph node
  * @returns
  */
 function isInterface(obj: Node): obj is InterfaceDeclaration {
-  return obj.getKind() === SyntaxKind.InterfaceDeclaration;
+  return obj?.getKind && obj.getKind() === SyntaxKind.InterfaceDeclaration;
+}
+
+/**
+ * Typeguard to ensure obj is an type literal declaration
+ * @param obj - Must be a ts-morph node
+ * @returns
+ */
+function isTypeLiteral(obj: Node): obj is TypeLiteralNode {
+  return obj?.getKind && obj.getKind() === SyntaxKind.TypeLiteral;
 }
 
 /**
  * Typeguard to ensure obj is class or interface declaration or a literal
- * @param obj
+ * @param obj -
  * @returns
  */
 function isClassOrInterfaceOrLiteral(obj?: Node): obj is ClassOrInterfaceOrLiteral {
@@ -97,11 +122,16 @@ function isClassOrInterfaceOrLiteral(obj?: Node): obj is ClassOrInterfaceOrLiter
 
 /**
  * Returns the name of a class or an interface. For object literals it'll use
- * the filename and line number as name. Can be used as cache key.
- * @param obj
+ * the filename and line number as name
+ * @param obj - A class, interface or objectliteral delcaration.
  * @returns
  */
-function getName(obj: ClassOrInterfaceOrLiteral): string {
+function getName(obj: ClassOrInterfaceOrLiteral | null): string {
+  /* istanbul ignore if */
+  if (obj === null) {
+    return 'null';
+  }
+
   if (isClass(obj) || isInterface(obj)) {
     const name = obj.getName();
     if (name) {
@@ -138,18 +168,6 @@ function getFirstSymbolDeclaration(type: Type): ClassOrInterfaceOrLiteral {
   return declaration;
 }
 
-function getBaseDeclaration(currentDeclaration: ClassOrInterfaceOrLiteral): ClassOrInterfaceOrLiteral | undefined {
-  if (isClass(currentDeclaration)) {
-    return currentDeclaration.getBaseClass();
-  } else if (isInterface(currentDeclaration)) {
-    const [baseInterface] = currentDeclaration.getBaseDeclarations();
-    if (baseInterface && isInterface(baseInterface)) {
-      return baseInterface;
-    }
-  }
-  return undefined;
-}
-
 function getOmitParameters(type: Type): IOmitParameters {
   const [targetType, stringLiteralOrUnion] = type.getAliasTypeArguments();
 
@@ -170,16 +188,6 @@ function getOmitParameters(type: Type): IOmitParameters {
   }
 
   return { referencedClassDeclaration, propertyNames, targetType };
-}
-
-function walkPropertyTypeTree(node: TypeNode, callback: (n: TypeNode) => unknown): void {
-  if (node.kind === 'root') {
-    callback(node);
-  }
-  for (const child of node.children) {
-    callback(child);
-    walkPropertyTypeTree(child, callback);
-  }
 }
 
 export class ClassCache<T> {
@@ -340,15 +348,7 @@ export class Parser {
     } else if (type.isIntersection()) {
       tree.children.push(this.createIntersectionNode(type, typeMap));
     } else if (type.isUnion()) {
-      const unionNode = new UnionNode();
-      tree.children.push(unionNode);
-      for (const unionType of type.getUnionTypes()) {
-        // Skip undefined, it is already handled by the RootNode
-        if (tree.kind === 'root' && unionType.isUndefined()) {
-          continue;
-        }
-        this.walkTypeNodes(unionType, { tree: unionNode });
-      }
+      this.handleUnion(type, tree);
     } else if (type.isArray()) {
       const arrayNode = new ArrayNode();
       tree.children.push(arrayNode);
@@ -357,38 +357,10 @@ export class Parser {
       if (!type.isTuple()) {
         tree.children.push(this.createClassNode(type));
       } else {
-        const tupleNode = new TupleNode();
-        tree.children.push(tupleNode);
-        for (const tupleElementType of type.getTypeArguments()) {
-          this.walkTypeNodes(tupleElementType, { tree: tupleNode });
-        }
+        this.handleTuple(type, tree);
       }
     } else if (type.getAliasSymbol()) {
-      const name = type.getAliasSymbol()?.getFullyQualifiedName();
-
-      if (name === 'Omit' || name === 'Pick') {
-        const { targetType, propertyNames } = getOmitParameters(type);
-        const propertyFilter = (tree: ITypeAndTree): boolean =>
-          (propertyNames.has(tree.name) && name === 'Pick') || (!propertyNames.has(tree.name) && name === 'Omit');
-
-        const contextProperty = name === 'Pick' ? 'picked' : 'omitted';
-        tree.children.push(
-          this.createClassNode(targetType, propertyFilter, {
-            [contextProperty]: propertyNames,
-          }),
-        );
-      } else if (name === 'Record') {
-        const recordNode = new RecordNode();
-        const [keyType, valueType] = type.getAliasTypeArguments();
-        this.walkTypeNodes(keyType, { tree: recordNode });
-        this.walkTypeNodes(valueType, { tree: recordNode });
-        tree.children.push(recordNode);
-      } else {
-        throw new ParseError(`Syntax not supported: ${type.getText()}`, {
-          asText: type.getText(),
-          hasAliasSymbol: true,
-        });
-      }
+      this.handleAliasSymbols(type, tree);
     } else {
       throw new ParseError(`Syntax not supported: ${type.getText()}`, {
         asText: type.getText(),
@@ -397,6 +369,54 @@ export class Parser {
     }
 
     return tree;
+  }
+
+  handleTuple(type: Type, tree: TypeNode): void {
+    const tupleNode = new TupleNode();
+    tree.children.push(tupleNode);
+    for (const tupleElementType of type.getTypeArguments()) {
+      this.walkTypeNodes(tupleElementType, { tree: tupleNode });
+    }
+  }
+
+  handleUnion(type: Type, tree: TypeNode): void {
+    const unionNode = new UnionNode();
+    tree.children.push(unionNode);
+    for (const unionType of type.getUnionTypes()) {
+      // Skip undefined, it is already handled by the RootNode
+      if (tree.kind === 'root' && unionType.isUndefined()) {
+        continue;
+      }
+      this.walkTypeNodes(unionType, { tree: unionNode });
+    }
+  }
+
+  handleAliasSymbols(type: Type, tree: TypeNode): void {
+    const name = type.getAliasSymbol()?.getFullyQualifiedName();
+
+    if (name === 'Omit' || name === 'Pick') {
+      const { targetType, propertyNames } = getOmitParameters(type);
+      const propertyFilter = (tree: ITypeAndTree): boolean =>
+        (propertyNames.has(tree.name) && name === 'Pick') || (!propertyNames.has(tree.name) && name === 'Omit');
+
+      const contextProperty = name === 'Pick' ? 'picked' : 'omitted';
+      tree.children.push(
+        this.createClassNode(targetType, propertyFilter, {
+          [contextProperty]: propertyNames,
+        }),
+      );
+    } else if (name === 'Record') {
+      const recordNode = new RecordNode();
+      const [keyType, valueType] = type.getAliasTypeArguments();
+      this.walkTypeNodes(keyType, { tree: recordNode });
+      this.walkTypeNodes(valueType, { tree: recordNode });
+      tree.children.push(recordNode);
+    } else {
+      throw new ParseError(`Syntax not supported: ${type.getText()}`, {
+        asText: type.getText(),
+        hasAliasSymbol: true,
+      });
+    }
   }
 
   createIntersectionNode(type: Type, typeMap?: TypeMap): IntersectionNode {
@@ -488,13 +508,20 @@ export class Parser {
     // and walk up until there is no base class
     const trees: ITypeAndTree[] = [];
 
-    for (const declaration of this.getAllDeclarations(classDeclaration)) {
-      const properties = isClass(declaration) ? declaration.getInstanceProperties() : declaration.getProperties();
+    for (const { declaration, props: properties, typeMap: defaultTypeMap } of this.getAllProperties(classDeclaration)) {
       for (const prop of properties) {
-        const name = prop.getName();
-        const tree = this.buildTypeTree(declaration, prop as PropertyDeclaration, typeMap);
+        const mergedTypeMap: TypeMap = new Map(defaultTypeMap);
+        for (const [k, v] of typeMap?.entries() ?? []) {
+          if (mergedTypeMap.has(k)) {
+            throw new ParseError('megablorb');
+          }
+          mergedTypeMap.set(k, v);
+        }
 
-        if (isClass(declaration)) {
+        const name = prop.getName();
+        const tree = this.buildTypeTree(declaration, prop, mergedTypeMap);
+
+        if (declaration && isClass(declaration)) {
           this.applyDecorators(declaration, name, tree);
         }
 
@@ -517,23 +544,182 @@ export class Parser {
     return classNode;
   }
 
-  getAllDeclarations(classDeclaration: ClassOrInterfaceOrLiteral): ClassOrInterfaceOrLiteral[] {
-    const declarations: ClassOrInterfaceOrLiteral[] = [];
-
-    let currentDeclaration: ClassOrInterfaceOrLiteral | undefined = classDeclaration;
-    while (currentDeclaration) {
-      declarations.push(currentDeclaration);
-      currentDeclaration = getBaseDeclaration(currentDeclaration);
+  buildTypeMap(
+    currentDeclaration: ClassDeclaration | InterfaceDeclaration,
+    currentBaseType: Type | undefined | null,
+  ): TypeMap | undefined {
+    let typeMap: TypeMap | undefined;
+    if (currentBaseType) {
+      if (currentBaseType.getTypeArguments().length) {
+        typeMap = new Map(
+          zip(
+            currentDeclaration.getTypeParameters().map((t) => t.getName()),
+            currentBaseType.getTypeArguments(),
+          ),
+        );
+      }
     }
-
-    declarations.reverse();
-
-    return declarations;
+    return typeMap;
   }
 
-  buildTypeTree(currentClass: ClassOrInterfaceOrLiteral, prop: PropertyDeclaration, typeMap?: TypeMap): TypeNode {
+  getClassHierarchyProperties(classDeclaration: ClassDeclaration, type?: Type): IPropertyListItem[] {
+    const properties: IPropertyListItem[] = [];
+
+    let currentDeclaration: ClassDeclaration | undefined = classDeclaration;
+    let currentBaseType: Type | undefined = type;
+    while (currentDeclaration) {
+      let typeMap: TypeMap | undefined;
+      if (currentBaseType) {
+        if (currentBaseType.getTypeArguments().length) {
+          typeMap = new Map(
+            zip(
+              currentDeclaration.getTypeParameters().map((t) => t.getName()),
+              currentBaseType.getTypeArguments(),
+            ),
+          );
+        }
+      }
+
+      const props = currentDeclaration.getInstanceProperties();
+
+      properties.push({
+        declaration: currentDeclaration,
+        props,
+        typeMap,
+      });
+
+      // Base classes also might also carry a base type which is needed to find
+      // out the type parameters if the base class is generic. There should be only one
+      // base type, since there is also only base class.
+      const baseTypes = currentDeclaration.getBaseTypes();
+      if (baseTypes.length) {
+        if (baseTypes.length > 1) {
+          throw new ParseError(
+            `Class declaration with multiple base types encountered. This scenario is not supported`,
+          );
+        }
+      }
+      [currentBaseType] = currentDeclaration.getBaseTypes();
+
+      currentDeclaration = currentDeclaration.getBaseClass();
+    }
+
+    properties.reverse();
+
+    return properties;
+  }
+
+  getTypeLiteralProperties(declaration: TypeLiteralNode): IPropertyListItem[] {
+    return [
+      {
+        declaration,
+        props: declaration.getProperties(),
+      },
+    ];
+  }
+
+  getInterfaceHierarchyProperties(declaration: InterfaceDeclaration, type: Type | null = null): IPropertyListItem[] {
+    const typeMap = this.buildTypeMap(declaration, type);
+    const properties: IPropertyListItem[] = [
+      {
+        declaration,
+        props: declaration.getProperties(),
+        typeMap,
+      },
+    ];
+
+    const baseDeclarations = declaration.getBaseDeclarations();
+    const baseTypes = declaration.getBaseTypes();
+
+    const typesHandled = new Set<string>();
+    for (const baseType of baseTypes) {
+      const matchedDeclaration = baseDeclarations.find(
+        (d) => d.getSymbol()?.getName() === baseType.getSymbol()?.getName(),
+      );
+
+      if (matchedDeclaration?.getName) {
+        const name = matchedDeclaration.getName();
+        if (!name) {
+          throw new ParseError("Can't handle interface(ish) ancestor without name");
+        }
+
+        if (isClass(matchedDeclaration)) {
+          properties.push(...this.getClassHierarchyProperties(matchedDeclaration, baseType));
+        } else if (isInterface(matchedDeclaration)) {
+          properties.push(...this.getInterfaceHierarchyProperties(matchedDeclaration, baseType));
+        } else {
+          throw new ParseError(`Declaration is of unknown type: ${declaration.getText()}`);
+        }
+
+        typesHandled.add(name);
+      }
+    }
+
+    const remainingTypes = baseTypes.filter((t) => !t.getSymbol() || !typesHandled.has(t.getSymbol()!.getName()));
+
+    for (const baseType of remainingTypes) {
+      let typeMap: TypeMap | undefined;
+      if (baseType.getTypeArguments().length) {
+        const declarationForType = getFirstSymbolDeclaration(baseType);
+        if (!isInterface(declarationForType)) {
+          throw new ParseError('Blorb');
+        }
+
+        typeMap = this.buildTypeMap(declarationForType, baseType);
+      }
+      const baseTypeProperties = baseType.getProperties();
+      const baseTypeDeclarations = baseTypeProperties
+        .map((p) => p.getDeclarations()[0])
+        .filter(
+          (d) => d.getKind() === SyntaxKind.PropertyDeclaration || d.getKind() === SyntaxKind.PropertySignature,
+        ) as PropertyDeclaration[];
+
+      /* istanbul ignore if */
+      if (baseTypeDeclarations.length !== baseTypeProperties.length) {
+        console.log(baseTypeProperties.map((p) => p.getDeclarations()[0].getKindName()));
+        throw new ParseError(`Could not resolve all property declarations in ${baseType.getText()}`);
+      }
+
+      properties.push({
+        declaration: null,
+        props: baseTypeDeclarations,
+        typeMap,
+      });
+    }
+
+    const propertiesSeen = new Set<string>();
+    const skip = new Set<string>();
+    for (const p of properties) {
+      for (const prop of p.props) {
+        const name = prop.getName();
+        if (!propertiesSeen.has(name)) {
+          propertiesSeen.add(name);
+        } else {
+          skip.add(name);
+        }
+      }
+      p.props = p.props.filter((prop) => !skip.has(prop.getName()));
+    }
+
+    return properties.reverse();
+  }
+
+  getAllProperties(classDeclaration: ClassOrInterfaceOrLiteral | Node): IPropertyListItem[] {
+    if (isClass(classDeclaration)) {
+      return this.getClassHierarchyProperties(classDeclaration);
+    } else if (isInterface(classDeclaration)) {
+      return this.getInterfaceHierarchyProperties(classDeclaration);
+    } else if (isTypeLiteral(classDeclaration)) {
+      return this.getTypeLiteralProperties(classDeclaration);
+    } else {
+      /* istanbul ignore next */
+      throw new ParseError(`Can't get properties for ${classDeclaration.getText()}`);
+    }
+  }
+
+  buildTypeTree(currentClass: ClassOrInterfaceOrLiteral | null, prop: IMinimalProperty, typeMap?: TypeMap): TypeNode {
     const type = prop.getType();
-    const hasQuestionToken = prop.hasQuestionToken();
+    const hasQuestionToken = prop.hasQuestionToken?.();
 
     try {
       return this.walkTypeNodes(type, { hasQuestionToken, typeMap });

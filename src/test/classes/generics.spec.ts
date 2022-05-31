@@ -27,6 +27,13 @@ describe('generics', () => {
     property3!: V;
   }
 
+  interface ITest {
+    property1: string;
+  }
+
+  @v.validatorDecorator()
+  class TestExtending extends Generic<string, number, boolean> implements ITest {}
+
   it('should have cached all variants of `Generic`', () => {
     v.validate(Test, {});
 
@@ -39,8 +46,7 @@ describe('generics', () => {
 
   it('should construct the correct tree', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-    const x = v.getPropertyTypeTreesFromConstructor(Test);
-    console.log(tree);
+
     expect(tree).toEqual({
       kind: 'root',
       optional: false,
@@ -59,6 +65,79 @@ describe('generics', () => {
       ],
       annotations: {},
     } as TypeNodeData);
+  });
+
+  it('should construct the correct tree for extending classes', () => {
+    const trees = v.getPropertyTypeTreesFromConstructor(TestExtending);
+
+    expect(trees).toEqual([
+      {
+        name: 'property1',
+        tree: {
+          kind: 'root',
+          optional: false,
+          children: [
+            {
+              kind: 'string',
+              reason: expect.anything(),
+              children: [],
+              annotations: {},
+            },
+          ],
+          annotations: {},
+        } as TypeNodeData,
+      },
+      {
+        name: 'property2',
+        tree: {
+          kind: 'root',
+          optional: false,
+          children: [
+            {
+              kind: 'number',
+              reason: expect.anything(),
+              children: [],
+              annotations: {},
+            },
+          ],
+          annotations: {},
+        } as TypeNodeData,
+      },
+      {
+        name: 'property3',
+        tree: {
+          kind: 'root',
+          optional: false,
+          children: [
+            {
+              kind: 'boolean',
+              reason: expect.anything(),
+              children: [],
+              annotations: {},
+            },
+          ],
+          annotations: {},
+        } as TypeNodeData,
+      },
+    ]);
+    // expect(tree).toEqual({
+    //   kind: 'root',
+    //   optional: false,
+    //   children: [
+    //     {
+    //       kind: 'class',
+    //       name: 'Generic',
+    //       children: [],
+    //       annotations: {},
+    //       meta: {
+    //         from: 'class',
+    //         reference: expect.any(String),
+    //       },
+    //       getClassTrees: expect.any(Function),
+    //     },
+    //   ],
+    //   annotations: {},
+    // } as TypeNodeData);
   });
 
   it('should validate', () => {

@@ -73,6 +73,16 @@ export interface INodeValidationError {
 
 export type INodeValidationResult = INodeValidationSuccess | INodeValidationError;
 
+export function walkPropertyTypeTree(node: TypeNode, callback: (n: TypeNode) => unknown): void {
+  if (node.kind === 'root') {
+    callback(node);
+  }
+  for (const child of node.children) {
+    callback(child);
+    walkPropertyTypeTree(child, callback);
+  }
+}
+
 abstract class TypeNodeBase {
   abstract kind: string;
   abstract validate(value: unknown, context: IValidationContext): INodeValidationResult;
