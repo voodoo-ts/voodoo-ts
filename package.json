@@ -29,7 +29,7 @@
     "winston": "^3.7.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.0.1",
+    "@commitlint/cli": "^17.0.2",
     "@commitlint/config-conventional": "^17.0.0",
     "@types/jest": "^27.5.1",
     "@types/luxon": "^2.3.2",
