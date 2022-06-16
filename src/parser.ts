@@ -224,7 +224,8 @@ export class TypeCache<T> {
 
   /**
    * Computes a cache key for a class or file, this also considers type arguments for generics
-   * @param classDeclaration
+   * @param classDeclaration - An interface, class or literal node
+   * @param typeParameters - typeIds from the type's generic parameters
    * @returns
    */
   static getKey(classDeclaration: ClassOrInterfaceOrLiteral, typeParameters: number[]): string {

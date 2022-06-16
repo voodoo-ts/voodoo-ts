@@ -1,6 +1,7 @@
 import { enumerate, zip } from './utils';
 
-export interface IAnnotationMap {}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface IAnnotationMap {} // Will be extended from elsewhere
 
 export interface IValidationOptions {
   allowUnknownFields?: boolean;
@@ -73,6 +74,11 @@ export interface INodeValidationError {
 
 export type INodeValidationResult = INodeValidationSuccess | INodeValidationError;
 
+/**
+ * Walks trough a TypeNode tree and calls the callback for each child
+ * @param node - The root node of the validation tree
+ * @param callback - A function which is called for each child
+ */
 export function walkPropertyTypeTree(node: TypeNode, callback: (n: TypeNode) => unknown): void {
   if (node.kind === 'root') {
     callback(node);

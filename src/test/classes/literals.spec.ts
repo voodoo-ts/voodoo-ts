@@ -26,7 +26,6 @@ describe('literals', () => {
   @v.validatorDecorator()
   class TestBoolean {
     booleanLiteralProperty!: false;
-    // nullLiteralProperty!: null;
   }
 
   const tests: ITests[] = [
@@ -91,14 +90,14 @@ describe('literals', () => {
             expect(result.rawErrors).toEqual({
               success: false,
               type: 'class',
-              reason: 'OBJECT_PROPERTY_FAILED',
+              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
               value: { [propertyName]: testCase.invalidValue },
               context: { className: testCase.cls.name },
               previousErrors: [
                 {
                   success: false,
                   type: 'literal',
-                  reason: 'LITERAL_NOT_MATCHING',
+                  reason: ValidationErrorType.LITERAL_NOT_MATCHING,
                   value: testCase.invalidValue,
                   previousErrors: [],
                   context: {
@@ -115,65 +114,4 @@ describe('literals', () => {
       });
     });
   }
-  // describe('simple -> (string | number)', () => {
-  //   it('should construct the correct tree', () => {
-  //     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-  //     console.log(tree);
-  //     expect(tree).toEqual({
-  //       kind: 'root',
-  //       optional: false,
-  //       children: [
-  //         {
-  //           kind: 'literal',
-  //           reason: ValidationErrorType.LITERAL_NOT_MATCHING,
-  //           expected: 'foo',
-  //           children: [],
-  //           annotations: {},
-  //         },
-  //       ],
-  //       annotations: {},
-  //     });
-  //   });
-
-  //   it('should validate', () => {
-  //     const result = v.validate(Test, { stringLiteralProperty: 'foo' });
-
-  //     expect(result.success).toEqual(true);
-  //   });
-
-  //   describe('should construct the correct error', () => {
-  //     const result = v.validate(Test, { stringLiteralProperty: 'not_foo' } as any);
-
-  //     it('should not validate', () => {
-  //       expect(result.success).toEqual(false);
-  //     });
-
-  //     it('should construct the correct error', () => {
-  //       expectValidationError(result, (result) => {
-  //         expect(result.rawErrors).toEqual({
-  //           success: false,
-  //           type: 'class',
-  //           reason: 'OBJECT_PROPERTY_FAILED',
-  //           value: { stringLiteralProperty: 'not_foo' },
-  //           context: { className: 'Test' },
-  //           previousErrors: [
-  //             {
-  //               success: false,
-  //               type: 'literal',
-  //               reason: 'LITERAL_NOT_MATCHING',
-  //               value: 'not_foo',
-  //               previousErrors: [],
-  //               context: {
-  //                 type: 'string',
-  //                 expected: 'foo',
-  //                 className: 'Test',
-  //                 propertyName: 'stringLiteralProperty',
-  //               },
-  //             },
-  //           ],
-  //         });
-  //       });
-  //     });
-  //   });
-  // });
 });

@@ -25,8 +25,8 @@ export class ClassDiscovery {
    * position. Since `line` and `column` refer to the decorator's call site, we'll receive the identifier of the decorator.
    * Starting from there we walk upwards until we find the containing `classDeclaration`.
    *
-   * @param filename - Filename of the file the class should be searched
    * @param className - String representation of the className
+   * @param filename - Filename of the file the class should be searched
    * @param line - The line where the `@Decorator()` call occurred
    * @param column - The column where the `@Decorator()` call occured. Points to `Decorator` (@ not included)
    * @returns The found class declaration or throws

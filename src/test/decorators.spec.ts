@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import {
@@ -157,7 +158,7 @@ describe('decorators', () => {
     it('should decorate', () => {
       const decorators = getDecorators(Test.prototype, 'testProperty');
       expect(decorators).toBeInstanceOf(Array);
-      expect(decorators!.length).toEqual(1);
+      expect(decorators.length).toEqual(1);
     });
 
     it('should add a decorator node to the tree', () => {
@@ -279,7 +280,7 @@ describe('decorators', () => {
     it('should decorate', () => {
       const decorators = getDecorators(Test.prototype, 'testProperty');
       expect(decorators).toBeInstanceOf(Array);
-      expect(decorators!.length).toEqual(1);
+      expect(decorators.length).toEqual(1);
     });
 
     it('should construct the correct tree', () => {
@@ -447,7 +448,7 @@ describe('decorators', () => {
     it('should decorate', () => {
       const decorators = getDecorators(Test.prototype, 'testProperty');
       expect(decorators).toBeInstanceOf(Array);
-      expect(decorators!.length).toEqual(1);
+      expect(decorators.length).toEqual(1);
     });
 
     it('should construct the correct tree', () => {
@@ -575,7 +576,7 @@ describe('decorators', () => {
     it('should decorate', () => {
       const decorators = getDecorators(Test.prototype, 'testProperty');
       expect(decorators).toBeInstanceOf(Array);
-      expect(decorators!.length).toEqual(1);
+      expect(decorators.length).toEqual(1);
     });
 
     it('should add a decorator node to the tree', () => {

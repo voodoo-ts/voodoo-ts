@@ -120,24 +120,6 @@ describe('generics', () => {
         } as TypeNodeData,
       },
     ]);
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [
-    //     {
-    //       kind: 'class',
-    //       name: 'Generic',
-    //       children: [],
-    //       annotations: {},
-    //       meta: {
-    //         from: 'class',
-    //         reference: expect.any(String),
-    //       },
-    //       getClassTrees: expect.any(Function),
-    //     },
-    //   ],
-    //   annotations: {},
-    // } as TypeNodeData);
   });
 
   it('should validate', () => {

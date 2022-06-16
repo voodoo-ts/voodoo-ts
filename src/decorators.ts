@@ -6,7 +6,7 @@ import { enumerate } from './utils';
 export const typeDecoratorMetadataKey = Symbol('typeDecoratorMetadataKey');
 export const annotationDecoratorMetadataKey = Symbol('annotationDecoratorMetadataKey');
 
-export type DecoratorFactory<T extends any[] = any[]> = (
+export type DecoratorFactory<T extends unknown[] = any[]> = (
   ...args: T
 ) => (this: DecoratorNode, value: any, context: IValidationContext) => INodeValidationResult;
 
@@ -48,6 +48,8 @@ export interface IAnnotationDecoratorMeta extends IDecoratorMeta {
 export type TDecoratorMeta = IValidationDecoratorMeta | IAnnotationDecoratorMeta;
 
 declare module './nodes' {
+  // Extends the IAnnoationMap from ./nodes.ts
+  // eslint-disable-next-line no-shadow
   export interface IAnnotationMap {
     validateIf?: (value: unknown, values: unknown) => boolean;
   }
@@ -67,7 +69,7 @@ export enum NumberValidationError {
   OUT_OF_RANGE = 'OUT_OF_RANGE',
 }
 
-export function createValidationDecorator<U extends any[] = any[]>(
+export function createValidationDecorator<U extends unknown[] = unknown[]>(
   decoratorOptions: Omit<IValidationDecoratorOptions, 'decoratorType'>,
 ): (...options: U) => PropertyDecorator {
   return (...options: U) => {
@@ -86,7 +88,7 @@ export function createValidationDecorator<U extends any[] = any[]>(
   };
 }
 
-export function defaultTransform(args: unknown[], previous: unknown | undefined): unknown {
+export function defaultTransform(args: unknown[]): unknown {
   return args[0];
 }
 
@@ -98,7 +100,7 @@ export function stackingTransform(args: unknown[], previous: unknown): unknown[]
   }
 }
 
-export function createAnnotationDecorator<U extends any[] = any[]>(
+export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
   decoratorOptions: Omit<IAnnotationDecoratorOptions, 'decoratorType'>,
 ): (...options: U) => PropertyDecorator {
   return (...args: U) => {

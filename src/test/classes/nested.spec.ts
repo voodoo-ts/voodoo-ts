@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { ParseError } from '../../errors';
 import { ClassNode, TypeNodeData, ValidationErrorType } from '../../nodes';
 import { isParseError } from '../../parser';

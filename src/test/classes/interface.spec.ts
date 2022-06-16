@@ -2,8 +2,12 @@ import { ClassNode, TypeNode, TypeNodeData } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { project } from '../utils';
 
-function assertClassTree(n: TypeNode): asserts n is ClassNode {
-  expect(n.kind).toEqual('class');
+/**
+ * Asserts that n is a `ClassNode` using expect
+ * @param node - The TypeNode to assert
+ */
+function assertClassTree(node: TypeNode): asserts node is ClassNode {
+  expect(node.kind).toEqual('class');
 }
 
 describe('interface', () => {
