@@ -23,7 +23,7 @@ module.exports = {
     '@typescript-eslint/array-type': [
       'error',
       {
-        default: 'array',
+        default: 'array-simple',
       },
     ],
     '@typescript-eslint/ban-tslint-comment': 'error',
