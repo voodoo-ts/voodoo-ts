@@ -1,0 +1,38 @@
+{
+  "configurations": [
+  
+  {
+    "name": "Launch via NPM",
+    "request": "launch",
+    "runtimeArgs": [
+      "run-script",
+      "test",
+      // "dist/test/validator-instance.spec"
+      // "dist/test/classes/intersection.spec"
+    ],
+    "runtimeExecutable": "npm",
+    "skipFiles": [
+      "<node_internals>/**"
+    ],
+    
+    "type": "node"
+  },
+
+  {
+    "name": "Launch via NPM 2",
+    "request": "launch",
+    "runtimeArgs": [
+      "run-script",
+      "jest-ts-file",
+      // "src/test/validator-instance.spec"
+      "src/test/classes/interface.spec"
+    ],
+    "runtimeExecutable": "npm",
+    "skipFiles": [
+      "<node_internals>/**"
+    ],
+    
+    "type": "node"
+  }
+  ]
+}

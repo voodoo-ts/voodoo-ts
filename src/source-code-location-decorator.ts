@@ -8,6 +8,7 @@ import { ClassCache } from './parser';
 export interface IClassMeta<Options = unknown> {
   filename: string;
   line: number;
+  column: number;
 
   options: Options;
 }
@@ -15,6 +16,7 @@ export interface IClassMeta<Options = unknown> {
 export class SourceCodeLocationDecorator<T> {
   classDiscovery: ClassDiscovery;
   symbol: symbol;
+  onDecorate?: (target: object, classMetadata: IClassMeta<T>) => void;
 
   classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
 
@@ -28,15 +30,18 @@ export class SourceCodeLocationDecorator<T> {
 
     const filename = stack[1].fileName!;
     const line = stack[1].lineNumber!;
+    const column = stack[1].columnNumber!;
 
-    const classMetadata = {
+    const classMetadata: IClassMeta<T> = {
       filename,
       line,
+      column,
       options,
     };
 
     return (target: object) => {
-      const classDeclaration = this.classDiscovery.getClass(target.constructor.name, filename, line);
+      this.onDecorate?.(target, classMetadata);
+      const classDeclaration = this.classDiscovery.getClass(target.constructor.name, filename, line, column);
       this.classDeclarationToClassReference.set(classDeclaration, target as Constructor<unknown>);
       Reflect.defineMetadata(this.symbol, classMetadata, target);
     };

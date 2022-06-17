@@ -1,9 +1,10 @@
 /* istanbul ignore file */
 import { getLineNumber } from './utils';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-empty-function
+// eslint-disable-next-line @typescript-eslint/naming-convention
 const Decorator =
   (...args: any[]) =>
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   (target: object) => {};
 
 export const LINE_NUMBER_UNDECORATED_CLASS = getLineNumber();

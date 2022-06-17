@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { expectValidationError, project } from '../utils';
