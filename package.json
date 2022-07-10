@@ -19,20 +19,16 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "error-stack-parser": "^2.1.4",
-    "json-colorizer": "^2.2.2",
-    "luxon": "^2.4.0",
     "reflect-metadata": "^0.1.13",
     "source-map-support": "^0.5.21",
     "ts-morph": "^15.1.0",
     "ts-node": "^10.8.2",
-    "typescript": "^4.7.4",
-    "winston": "^3.7.2"
+    "typescript": "^4.7.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.0.2",
     "@commitlint/config-conventional": "^17.0.3",
     "@types/jest": "^27.5.1",
-    "@types/luxon": "^2.3.2",
     "@types/node": "^18.0.3",
     "@typescript-eslint/eslint-plugin": "^5.28.0",
     "eslint": "^8.18.0",
