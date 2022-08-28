@@ -106,7 +106,7 @@ export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
   return (...args: U) => {
     return (target, propertyKey) => {
       const annotations = getAnnotations(target, propertyKey) ?? [];
-      const existingAnnotationValue = annotations.find((d) => [d.type, d.name] === [type, name])?.value;
+      const existingAnnotationValue = annotations.find((d) => d.type === type && d.name === name)?.value;
       const { name, type } = decoratorOptions;
       const transformParameters = decoratorOptions.transformParameters ?? defaultTransform;
       const value = transformParameters(args, existingAnnotationValue);
