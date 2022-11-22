@@ -83,8 +83,6 @@ describe('intersection', () => {
       property: { foo: 123, bar: 'bar', property: 'invalid' } as any,
     });
 
-    genValidationErrorTest(result);
-
     it('should not validate', () => {
       expect(result.success).toEqual(false);
     });
@@ -94,16 +92,22 @@ describe('intersection', () => {
         expect(result.rawErrors).toEqual({
           success: false,
           type: 'class',
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          context: { className: 'Test' },
           value: { property: { foo: 123, bar: 'bar', property: 'invalid' } },
           previousErrors: [
             {
               success: false,
               type: 'intersection',
+              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+              context: { className: 'Test', propertyName: 'property' },
               value: { foo: 123, bar: 'bar', property: 'invalid' },
               previousErrors: [
                 {
                   success: false,
                   type: 'class',
+                  reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+                  context: { className: 'Generic' },
                   value: { foo: 123, bar: 'bar', property: 'invalid' },
                   previousErrors: [
                     {
@@ -111,20 +115,14 @@ describe('intersection', () => {
                       type: 'number',
                       value: 'invalid',
                       previousErrors: [],
-                      reason: 'NOT_A_NUMBER',
+                      reason: ValidationErrorType.NOT_A_NUMBER,
                       context: { className: 'Generic', propertyName: 'property' },
                     },
                   ],
-                  reason: 'OBJECT_PROPERTY_FAILED',
-                  context: { className: 'Generic' },
                 },
               ],
-              reason: 'OBJECT_PROPERTY_FAILED',
-              context: { className: 'Test', propertyName: 'property' },
             },
           ],
-          reason: 'OBJECT_PROPERTY_FAILED',
-          context: { className: 'Test' },
         });
       });
     });
@@ -134,7 +132,7 @@ describe('intersection', () => {
     const result = v.validate(Test, {
       property: { foo: 123, bar: 'bar', property: 123, unknownProperty: 'UNKNOWN' } as any,
     });
-    genValidationErrorTest(result);
+
     it('should not validate', () => {
       expect(result.success).toEqual(false);
     });

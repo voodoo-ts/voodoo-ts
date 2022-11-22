@@ -6,6 +6,32 @@ import { TypeNodeData, ValidationErrorType } from '../nodes';
 import { ValidatorInstance } from '../validator';
 import { expectValidationError, project } from './utils';
 
+/*
+
+# Rules
+
+@Validator()
+class EmbeddedValidator {
+  prop1!: number;
+}
+
+@Transformer()
+class EmbeddedTransformer {
+  prop2!: Transformed<string, number>;
+}
+
+@Transformer()
+class TestTransformer {
+  prop1!: EmbeddedValidator;
+  prop2!: EmbeddedTransformer;
+  prop3!: EmbeddedValidator | EmbeddedTransformer;
+  prop4!: EmbeddedTransformer | null;
+  prop5?: EmbeddedTransformer;
+  
+}
+
+*/
+
 describe('general', () => {
   it('should construct', () => {
     const instance = new ValidatorInstance({ project });
@@ -230,12 +256,14 @@ describe('validator', () => {
       property11!: string;
       property12!: string;
       property13!: string;
-      property14!: string;
+      property14!: Array<string | TestEmbed>;
       property15!: [number, string];
     }
 
     it('should validate', () => {
-      v.validate(Test, {
+      // console.time('a');
+      // for (let i = 0; i < 10000; i++) {
+      const result = v.validate(Test, {
         property0: 'property0',
         property1: { embeddedNumber: 9001 },
         property2: 123,
@@ -250,8 +278,14 @@ describe('validator', () => {
         property11: 'property11',
         property12: 'property12',
         property13: 'property13',
-        property14: 'property14',
+        property14: ['1', { embeddedNumber: 1 }, '2', { embeddedNumber: 2 }],
+        property15: [123, 'string'],
       });
+      if (!result.success) {
+        throw new Error('');
+      }
+      // }
+      // console.timeEnd('a');
     });
   });
 });

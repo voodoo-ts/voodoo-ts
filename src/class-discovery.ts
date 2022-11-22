@@ -1,7 +1,7 @@
 import { ClassDeclaration, Project, SyntaxKind } from 'ts-morph';
 
 import { ClassNotFoundError } from './errors';
-import { isClass } from './parser';
+import { isClass } from './validator-parser';
 
 export class ClassDiscovery {
   project: Project;

@@ -58,8 +58,17 @@ export enum ValidationErrorType {
   CUSTOM = 'CUSTOM',
 }
 
+export interface IMatch {
+  node: TypeNodeBase;
+  context: any;
+}
+
 export interface INodeValidationSuccess {
   success: true;
+  value?: unknown;
+  node: TypeNodeBase;
+  context: Record<string, unknown>;
+  previousMatches: INodeValidationSuccess[];
 }
 
 export interface INodeValidationError {
@@ -103,8 +112,11 @@ abstract class TypeNodeBase {
     }
   }
 
-  success(): INodeValidationSuccess {
-    return { success: true };
+  success(
+    previousMatches: INodeValidationSuccess[] = [],
+    context: Record<string, unknown> = {},
+  ): INodeValidationSuccess {
+    return { success: true, node: this, context, previousMatches };
   }
 
   fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
@@ -162,13 +174,19 @@ export class RootNode extends TypeNodeBase {
       return this.success();
     }
 
-    for (const child of this.children) {
+    return this.validateChildren(this.children, value, context);
+  }
+  validateChildren(children: TypeNode[], value: unknown, context: IValidationContext): INodeValidationResult {
+    const previousMatches: INodeValidationSuccess[] = [];
+    for (const child of children) {
       const result = child.validate(value, context);
       if (!result.success) {
         return result;
+      } else {
+        previousMatches.push(result);
       }
     }
-    return this.success();
+    return this.success(previousMatches);
   }
 }
 
@@ -246,6 +264,7 @@ export class LiteralNode extends LeafNode {
 
   validate(value: unknown): INodeValidationResult {
     return this.wrapBoolean(value, value === this.expected, {
+      // review: expected,
       context: {
         type: typeof this.expected,
         expected: this.expected,
@@ -380,6 +399,9 @@ export class ArrayNode extends TypeNodeBase {
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (Array.isArray(value)) {
       const [arrayTypeNode, ...children] = this.children;
+      const previousMatches: INodeValidationSuccess[] = [];
+
+      // Validate type for each element
       for (const [i, item] of enumerate(value)) {
         const result = arrayTypeNode.validate(item, context);
         if (!result.success) {
@@ -388,9 +410,13 @@ export class ArrayNode extends TypeNodeBase {
             context: { element: i },
             previousErrors: [result],
           });
+        } else {
+          result.context.array = { i };
+          previousMatches.push(result);
         }
       }
 
+      // Validate decorators for each child
       for (const child of children) {
         const result = child.validate(value, context);
         if (!result.success) {
@@ -401,7 +427,7 @@ export class ArrayNode extends TypeNodeBase {
         }
       }
 
-      return this.success();
+      return this.success(previousMatches);
     } else {
       return this.fail(value, { reason: ValidationErrorType.NOT_AN_ARRAY });
     }
@@ -410,15 +436,22 @@ export class ArrayNode extends TypeNodeBase {
 
 export interface IClassOptions {
   name: string;
-  meta?: Record<string, unknown>;
+  meta: IClassMeta;
   validationOptions?: IValidationOptions;
+}
+
+export interface IClassMeta {
+  from: 'class' | 'interface' | 'object' | 'unknown';
+  reference?: string;
+  picked?: Set<string>;
+  omitted?: Set<string>;
 }
 
 export class ClassNode extends TypeNodeBase {
   kind = 'class' as const;
 
   name: string;
-  meta: Record<string, unknown> = {};
+  meta: IClassMeta;
   getClassTrees: () => ITypeAndTree[];
 
   constructor(options: IClassOptions, getClassTrees: () => ITypeAndTree[]) {
@@ -434,6 +467,7 @@ export class ClassNode extends TypeNodeBase {
       const properties = new Set(Object.keys(value));
 
       const errors: INodeValidationError[] = [];
+      const previousMatches: INodeValidationSuccess[] = [];
       for (const { name, tree } of this.getClassTrees()) {
         properties.delete(name);
         if (tree.annotations.validateIf) {
@@ -449,6 +483,10 @@ export class ClassNode extends TypeNodeBase {
           result.context.className = this.name;
           result.context.propertyName = name;
           errors.push(result);
+        } else {
+          result.context.className = this.name;
+          result.context.propertyName = name;
+          previousMatches.push(result);
         }
 
         const childrenResult = this.validateAllChildren(value, context);
@@ -480,7 +518,7 @@ export class ClassNode extends TypeNodeBase {
           },
         });
       } else {
-        return this.success();
+        return this.success(previousMatches);
       }
     } else {
       return this.fail(value, {
@@ -505,6 +543,8 @@ export class TupleNode extends TypeNodeBase {
       return this.fail(value, { reason: ValidationErrorType.NO_LENGTH_MATCH });
     }
 
+    const previousMatches: INodeValidationSuccess[] = [];
+
     for (const [i, [child, tupleElementValue]] of enumerate(zip(this.children, value))) {
       const result = child.validate(tupleElementValue, context);
       if (!result.success) {
@@ -513,10 +553,13 @@ export class TupleNode extends TypeNodeBase {
           context: { element: i },
           previousErrors: [result],
         });
+      } else {
+        result.context.array = { i };
+        previousMatches.push(result);
       }
     }
 
-    return this.success();
+    return this.success(previousMatches);
   }
 }
 
@@ -526,6 +569,7 @@ export class RecordNode extends TypeNodeBase {
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (typeof value === 'object' && value !== null) {
       const valueValidationNode = this.children[1];
+      const previousMatches: INodeValidationSuccess[] = [];
       for (const [objectKey, objectValue] of Object.entries(value)) {
         const valueResult = valueValidationNode.validate(objectValue, context);
         if (!valueResult.success) {
@@ -536,10 +580,13 @@ export class RecordNode extends TypeNodeBase {
               key: objectKey,
             },
           });
+        } else {
+          valueResult.context.record = { property: objectKey };
+          previousMatches.push(valueResult);
         }
       }
 
-      return this.success();
+      return this.success(previousMatches);
     } else {
       return this.fail(value, { reason: ValidationErrorType.NOT_AN_OBJECT });
     }
