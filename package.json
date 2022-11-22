@@ -9,9 +9,10 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "test-all": "npm run test dist/test",
-    "test": "npm run build && jest --verbose",
+    "test:tsjest": "jest -c jest.config.tsjest.js",
+    "test:build": "npm run build && jest --verbose",
     "coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage dist/test",
+    "test": "npm run test:tsjest src/",
     "build": "tsc",
     "linter": "npx eslint src/"
   },
