@@ -11,7 +11,7 @@
     "prepare": "npm run build",
     "test:tsjest": "jest -c jest.config.tsjest.js",
     "test:build": "npm run build && jest --verbose",
-    "coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage dist/test",
+    "test:coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage -- --coverageReporters cobertura text --reporters default jest-junit dist/test",
     "test": "npm run test:tsjest src/",
     "build": "tsc",
     "linter": "npx eslint src/"

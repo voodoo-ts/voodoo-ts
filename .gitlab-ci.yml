@@ -1,3 +1,6 @@
+variables:
+  npm_config_cache: "/var/cache/ci/npm"
+
 stages:
   - test
   - publish
@@ -25,6 +28,11 @@ jest:
   artifacts:
     paths:
       - coverage
+    reports: 
+      junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
   coverage: /All\sfiles.*?\s+(\d+.\d+)/
   script:
     - npm config set cache /var/cache/ci/npm --global
