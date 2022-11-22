@@ -214,10 +214,10 @@ module.exports = {
     'jsdoc/check-indentation': 'warn',
     'jsdoc/check-param-names': 'warn',
     'jsdoc/no-types': 'warn',
-    'jsdoc/require-description': 'warn',
+    'jsdoc/require-description': 'off',
     'jsdoc/require-hyphen-before-param-description': 'warn',
     'jsdoc/require-jsdoc': [
-      'warn',
+      'off',
       {
         checkConstructors: false,
         require: {
@@ -228,7 +228,7 @@ module.exports = {
     ],
     'jsdoc/require-param-description': 'warn',
     'jsdoc/require-param-name': 'warn',
-    'jsdoc/require-param': 'warn',
+    'jsdoc/require-param': 'off',
     'linebreak-style': 'off',
     'max-classes-per-file': 'off',
     'max-len': 'off',
