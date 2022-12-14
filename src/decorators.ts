@@ -6,9 +6,11 @@ import { enumerate } from './utils';
 export const typeDecoratorMetadataKey = Symbol('typeDecoratorMetadataKey');
 export const annotationDecoratorMetadataKey = Symbol('annotationDecoratorMetadataKey');
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DecoratorFactory<T extends unknown[] = any[]> = (
   ...args: T
-) => (this: DecoratorNode, value: any, context: IValidationContext) => INodeValidationResult;
+) => // eslint-disable-next-line @typescript-eslint/no-explicit-any
+(this: DecoratorNode, value: any, context: IValidationContext) => INodeValidationResult;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type PropertyDecorator = (target: object, propertyKey: string) => void;
@@ -36,7 +38,7 @@ export interface IDecoratorMeta {
 
 export interface IValidationDecoratorMeta extends IDecoratorMeta {
   decoratorType: 'validator';
-  validator: (this: DecoratorNode, value: any, context: IValidationContext) => INodeValidationResult;
+  validator: (this: DecoratorNode, value: unknown, context: IValidationContext) => INodeValidationResult;
   options: unknown[];
 }
 
@@ -149,7 +151,7 @@ export function groupDecorators<T extends IDecoratorMeta>(decorators: T[]): Prop
 
 type ValidateFunc<T> = (node: DecoratorNode, value: T, context: IValidationContext) => INodeValidationResult;
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Validate = createValidationDecorator<[validateFunc: ValidateFunc<any>]>({
+export const Validate = createValidationDecorator<[validateFunc: ValidateFunc<never>]>({
   name: 'Validate',
   type: 'root',
   validate(func: ValidateFunc<unknown>) {
@@ -283,14 +285,16 @@ export const OneOf = createValidationDecorator<[allowedValues: unknown[]]>({
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateIf = createAnnotationDecorator<
-  [validateIf?: (value: any, values: Record<string, any>) => boolean]
+  [validateIf?: (value: never, values: Record<string, unknown>) => boolean]
 >({
   name: 'validateIf' as const,
   type: 'root',
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const ErrorMessage = createAnnotationDecorator<[msg?: (value: any, values: Record<string, any>) => string]>({
+export const ErrorMessage = createAnnotationDecorator<
+  [msg?: (value: never, values: Record<string, unknown>) => string]
+>({
   name: 'validateIf' as const,
   type: 'root',
 });

@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
-import { TypeNodeData, ValidationErrorType } from '../nodes';
+import { IAnnotationMap, ValidationErrorType } from '../nodes';
 import { ValidatorInstance } from '../validator';
+import { expectAnyFunction, NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
 import { expectValidationError, project } from './utils';
 
 /*
@@ -111,31 +113,24 @@ describe('general', () => {
 
   describe('@ValidateIf', () => {
     const v = new ValidatorInstance({ project });
-
+    const validateIfFunction = (obj: Test) => obj.otherAttribute;
     @v.validatorDecorator()
     class Test {
-      @ValidateIf((obj: Test) => obj.otherAttribute)
+      @ValidateIf(validateIfFunction)
       firstAttribute!: string;
       otherAttribute!: boolean;
     }
 
     it('should construct the tree correctly', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-      expect(tree).toEqual({
-        kind: 'root',
-        children: [
-          {
-            kind: 'string',
-            reason: expect.anything(),
-            children: [],
-            annotations: {},
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          children: [StringNodeFixture.create()],
+          annotations: {
+            validateIf: expectAnyFunction(),
           },
-        ],
-        annotations: {
-          validateIf: expect.any(Function),
-        },
-        optional: false,
-      } as TypeNodeData);
+        }),
+      );
     });
 
     it('should validate with valid string and otherAttribute = true', () => {
@@ -159,26 +154,18 @@ describe('general', () => {
 
       it('should construct the correct error', () => {
         expectValidationError(result, (result) => {
-          expect(result.rawErrors).toEqual({
-            success: false,
-            type: 'class',
-            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-            value: { firstAttribute: 123, otherAttribute: true },
-            context: { className: 'Test' },
-            previousErrors: [
-              {
-                success: false,
-                type: 'string',
-                reason: ValidationErrorType.NOT_A_STRING,
-                value: 123,
-                previousErrors: [],
-                context: {
-                  className: 'Test',
-                  propertyName: 'firstAttribute',
-                },
-              },
-            ],
-          });
+          expect(result.rawErrors).toEqual(
+            NodeValidationErrorMatcher.objectPropertyFailed(Test, {
+              previousErrors: [
+                NodeValidationErrorMatcher.rootError(Test, 'firstAttribute', {
+                  annotations: {
+                    validateIf: validateIfFunction as IAnnotationMap['validateIf'],
+                  },
+                  previousErrors: [NodeValidationErrorMatcher.stringError()],
+                }),
+              ],
+            }),
+          );
         });
       });
     });

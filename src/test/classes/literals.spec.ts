@@ -1,7 +1,8 @@
-import { ValidationErrorType } from '../../nodes';
+import { LiteralNode, ValidationErrorType } from '../../nodes';
 import { Constructor } from '../../types';
 import { ValidatorInstance } from '../../validator';
-import { expectValidationError, project } from '../utils';
+import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
+import { expectValidationError, formatNodeValidationError, project } from '../utils';
 
 interface ITests {
   property: string;
@@ -56,20 +57,11 @@ describe('literals', () => {
       it('should construct the correct tree', () => {
         const { tree } = v.getPropertyTypeTreesFromConstructor(testCase.cls)[0];
 
-        expect(tree).toEqual({
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'literal',
-              reason: ValidationErrorType.LITERAL_NOT_MATCHING,
-              expected: testCase.validValue,
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        });
+        expect(tree).toEqual(
+          RootNodeFixture.createRequired({
+            children: [new LiteralNode(testCase.validValue)],
+          }),
+        );
       });
 
       it('should validate', () => {
@@ -87,28 +79,40 @@ describe('literals', () => {
 
         it('should construct the correct error', () => {
           expectValidationError(result, (result) => {
-            expect(result.rawErrors).toEqual({
-              success: false,
-              type: 'class',
-              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-              value: { [propertyName]: testCase.invalidValue },
-              context: { className: testCase.cls.name },
-              previousErrors: [
-                {
-                  success: false,
-                  type: 'literal',
-                  reason: ValidationErrorType.LITERAL_NOT_MATCHING,
-                  value: testCase.invalidValue,
-                  previousErrors: [],
-                  context: {
-                    type: testCase.property,
-                    expected: testCase.validValue,
-                    className: testCase.cls.name,
-                    propertyName,
-                  },
-                },
-              ],
-            });
+            expect(result.rawErrors).toEqual(
+              NodeValidationErrorMatcher.singleObjectPropertyFailed(testCase.cls.name, propertyName, {
+                previousErrors: [
+                  NodeValidationErrorMatcher.literalError({
+                    context: {
+                      expected: testCase.validValue,
+                      type: testCase.property,
+                    },
+                  }),
+                ],
+              }),
+            );
+            // expect(result.rawErrors).toEqual({
+            //   success: false,
+            //   type: 'class',
+            //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+            //   value: { [propertyName]: testCase.invalidValue },
+            //   context: { className: testCase.cls.name },
+            //   previousErrors: [
+            //     {
+            //       success: false,
+            //       type: 'literal',
+            //       reason: ValidationErrorType.LITERAL_NOT_MATCHING,
+            //       value: testCase.invalidValue,
+            //       previousErrors: [],
+            //       context: {
+            //         type: testCase.property,
+            //         expected: testCase.validValue,
+            //         className: testCase.cls.name,
+            //         propertyName,
+            //       },
+            //     },
+            //   ],
+            // });
           });
         });
       });

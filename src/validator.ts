@@ -3,27 +3,36 @@ import 'reflect-metadata';
 import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { flattenValidationError, IErrorMessage } from './error-formatter';
-import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
+import { flattenValidationError, groupErrors, IErrorMessage } from './error-formatter';
+import {
+  IArrayNodeValidationError,
+  IBaseNodeValidationError,
+  IEnumNodeValidationError,
+  ILiteralNodeValidationError,
+  INodeValidationError,
+  IRecordNodeValidationError,
+  ITypeAndTree,
+  IValidationOptions,
+  ValidationErrorType,
+} from './nodes';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
 import { Constructor } from './types';
-import { Parser } from './validator-parser';
+import { ClassCache, Parser } from './validator-parser';
 
 export const validatorMetadataKey = Symbol('validatorMetadata');
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface IValidatorOptions {}
+export interface IValidatorOptions {}
 
 export interface IValidationSuccess<T> {
   success: true;
   object: T;
-  x: any; // TMP
 }
 
 export interface IValidationError<T> {
   success: false;
   object: null;
-  errors: IErrorMessage[];
+  errors: any; // IErrorMessage[];
   rawErrors: INodeValidationError;
 }
 
@@ -34,7 +43,18 @@ export type MaybePartial<T> = Partial<T> & Record<any, any>;
 export interface IValidatorConstructorOptions {
   project: Project;
   defaultOptions?: IValidationOptions;
-  parserClass?: Constructor<Parser>;
+  parser?: (classDeclarationMapping: ClassCache<Constructor<unknown>>) => Parser;
+  classDiscovery?: ClassDiscovery;
+  decorator?: SourceCodeLocationDecorator<IValidatorOptions>;
+}
+
+export class ValidationError extends Error {
+  validationError: INodeValidationError;
+
+  constructor(errors: INodeValidationError) {
+    super('Validation failed');
+    this.validationError = errors;
+  }
 }
 
 export class ValidatorInstance {
@@ -48,9 +68,11 @@ export class ValidatorInstance {
 
   constructor(options: IValidatorConstructorOptions) {
     this.project = options.project;
-    this.classDiscovery = new ClassDiscovery(options.project);
-    this.decorator = new SourceCodeLocationDecorator<IValidatorOptions>(this.classDiscovery);
-    this.parser = new (options.parserClass ?? Parser)(this.decorator.getClassDeclarationMapping());
+    this.classDiscovery = options.classDiscovery ?? new ClassDiscovery(options.project);
+    this.decorator = options.decorator ?? new SourceCodeLocationDecorator<IValidatorOptions>(this.classDiscovery);
+    this.parser =
+      options.parser?.(this.decorator.getClassDeclarationMapping()) ??
+      new Parser(this.decorator.getClassDeclarationMapping());
 
     this.defaultOptions = Object.assign(
       {
@@ -110,13 +132,13 @@ export class ValidatorInstance {
       return {
         success: true,
         object: values as T,
-        x: result,
       };
     } else {
+      console.log(groupErrors(flattenValidationError(result)));
       return {
         success: false,
         object: null,
-        errors: flattenValidationError(result),
+        errors: groupErrors(flattenValidationError(result)),
         rawErrors: result,
       };
     }

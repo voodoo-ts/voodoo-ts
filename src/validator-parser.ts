@@ -9,9 +9,6 @@ import {
   SyntaxKind,
   Type,
   TypeLiteralNode,
-  TypeReferenceNode,
-  TypeNode as TsMorphTypeNode,
-  DefinitionInfo,
 } from 'ts-morph';
 
 import {
@@ -29,7 +26,6 @@ import {
   ClassNode,
   DecoratorNode,
   EnumNode,
-  IAnnotationMap,
   IntersectionNode,
   ITypeAndTree,
   LiteralNode,
@@ -404,7 +400,6 @@ export class PropertyDiscovery {
 
       /* istanbul ignore if */
       if (baseTypeDeclarations.length !== baseTypeProperties.length) {
-        console.log(baseTypeProperties.map((p) => p.getDeclarations()[0].getKindName()));
         throw new ParseError(`Could not resolve all property declarations in ${baseType.getText()}`);
       }
 

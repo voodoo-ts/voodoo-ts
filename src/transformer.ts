@@ -5,9 +5,16 @@ import { IValidationOptions, ITypeAndTree } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
 import { Factory, TransformerParser } from './transformer-parser';
 import { Constructor } from './types';
-import { IValidatorConstructorOptions, ValidatorInstance, MaybePartial } from './validator';
+import {
+  IValidatorConstructorOptions,
+  ValidatorInstance,
+  MaybePartial,
+  IValidationResult,
+  IValidatorOptions,
+  ValidationError,
+} from './validator';
 
-interface ITransformerOptions {
+interface ITransformerOptions extends IValidatorOptions {
   cls?: Constructor<unknown>;
   factory?: Factory<unknown>;
 }
@@ -29,25 +36,17 @@ function defaultFactory(cls: Constructor<unknown>): Factory<unknown> {
 export class TransformerInstance {
   project: Project;
 
-  // validatorInstance: ValidatorInstance;
+  validatorInstance: ValidatorInstance;
   parser: TransformerParser;
   classDiscovery: ClassDiscovery;
   transformerClassDecoratorFactory: SourceCodeLocationDecorator<ITransformerOptions>;
 
   defaultOptions: IValidationOptions;
-  // valueTransformerDecoratorFactory: SourceCodeLocationDecorator<any>;
 
-  constructor(options: IValidatorConstructorOptions) {
+  constructor(options: ITransformerConstructorOptions) {
     this.project = options.project;
     this.classDiscovery = new ClassDiscovery(options.project);
-    this.transformerClassDecoratorFactory = new SourceCodeLocationDecorator<ITransformerOptions>(
-      this.classDiscovery,
-      // (cls, meta) => {
-      //   if (!meta.options.factory) {
-      //     meta.options.factory = this.getFactory(cls);
-      //   }
-      // },
-    );
+    this.transformerClassDecoratorFactory = new SourceCodeLocationDecorator<ITransformerOptions>(this.classDiscovery);
 
     this.parser = TransformerParser.default(
       this.transformerClassDecoratorFactory.getClassDeclarationMapping(),
@@ -55,22 +54,15 @@ export class TransformerInstance {
       (cls) => this.getFactory(cls),
     );
 
-    this.defaultOptions = Object.assign(
-      {
-        allowUnknownFields: false,
-      } as IValidationOptions,
-      options.defaultOptions ?? {},
-    );
-  }
+    this.validatorInstance = new ValidatorInstance({
+      project: options.project,
+      classDiscovery: this.classDiscovery,
+      decorator: this.transformerClassDecoratorFactory,
+      parser: () => this.parser,
+      ...options.validator,
+    });
 
-  onDecorateValueTransformer(target: object, classMetadata: IClassMeta<any>): void {
-    const dclr = this.classDiscovery.getClass(
-      target.constructor.name,
-      classMetadata.filename,
-      classMetadata.line,
-      classMetadata.column,
-    );
-    console.log('ondecorate', dclr);
+    this.defaultOptions = {};
   }
 
   static withDefaultProject(): ValidatorInstance {
@@ -109,8 +101,12 @@ export class TransformerInstance {
     if (result.success) {
       return result.value as T;
     } else {
-      throw new Error('foo');
+      throw new ValidationError(result);
     }
+  }
+
+  validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
+    return this.validatorInstance.validate(cls, values, options);
   }
 
   getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
@@ -127,10 +123,6 @@ export class TransformerInstance {
   transformerDecorator(options: ITransformerOptions = {}): ReturnType<typeof Reflect['metadata']> {
     return this.transformerClassDecoratorFactory.decorator(new Error(), options);
   }
-
-  // valueTransformerDecorator(): ReturnType<typeof Reflect['metadata']> {
-  //   return this.valueTransformerDecoratorFactory.decorator(new Error());
-  // }
 
   getClassMetadata(cls: Constructor<unknown>): IClassMeta<ITransformerOptions> {
     return this.transformerClassDecoratorFactory.getClassMetadata(cls);

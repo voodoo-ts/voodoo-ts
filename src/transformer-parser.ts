@@ -22,6 +22,7 @@ import {
   INodeValidationError,
   INodeValidationResult,
   INodeValidationSuccess,
+  IPropertyCallbackArguments,
   RootNode,
   TypeNode,
   ValidationErrorType,
@@ -63,12 +64,6 @@ export interface ITransformationError {
 
 export type TransformationResult<T = unknown> = ITransformationSuccess<T> | ITransformationError;
 
-export interface ITransformerArguments<ValueType = unknown> {
-  value: ValueType;
-  values: Record<string, unknown>;
-  success: TypeNode['success'];
-  fail: TypeNode['fail'];
-}
 declare module './nodes' {
   // Extends the IAnnoationMap from ./nodes.ts
   // eslint-disable-next-line no-shadow
@@ -82,7 +77,7 @@ declare module './nodes' {
 export type TransformerFunction<
   ValueType,
   Result = Promise<unknown | (INodeValidationResult & { value: unknown })> | unknown,
-> = (args: ITransformerArguments<ValueType>) => Result;
+> = (args: IPropertyCallbackArguments<ValueType>) => Result;
 // | ((value: any, values: Record<string, unknown>) => Promise<unknown>)
 // | ((value: any, values: Record<string, unknown>) => unknown);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -206,7 +201,7 @@ function failValidationResult(
       previousErrors: [childNodeValidationResult],
     });
   } else {
-    currentNodeValidationResult.previousErrors.push(childNodeValidationResult);
+    (currentNodeValidationResult.previousErrors as INodeValidationError[]).push(childNodeValidationResult);
   }
 }
 
@@ -315,7 +310,7 @@ export class TransformerParser extends Parser {
               const transformDecoratorResult = await Promise.resolve(
                 propertyValidationResult.node.annotations.transformerFunction[0]({
                   value: propertyValue,
-                  values: value as ITransformerArguments['values'],
+                  values: value as IPropertyCallbackArguments['values'],
                   success: node.success.bind(node),
                   fail: node.fail.bind(node),
                 }),

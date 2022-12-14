@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
+import { AnyNodeFixture, NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';
 
 describe('any', () => {
@@ -23,36 +24,46 @@ describe('any', () => {
 
   it('should construct the correct tree for any', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          children: [],
-          annotations: {},
-          kind: 'any',
-          reason: expect.any(String),
-        },
-      ],
-      annotations: {},
-    });
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [AnyNodeFixture.create()],
+      }),
+    );
+    // expect(tree).toEqual({
+    //   kind: 'root',
+    //   optional: false,
+    //   children: [
+    //     {
+    //       children: [],
+    //       annotations: {},
+    //       kind: 'any',
+    //       reason: expect.any(String),
+    //     },
+    //   ],
+    //   annotations: {},
+    // });
   });
 
   it('should construct the correct tree for unknown', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(TestUnknown)[0];
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          children: [],
-          annotations: {},
-          kind: 'any',
-          reason: expect.any(String),
-        },
-      ],
-      annotations: {},
-    });
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [AnyNodeFixture.create()],
+      }),
+    );
+    // expect(tree).toEqual({
+    //   kind: 'root',
+    //   optional: false,
+    //   children: [
+    //     {
+    //       children: [],
+    //       annotations: {},
+    //       kind: 'any',
+    //       reason: expect.any(String),
+    //     },
+    //   ],
+    //   annotations: {},
+    // });
   });
 
   it('should validate anything', () => {
@@ -74,25 +85,30 @@ describe('any', () => {
 
     it('should construct the correct error', () => {
       expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          success: false,
-          type: 'class',
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          context: { className: 'Test' },
-          value: {},
-          previousErrors: [
-            {
-              success: false,
-              type: 'root',
-              previousErrors: [],
-              reason: ValidationErrorType.VALUE_REQUIRED,
-              context: {
-                className: 'Test',
-                propertyName: 'property',
-              },
-            },
-          ],
-        });
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'property', {
+            reason: ValidationErrorType.VALUE_REQUIRED,
+          }),
+        );
+        // expect(result.rawErrors).toEqual({
+        //   success: false,
+        //   type: 'class',
+        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+        //   context: { className: 'Test' },
+        //   value: {},
+        //   previousErrors: [
+        //     {
+        //       success: false,
+        //       type: 'root',
+        //       previousErrors: [],
+        //       reason: ValidationErrorType.VALUE_REQUIRED,
+        //       context: {
+        //         className: 'Test',
+        //         propertyName: 'property',
+        //       },
+        //     },
+        //   ],
+        // });
       });
     });
   });
