@@ -144,6 +144,7 @@ module.exports = {
     ],
     '@typescript-eslint/unified-signatures': 'error',
     '@typescript-eslint/no-namespace': 'off',
+    '@typescript-eslint/no-shadow': ['warn'],
     // ESLint rules
     'arrow-parens': ['off', 'always'],
     'brace-style': ['off', 'off'],
@@ -248,12 +249,7 @@ module.exports = {
     'no-multiple-empty-lines': 'off',
     'no-new-wrappers': 'error',
     'no-restricted-syntax': ['error', 'ForInStatement'],
-    'no-shadow': [
-      'warn',
-      {
-        hoist: 'all',
-      },
-    ],
+    'no-shadow': 'off',
     'no-throw-literal': 'error',
     'no-trailing-spaces': 'off',
     'no-undef-init': 'error',
