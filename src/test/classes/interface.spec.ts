@@ -1,4 +1,4 @@
-import { ClassNode, NumberNode, StringNode, TypeNode, TypeNodeData } from '../../nodes';
+import { ClassNode, TypeNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { ClassNodeFixture, NumberNodeFixture, RootNodeFixture, StringNodeFixture } from '../fixtures';
 import { project } from '../utils';
@@ -101,12 +101,6 @@ describe('interface', () => {
         children: [ClassNodeFixture.create('ITest', { from: 'interface' })],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [ClassNodeFixture.create('ITest', { from: 'interface' })],
-    //   annotations: {},
-    // } as TypeNodeData);
   });
 
   it('should construct the correct trees for extending interfaces', () => {
@@ -119,12 +113,6 @@ describe('interface', () => {
         children: [ClassNodeFixture.create('ITest2', { from: 'interface' })],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [ClassNodeFixture.create('ITest2', { from: 'interface' })],
-    //   annotations: {},
-    // } as TypeNodeData);
 
     expect((tree.children[0] as ClassNode).getClassTrees()).toEqual([
       {
@@ -132,24 +120,12 @@ describe('interface', () => {
         tree: RootNodeFixture.createRequired({
           children: [NumberNodeFixture.create()],
         }),
-        // tree: {
-        //   kind: 'root',
-        //   optional: false,
-        //   children: [new NumberNode()],
-        //   annotations: {},
-        // } as TypeNodeData,
       },
       {
         name: 'stringProperty',
         tree: RootNodeFixture.createRequired({
           children: [StringNodeFixture.create()],
         }),
-        // tree: {
-        //   kind: 'root',
-        //   optional: false,
-        //   children: [new StringNode()],
-        //   annotations: {},
-        // } as TypeNodeData,
       },
     ]);
   });
@@ -170,18 +146,6 @@ describe('interface', () => {
         ],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [
-    //     ClassNodeFixture.create(
-    //       Test.name,
-    //       { from: 'object' },
-    //       { name: expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/) },
-    //     ),
-    //   ],
-    //   annotations: {},
-    // } as TypeNodeData);
   });
 
   it('should construct the correct trees for interfaces extending an intersection', () => {
@@ -200,24 +164,6 @@ describe('interface', () => {
         ],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [
-    //     {
-    //       kind: 'class',
-    //       name: 'ITest3',
-    //       children: [],
-    //       annotations: {},
-    //       meta: {
-    //         reference: expect.any(String),
-    //         from: 'interface',
-    //       },
-    //       getClassTrees: expect.any(Function),
-    //     },
-    //   ],
-    //   annotations: {},
-    // });
 
     assertClassTree(tree.children[0]);
     const interfaceTrees = tree.children[0].getClassTrees();
@@ -229,36 +175,18 @@ describe('interface', () => {
         tree: RootNodeFixture.createRequired({
           children: [NumberNodeFixture.create()],
         }),
-        // tree: {
-        //   children: [new NumberNode()],
-        //   annotations: {},
-        //   kind: 'root',
-        //   optional: false,
-        // } as TypeNodeData,
       },
       {
         name: 'objectProperty',
         tree: RootNodeFixture.createRequired({
           children: [NumberNodeFixture.create()],
         }),
-        // tree: {
-        //   children: [new NumberNode()],
-        //   annotations: {},
-        //   kind: 'root',
-        //   optional: false,
-        // } as TypeNodeData,
       },
       {
         name: 'test3Property',
         tree: RootNodeFixture.createRequired({
           children: [StringNodeFixture.create()],
         }),
-        // tree: {
-        //   kind: 'root',
-        //   optional: false,
-        //   children: [new StringNode()],
-        //   annotations: {},
-        // } as TypeNodeData,
       },
     ]);
   });

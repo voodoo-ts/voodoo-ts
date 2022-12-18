@@ -3,36 +3,10 @@
 
 import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
-import { IAnnotationMap, ValidationErrorType } from '../nodes';
+import { IAnnotationMap } from '../nodes';
 import { ValidatorInstance } from '../validator';
 import { expectAnyFunction, NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
 import { expectValidationError, project } from './utils';
-
-/*
-
-# Rules
-
-@Validator()
-class EmbeddedValidator {
-  prop1!: number;
-}
-
-@Transformer()
-class EmbeddedTransformer {
-  prop2!: Transformed<string, number>;
-}
-
-@Transformer()
-class TestTransformer {
-  prop1!: EmbeddedValidator;
-  prop2!: EmbeddedTransformer;
-  prop3!: EmbeddedValidator | EmbeddedTransformer;
-  prop4!: EmbeddedTransformer | null;
-  prop5?: EmbeddedTransformer;
-  
-}
-
-*/
 
 describe('general', () => {
   it('should construct', () => {

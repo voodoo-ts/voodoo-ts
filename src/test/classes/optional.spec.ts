@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { StringNode, ValidationErrorType } from '../../nodes';
+import { StringNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';
@@ -47,23 +48,6 @@ describe('optional', () => {
             previousErrors: [NodeValidationErrorMatcher.stringError()],
           }),
         );
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   value: { stringProperty: 123 },
-        //   context: { className: 'Test' },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'string',
-        //       reason: ValidationErrorType.NOT_A_STRING,
-        //       value: 123,
-        //       context: { className: 'Test', propertyName: 'stringProperty' },
-        //       previousErrors: [],
-        //     },
-        //   ],
-        // });
       });
     });
   });
@@ -82,26 +66,6 @@ describe('optional', () => {
             previousErrors: [NodeValidationErrorMatcher.stringError()],
           }),
         );
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   value: { stringProperty: null },
-        //   context: { className: 'Test' },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'string',
-        //       value: null,
-        //       previousErrors: [],
-        //       reason: ValidationErrorType.NOT_A_STRING,
-        //       context: {
-        //         className: 'Test',
-        //         propertyName: 'stringProperty',
-        //       },
-        //     },
-        //   ],
-        // });
       });
     });
   });

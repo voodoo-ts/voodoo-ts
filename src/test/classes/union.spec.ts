@@ -53,26 +53,6 @@ describe('union', () => {
                 reason: ValidationErrorType.VALUE_REQUIRED,
               }),
             );
-
-            // expect(result.rawErrors).toEqual({
-            //   success: false,
-            //   type: 'class',
-            //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-            //   value: {},
-            //   context: { className: 'Test' },
-            //   previousErrors: [
-            //     {
-            //       success: false,
-            //       type: 'root',
-            //       previousErrors: [],
-            //       reason: ValidationErrorType.VALUE_REQUIRED,
-            //       context: {
-            //         className: 'Test',
-            //         propertyName: 'unionProperty',
-            //       },
-            //     },
-            //   ],
-            // });
           });
         });
       });
@@ -90,41 +70,6 @@ describe('union', () => {
               ],
             }),
           );
-          // expect(result.rawErrors).toEqual({
-          //   success: false,
-          //   type: 'class',
-          //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          //   value: { unionProperty: false },
-          //   context: { className: 'Test' },
-          //   previousErrors: [
-          //     {
-          //       success: false,
-          //       type: 'union',
-          //       reason: ValidationErrorType.NO_UNION_MATCH,
-          //       context: {
-          //         className: 'Test',
-          //         propertyName: 'unionProperty',
-          //       },
-          //       value: false,
-          //       previousErrors: [
-          //         {
-          //           success: false,
-          //           type: 'string',
-          //           reason: ValidationErrorType.NOT_A_STRING,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //         {
-          //           success: false,
-          //           type: 'number',
-          //           reason: ValidationErrorType.NOT_A_NUMBER,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //       ],
-          //     },
-          //   ],
-          // });
         });
       });
     });
@@ -149,32 +94,6 @@ describe('union', () => {
           ],
         }),
       );
-
-      // expect(tree).toEqual({
-      //   kind: 'root',
-      //   optional: true,
-      //   children: [
-      //     {
-      //       kind: 'union',
-      //       children: [
-      //         {
-      //           children: [],
-      //           annotations: {},
-      //           kind: 'string',
-      //           reason: ValidationErrorType.NOT_A_STRING,
-      //         },
-      //         {
-      //           children: [],
-      //           annotations: {},
-      //           kind: 'number',
-      //           reason: ValidationErrorType.NOT_A_NUMBER,
-      //         },
-      //       ],
-      //       annotations: {},
-      //     },
-      //   ],
-      //   annotations: {},
-      // });
     });
 
     it('should validate string', () => {
@@ -213,42 +132,6 @@ describe('union', () => {
               ],
             }),
           );
-
-          // expect(result.rawErrors).toEqual({
-          //   success: false,
-          //   type: 'class',
-          //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          //   value: { unionProperty: false },
-          //   context: { className: 'Test' },
-          //   previousErrors: [
-          //     {
-          //       success: false,
-          //       type: 'union',
-          //       reason: ValidationErrorType.NO_UNION_MATCH,
-          //       value: false,
-          //       context: {
-          //         className: 'Test',
-          //         propertyName: 'unionProperty',
-          //       },
-          //       previousErrors: [
-          //         {
-          //           success: false,
-          //           type: 'string',
-          //           reason: ValidationErrorType.NOT_A_STRING,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //         {
-          //           success: false,
-          //           type: 'number',
-          //           reason: ValidationErrorType.NOT_A_NUMBER,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //       ],
-          //     },
-          //   ],
-          // });
         });
       });
     });
@@ -312,50 +195,6 @@ describe('union', () => {
               ],
             }),
           );
-
-          // expect(result.rawErrors).toEqual({
-          //   success: false,
-          //   type: 'class',
-          //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          //   value: { unionProperty: false },
-          //   context: { className: 'Test' },
-          //   previousErrors: [
-          //     {
-          //       success: false,
-          //       type: 'union',
-          //       reason: ValidationErrorType.NO_UNION_MATCH,
-          //       value: false,
-          //       context: {
-          //         className: 'Test',
-          //         propertyName: 'unionProperty',
-          //       },
-          //       previousErrors: [
-          //         {
-          //           success: false,
-          //           type: 'string',
-          //           reason: ValidationErrorType.NOT_A_STRING,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //         {
-          //           success: false,
-          //           type: 'number',
-          //           reason: ValidationErrorType.NOT_A_NUMBER,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //         {
-          //           success: false,
-          //           type: 'class',
-          //           reason: ValidationErrorType.NOT_AN_OBJECT,
-          //           value: false,
-          //           previousErrors: [],
-          //           context: { className: 'TestEmbed' },
-          //         },
-          //       ],
-          //     },
-          //   ],
-          // });
         });
       });
     });
@@ -395,26 +234,6 @@ describe('union', () => {
               reason: ValidationErrorType.VALUE_REQUIRED,
             }),
           );
-
-          // expect(result.rawErrors).toEqual({
-          //   success: false,
-          //   type: 'class',
-          //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          //   value: {},
-          //   context: { className: 'Test' },
-          //   previousErrors: [
-          //     {
-          //       success: false,
-          //       type: 'root',
-          //       reason: ValidationErrorType.VALUE_REQUIRED,
-          //       previousErrors: [],
-          //       context: {
-          //         className: 'Test',
-          //         propertyName: 'unionProperty',
-          //       },
-          //     },
-          //   ],
-          // });
         });
       });
     });
@@ -436,39 +255,6 @@ describe('union', () => {
               ],
             }),
           );
-
-          // expect(result.rawErrors).toEqual({
-          //   success: false,
-          //   type: 'class',
-          //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          //   value: { unionProperty: false },
-          //   context: { className: 'Test' },
-          //   previousErrors: [
-          //     {
-          //       success: false,
-          //       type: 'union',
-          //       reason: ValidationErrorType.NO_UNION_MATCH,
-          //       value: false,
-          //       context: { className: 'Test', propertyName: 'unionProperty' },
-          //       previousErrors: [
-          //         {
-          //           success: false,
-          //           type: 'null',
-          //           reason: ValidationErrorType.NOT_NULL,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //         {
-          //           success: false,
-          //           type: 'string',
-          //           reason: ValidationErrorType.NOT_A_STRING,
-          //           value: false,
-          //           previousErrors: [],
-          //         },
-          //       ],
-          //     },
-          //   ],
-          // });
         });
       });
     });
@@ -517,27 +303,6 @@ describe('union', () => {
               previousErrors: [NodeValidationErrorMatcher.stringError()],
             }),
           );
-
-          // expect(result.rawErrors).toEqual({
-          //   success: false,
-          //   type: 'class',
-          //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          //   value: { unionProperty: null },
-          //   context: { className: 'Test' },
-          //   previousErrors: [
-          //     {
-          //       success: false,
-          //       type: 'string',
-          //       reason: ValidationErrorType.NOT_A_STRING,
-          //       value: null,
-          //       previousErrors: [],
-          //       context: {
-          //         className: 'Test',
-          //         propertyName: 'unionProperty',
-          //       },
-          //     },
-          //   ],
-          // });
         });
       });
     });
@@ -556,24 +321,6 @@ describe('union', () => {
               previousErrors: [NodeValidationErrorMatcher.stringError()],
             }),
           );
-
-          // expect(result.rawErrors).toEqual({
-          //   success: false,
-          //   type: 'class',
-          //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          //   value: { unionProperty: false },
-          //   context: { className: 'Test' },
-          //   previousErrors: [
-          //     {
-          //       success: false,
-          //       type: 'string',
-          //       reason: ValidationErrorType.NOT_A_STRING,
-          //       value: false,
-          //       previousErrors: [],
-          //       context: { className: 'Test', propertyName: 'unionProperty' },
-          //     },
-          //   ],
-          // });
         });
       });
     });
@@ -597,33 +344,6 @@ describe('union', () => {
           ],
         }),
       );
-      // expect(tree).toEqual({
-      //   kind: 'root',
-      //   optional: true,
-      //   children: [
-      //     {
-      //       annotations: {},
-      //       kind: 'union',
-      //       children: [
-      //         {
-      //           kind: 'literal',
-      //           reason: expect.anything(),
-      //           expected: false,
-      //           children: [],
-      //           annotations: {},
-      //         },
-      //         {
-      //           kind: 'literal',
-      //           reason: expect.anything(),
-      //           expected: true,
-      //           children: [],
-      //           annotations: {},
-      //         },
-      //       ],
-      //     },
-      //   ],
-      //   annotations: {},
-      // });
     });
   });
 });

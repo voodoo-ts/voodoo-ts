@@ -1,8 +1,9 @@
-import { LiteralNode, ValidationErrorType } from '../../nodes';
+/* eslint-disable @typescript-eslint/no-shadow */
+import { LiteralNode } from '../../nodes';
 import { Constructor } from '../../types';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
-import { expectValidationError, formatNodeValidationError, project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 interface ITests {
   property: string;
@@ -91,28 +92,6 @@ describe('literals', () => {
                 ],
               }),
             );
-            // expect(result.rawErrors).toEqual({
-            //   success: false,
-            //   type: 'class',
-            //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-            //   value: { [propertyName]: testCase.invalidValue },
-            //   context: { className: testCase.cls.name },
-            //   previousErrors: [
-            //     {
-            //       success: false,
-            //       type: 'literal',
-            //       reason: ValidationErrorType.LITERAL_NOT_MATCHING,
-            //       value: testCase.invalidValue,
-            //       previousErrors: [],
-            //       context: {
-            //         type: testCase.property,
-            //         expected: testCase.validValue,
-            //         className: testCase.cls.name,
-            //         propertyName,
-            //       },
-            //     },
-            //   ],
-            // });
           });
         });
       });

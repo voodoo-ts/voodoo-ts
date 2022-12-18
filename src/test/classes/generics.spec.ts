@@ -1,5 +1,4 @@
 import { ParseError } from '../../errors';
-import { BooleanNode, NumberNode, StringNode, TypeNodeData } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import {
   BooleanNodeFixture,

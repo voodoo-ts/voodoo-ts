@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { NumberNode, ValidationErrorType } from '../../nodes';
+import { NumberNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';
@@ -47,26 +48,6 @@ describe('numbers', () => {
             previousErrors: [NodeValidationErrorMatcher.numberError()],
           }),
         );
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   value: { numberProperty: '123' },
-        //   context: { className: 'Test' },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'number',
-        //       reason: ValidationErrorType.NOT_A_NUMBER,
-        //       value: '123',
-        //       context: {
-        //         className: 'Test',
-        //         propertyName: 'numberProperty',
-        //       },
-        //       previousErrors: [],
-        //     },
-        //   ],
-        // });
       });
     });
   });

@@ -3,8 +3,8 @@ import { enumerate, zip } from './utils';
 export interface IPropertyCallbackArguments<ValueType = unknown> {
   value: ValueType;
   values: Record<string, unknown>;
-  success: TypeNode['success'];
-  fail: TypeNode['fail'];
+  success: TypeNodeBase['success'];
+  fail: TypeNodeBase['fail'];
 }
 
 // Will be extended from elsewhere
@@ -129,10 +129,6 @@ export interface IIntersectionNodeValidationError extends IBaseNodeValidationErr
     className: string;
     propertyName?: string;
   };
-  // previousErrors: Array<
-  //   | (Omit<IBaseNodeValidationError, 'previousErrors'> & IClassNodeValidationError)
-  //   | (Omit<IBaseNodeValidationError, 'previousErrors'> & IIntersectionNodeValidationError)
-  // >;
 }
 
 export interface IDecoratorNodeValidationError extends IBaseNodeValidationError {
@@ -163,7 +159,6 @@ export interface IUnionNodeValidationError extends IBaseNodeValidationError {
 export interface IArrayNodeValidationError extends IBaseNodeValidationError {
   type: 'array' | 'tuple';
   context: Record<string, unknown>;
-  // reason: ValidationErrorType.ARRAY_FAILED;
 }
 
 export interface IArrayNodeItemValidationError extends IBaseNodeValidationError {
@@ -184,19 +179,6 @@ export function isArrayNodeItemValidatorError(result: INodeValidationError): res
   );
 }
 
-// export type INodeValidationErroxr =
-//   | (Omit<IBaseNodeValidationError, 'previousErrors'> & IClassNodeValidationError)
-//   | (Omit<IBaseNodeValidationError, 'previousErrors'> & IIntersectionNodeValidationError)
-//   | (IBaseNodeValidationError & ILeafNodeValidationError)
-//   | (IBaseNodeValidationError & IUnionNodeValidationError)
-//   | (IBaseNodeValidationError & IEnumNodeValidationError)
-//   | (IBaseNodeValidationError & IDecoratorNodeValidationError)
-//   | (IBaseNodeValidationError & IArrayNodeValidationError)
-//   | (IBaseNodeValidationError & IArrayNodeItemValidationError)
-//   // | (Omit<IBaseNodeValidationError, 'reason'> & (IArrayNodeItemValidationError | IArrayNodeValidationError))
-//   | (IBaseNodeValidationError & IRecordNodeValidationError)
-//   | (IBaseNodeValidationError & ILiteralNodeValidationError)
-//   | (IBaseNodeValidationError & IRootNodeValidationError);
 export type INodeValidationError =
   | IClassNodeValidationError
   | IIntersectionNodeValidationError
@@ -231,7 +213,6 @@ export abstract class TypeNodeBase {
   abstract kind: string;
   abstract validate(value: unknown, context: IValidationContext): INodeValidationResult;
   children: TypeNode[] = [];
-  // decorators: DecoratorNode[] = [];
   annotations: IAnnotationMap = {};
   context: Record<string, unknown> = {};
 
@@ -262,10 +243,6 @@ export abstract class TypeNodeBase {
       ...extra,
     } as INodeValidationError;
   }
-
-  // validateDecorators() {
-
-  // }
 
   validateAllChildren(
     value: unknown,
@@ -311,8 +288,6 @@ export class RootNode extends TypeNodeBase {
     if (this.optional && value === undefined) {
       return this.success();
     }
-
-    // return this.validateChildren(this.children, value, context);
 
     const previousMatches: INodeValidationSuccess[] = [];
     for (const child of this.children) {
@@ -567,20 +542,6 @@ export class ArrayNode extends TypeNodeBase {
       const previousMatches: INodeValidationSuccess[] = [];
       const previousErrors: INodeValidationError[] = [];
       // Validate type for each element
-      // for (const [i, item] of enumerate(value)) {
-      //   const result = arrayTypeNode.validate(item, context);
-      //   if (!result.success) {
-      //     return this.fail(value, {
-      //       reason: ValidationErrorType.ARRAY_ITEM_FAILED,
-      //       context: { element: i },
-      //       previousErrors: [result],
-      //     });
-      //   } else {
-      //     result.context.array = { i };
-      //     previousMatches.push(result);
-      //   }
-      // }
-
       for (const [i, item] of enumerate(value)) {
         const result = arrayTypeNode.validate(item, context);
         if (!result.success) {
@@ -591,11 +552,6 @@ export class ArrayNode extends TypeNodeBase {
               previousErrors: [result],
             }),
           );
-          // return this.fail(value, {
-          //   reason: ValidationErrorType.ARRAY_ITEM_FAILED,
-          //   context: { element: i },
-          //   previousErrors: [result],
-          // });
         } else {
           result.context.array = { i };
           previousMatches.push(result);
@@ -686,10 +642,7 @@ export class ClassNode extends TypeNodeBase {
             className: this.name,
             propertyName: name,
           };
-          // if (!rootResult.context) {
-          //   rootResult.context = rootNodeContext;
-          // }
-          // Object.assign(rootResult.context, rootNodeContext);
+
           errors.push(rootResult);
         } else {
           result.context.className = this.name;
@@ -703,19 +656,6 @@ export class ClassNode extends TypeNodeBase {
         }
       }
 
-      // const allowUnknownFields = context.options.allowUnknownFields;
-      // if (!allowUnknownFields && properties.size) {
-      //   for (const name of properties.values()) {
-      //     const error = this.fail(values[name], {
-      //       reason: ValidationErrorType.UNKNOWN_FIELD,
-      //       context: {
-      //         className: this.name,
-      //         propertyName: name,
-      //       },
-      //     });
-      //     errors.push(error);
-      //   }
-      // }
       errors.push(...this.getUnknownFieldErrors(properties, context.options.allowUnknownFields, values));
 
       if (errors.length) {
@@ -759,79 +699,6 @@ export class ClassNode extends TypeNodeBase {
     }
     return errors;
   }
-
-  // validate(value: unknown, context: IValidationContext): INodeValidationResult {
-  //   if (typeof value === 'object' && value !== null) {
-  //     const values = value as Record<string, unknown>;
-  //     const properties = new Set(Object.keys(value));
-
-  //     const errors: INodeValidationError[] = [];
-  //     const previousMatches: INodeValidationSuccess[] = [];
-  //     for (const { name, tree } of this.getClassTrees()) {
-  //       properties.delete(name);
-  //       if (tree.annotations.validateIf) {
-  //         if (!tree.annotations.validateIf(value, context.values)) {
-  //           continue;
-  //         }
-  //       }
-  //       const result = tree.validate(values[name], context);
-  //       if (!result.success) {
-  //         const rootResult = result as IRootNodeValidationError;
-  //         const rootNodeContext = {
-  //           className: this.name,
-  //           propertyName: name,
-  //         };
-  //         if (!rootResult.context) {
-  //           rootResult.context = rootNodeContext;
-  //         }
-  //         Object.assign(rootResult.context, rootNodeContext);
-  //         errors.push(result);
-  //       } else {
-  //         result.context.className = this.name;
-  //         result.context.propertyName = name;
-  //         previousMatches.push(result);
-  //       }
-
-  //       const childrenResult = this.validateAllChildren(value, context);
-  //       if (!childrenResult.success) {
-  //         errors.push(childrenResult);
-  //       }
-  //     }
-
-  //     const allowUnknownFields = context.options.allowUnknownFields;
-  //     if (!allowUnknownFields && properties.size) {
-  //       for (const name of properties.values()) {
-  //         const error = this.fail(values[name], {
-  //           reason: ValidationErrorType.UNKNOWN_FIELD,
-  //           context: {
-  //             className: this.name,
-  //             propertyName: name,
-  //           },
-  //         });
-  //         errors.push(error);
-  //       }
-  //     }
-
-  //     if (errors.length) {
-  //       return this.fail(value, {
-  //         reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-  //         previousErrors: errors,
-  //         context: {
-  //           className: this.name,
-  //         },
-  //       } as Partial<IClassNodeValidationError>);
-  //     } else {
-  //       return this.success(previousMatches);
-  //     }
-  //   } else {
-  //     return this.fail(value, {
-  //       reason: ValidationErrorType.NOT_AN_OBJECT,
-  //       context: {
-  //         className: this.name,
-  //       },
-  //     });
-  //   }
-  // }
 }
 
 export class TupleNode extends TypeNodeBase {
@@ -938,8 +805,7 @@ export class DecoratorNode extends TypeNodeBase {
       extra.context.decorator = decoratorContext;
     }
 
-    return super.fail(value, extra as Partial<INodeValidationError>) as IDecoratorNodeValidationError &
-      IBaseNodeValidationError;
+    return super.fail(value, extra as Partial<INodeValidationError>);
   }
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {

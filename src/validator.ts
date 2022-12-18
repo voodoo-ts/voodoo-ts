@@ -3,18 +3,8 @@ import 'reflect-metadata';
 import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { flattenValidationError, groupErrors, IErrorMessage } from './error-formatter';
-import {
-  IArrayNodeValidationError,
-  IBaseNodeValidationError,
-  IEnumNodeValidationError,
-  ILiteralNodeValidationError,
-  INodeValidationError,
-  IRecordNodeValidationError,
-  ITypeAndTree,
-  IValidationOptions,
-  ValidationErrorType,
-} from './nodes';
+import { flattenValidationError, groupErrors } from './error-formatter';
+import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
 import { Constructor } from './types';
 import { ClassCache, Parser } from './validator-parser';

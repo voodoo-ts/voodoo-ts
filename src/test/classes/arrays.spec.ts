@@ -24,18 +24,6 @@ describe('arrays', () => {
         ],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [
-    //     {
-    //       kind: 'array',
-    //       children: [new NumberNode()],
-    //       annotations: {},
-    //     },
-    //   ],
-    //   annotations: {},
-    // } as TypeNodeData);
   });
 
   it('should validate valid number arrays', () => {
@@ -73,38 +61,6 @@ describe('arrays', () => {
             ],
           }),
         );
-
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   value: { arrayProperty: [1, 'Two'] },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'array',
-        //       reason: ValidationErrorType.ARRAY_ITEM_FAILED,
-        //       value: [1, 'Two'],
-        //       previousErrors: [
-        //         {
-        //           success: false,
-        //           type: 'number',
-        //           reason: ValidationErrorType.NOT_A_NUMBER,
-        //           value: 'Two',
-        //           previousErrors: [],
-        //         },
-        //       ],
-        //       context: {
-        //         element: 1,
-        //         className: 'Test',
-        //         propertyName: 'arrayProperty',
-        //       },
-        //     },
-        //   ],
-        //   context: {
-        //     className: 'Test',
-        //   },
-        // });
       });
     });
   });
@@ -127,27 +83,6 @@ describe('arrays', () => {
             ],
           }),
         );
-
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   value: { arrayProperty: 123 },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'array',
-        //       reason: ValidationErrorType.NOT_AN_ARRAY,
-        //       value: 123,
-        //       previousErrors: [],
-        //       context: {
-        //         className: 'Test',
-        //         propertyName: 'arrayProperty',
-        //       },
-        //     },
-        //   ],
-        //   context: { className: 'Test' },
-        // });
       });
     });
   });

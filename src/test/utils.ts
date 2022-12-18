@@ -5,9 +5,9 @@ import 'jest-extended';
 import ErrorStackParser from 'error-stack-parser';
 import { Project } from 'ts-morph';
 
+import { INodeValidationError } from '../nodes';
 import { TransformerInstance } from '../transformer';
 import { IValidationError, IValidationResult, ValidatorInstance } from '../validator';
-import { INodeValidationError, TypeNodeBase } from '../nodes';
 
 export const project = new Project({
   tsConfigFilePath: 'tsconfig.json',
@@ -36,6 +36,7 @@ export function genValidationErrorTest(result: IValidationResult<unknown>): void
 }
 
 export function getLineNumber(): number {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return ErrorStackParser.parse(new Error())[1].lineNumber! + 1;
 }
 

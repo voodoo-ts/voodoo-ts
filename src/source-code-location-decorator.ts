@@ -2,7 +2,7 @@ import ErrorStackParser from 'error-stack-parser';
 import { Constructor } from 'ts-morph';
 
 import { type ClassDiscovery } from './class-discovery';
-import { ClassNotDecoratedError } from './errors';
+import { ClassNotDecoratedError, RuntimeError } from './errors';
 import { ClassCache } from './validator-parser';
 
 export interface IClassMeta<Options = unknown> {
@@ -28,9 +28,13 @@ export class BasicSourceCodeLocationDecorator<T> {
   decorator(error: Error, options: T | undefined = {} as T): ReturnType<typeof Reflect['metadata']> {
     const stack = ErrorStackParser.parse(error);
 
-    const filename = stack[1].fileName!;
-    const line = stack[1].lineNumber!;
-    const column = stack[1].columnNumber!;
+    if (!stack[1]?.fileName || stack[1]?.lineNumber === undefined || stack[1]?.columnNumber === undefined) {
+      throw new RuntimeError(`Can't find call-site information in stack`);
+    }
+
+    const filename = stack[1].fileName;
+    const line = stack[1].lineNumber;
+    const column = stack[1].columnNumber;
 
     const classMetadata: IClassMeta<T> = {
       filename,

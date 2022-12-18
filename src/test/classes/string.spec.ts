@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { StringNode, ValidationErrorType } from '../../nodes';
+import { StringNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, iterParsers, project } from '../utils';
@@ -57,26 +58,6 @@ describe('strings', () => {
             previousErrors: [NodeValidationErrorMatcher.stringError()],
           }),
         );
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   value: { stringProperty: 123 },
-        //   context: { className: 'Test' },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'string',
-        //       reason: ValidationErrorType.NOT_A_STRING,
-        //       value: 123,
-        //       previousErrors: [],
-        //       context: {
-        //         className: 'Test',
-        //         propertyName: 'stringProperty',
-        //       },
-        //     },
-        //   ],
-        // });
       });
     });
   });

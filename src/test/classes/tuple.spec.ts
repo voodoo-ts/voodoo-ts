@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { BooleanNode, NumberNode, StringNode, TypeNodeData, ValidationErrorType } from '../../nodes';
+import { BooleanNode, NumberNode, StringNode, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture, TupleNodeFixture } from '../fixtures';
-import { expectValidationError, formatNodeValidationError, project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('tuple', () => {
   const v = new ValidatorInstance({ project });

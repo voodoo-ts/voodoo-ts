@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { INodeValidationError, NumberNode, StringNode, TypeNodeData, ValidationErrorType } from '../../nodes';
+import { NumberNode, StringNode, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RecordNodeFixture, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';

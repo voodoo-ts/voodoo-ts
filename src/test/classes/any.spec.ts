@@ -29,19 +29,6 @@ describe('any', () => {
         children: [AnyNodeFixture.create()],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [
-    //     {
-    //       children: [],
-    //       annotations: {},
-    //       kind: 'any',
-    //       reason: expect.any(String),
-    //     },
-    //   ],
-    //   annotations: {},
-    // });
   });
 
   it('should construct the correct tree for unknown', () => {
@@ -51,19 +38,6 @@ describe('any', () => {
         children: [AnyNodeFixture.create()],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [
-    //     {
-    //       children: [],
-    //       annotations: {},
-    //       kind: 'any',
-    //       reason: expect.any(String),
-    //     },
-    //   ],
-    //   annotations: {},
-    // });
   });
 
   it('should validate anything', () => {
@@ -90,25 +64,6 @@ describe('any', () => {
             reason: ValidationErrorType.VALUE_REQUIRED,
           }),
         );
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   context: { className: 'Test' },
-        //   value: {},
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'root',
-        //       previousErrors: [],
-        //       reason: ValidationErrorType.VALUE_REQUIRED,
-        //       context: {
-        //         className: 'Test',
-        //         propertyName: 'property',
-        //       },
-        //     },
-        //   ],
-        // });
       });
     });
   });

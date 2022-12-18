@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TypeNodeData, ValidationErrorType } from '../../nodes';
+import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { ClassNodeFixture, IntersectionNodeFixture, NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
-import { expectValidationError, genValidationErrorTest, formatNodeValidationError, project } from '../utils';
+import { expectValidationError, genValidationErrorTest, project } from '../utils';
 
 describe('intersection', () => {
   const v = new ValidatorInstance({ project });
@@ -36,21 +36,6 @@ describe('intersection', () => {
         ],
       }),
     );
-    // expect(tree).toEqual({
-    //   kind: 'root',
-    //   optional: false,
-    //   children: [
-    //     IntersectionNodeFixture.create('{ foo: number; } & { bar: string; } & Generic<number>', [], {
-    //       meta: { references: expect.anything() },
-    //       children: [
-    //         ClassNodeFixture.createForLiteral(),
-    //         ClassNodeFixture.createForLiteral(),
-    //         ClassNodeFixture.create('Generic', { from: 'class' }),
-    //       ],
-    //     }),
-    //   ],
-    //   annotations: {},
-    // } as TypeNodeData);
   });
 
   it('should validate', () => {
@@ -86,42 +71,6 @@ describe('intersection', () => {
             ],
           }),
         );
-
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   context: { className: 'Test' },
-        //   value: { property: { foo: 123, bar: 'bar', property: 'invalid' } },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'intersection',
-        //       reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //       context: { className: 'Test', propertyName: 'property' },
-        //       value: { foo: 123, bar: 'bar', property: 'invalid' },
-        //       previousErrors: [
-        //         {
-        //           success: false,
-        //           type: 'class',
-        //           reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //           context: { className: 'Generic' },
-        //           value: { foo: 123, bar: 'bar', property: 'invalid' },
-        //           previousErrors: [
-        //             {
-        //               success: false,
-        //               type: 'number',
-        //               value: 'invalid',
-        //               previousErrors: [],
-        //               reason: ValidationErrorType.NOT_A_NUMBER,
-        //               context: { className: 'Generic', propertyName: 'property' },
-        //             },
-        //           ],
-        //         },
-        //       ],
-        //     },
-        //   ],
-        // });
       });
     });
   });
@@ -154,36 +103,6 @@ describe('intersection', () => {
             ],
           }),
         );
-
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //   context: { className: 'Test' },
-        //   value: expect.anything(),
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'intersection',
-        //       reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-        //       context: { className: 'Test', propertyName: 'property' },
-        //       value: expect.anything(),
-        //       previousErrors: [
-        //         {
-        //           success: false,
-        //           type: 'intersection',
-        //           reason: ValidationErrorType.UNKNOWN_FIELD,
-        //           value: 'UNKNOWN',
-        //           previousErrors: [],
-        //           context: {
-        //             className: '{ foo: number; } & { bar: string; } & Generic<number>',
-        //             propertyName: 'unknownProperty',
-        //           },
-        //         },
-        //       ],
-        //     },
-        //   ],
-        // });
       });
     });
   });
@@ -207,24 +126,6 @@ describe('intersection', () => {
             ],
           }),
         );
-
-        // expect(result.rawErrors).toEqual({
-        //   success: false,
-        //   type: 'class',
-        //   value: { property: '!' },
-        //   previousErrors: [
-        //     {
-        //       success: false,
-        //       type: 'intersection',
-        //       value: '!',
-        //       previousErrors: [],
-        //       reason: 'NOT_AN_OBJECT',
-        //       context: { className: 'Test', propertyName: 'property' },
-        //     },
-        //   ],
-        //   reason: 'OBJECT_PROPERTY_FAILED',
-        //   context: { className: 'Test' },
-        // });
       });
     });
 

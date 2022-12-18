@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { ValidationErrorType } from '../../nodes';
+
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher } from '../fixtures';
 import { expectValidationError, project } from '../utils';

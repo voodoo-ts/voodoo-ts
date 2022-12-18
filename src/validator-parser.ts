@@ -452,28 +452,6 @@ export class Parser {
     this.propertyDiscovery = new PropertyDiscovery();
   }
 
-  // unwrapPropertyType(property: IMinimalProperty) {
-  //   const type = property.getType();
-  //   if (type.isUnion()) {
-  //     const unionTypes = type.getUnionTypes();
-  //     const hasUndefined = unionTypes.find((t) => t.isUndefined());
-  //     const unionTypesWithoutUndefined = unionTypes.filter((unionType) => !unionType.isUndefined());
-
-  //     if (hasUndefined) {
-  //       rootNode.optional = true;
-  //     }
-
-  //     if (unionTypesWithoutUndefined.length === 1) {
-  //       // Prevent unnecessary UnionNode
-  //       // return [rootNode, unionTypesWithoutUndefined[0]];
-  //       return unionTypesWithoutUndefined[0];
-  //     }
-  //     /*else {
-  //       // return [rootNode, type];
-  //     }*/
-  //   }
-  // }
-
   handleRootNode(property: IMinimalProperty, typeMap?: TypeMap): RootNode {
     let type = this.getPropertyType(property);
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
