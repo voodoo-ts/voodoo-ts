@@ -7,6 +7,7 @@ import {
   INodeValidationError,
   IRecordNodeValidationError,
   isArrayNodeItemValidatorError,
+  isArrayNodeValidatorError,
   IUnionNodeValidationError,
   ValidationErrorType,
 } from './nodes';
@@ -96,6 +97,14 @@ export function flattenValidationError(
   path: string[] = [],
 ): IErrorMessage[] {
   const messages: IErrorMessage[] = [];
+
+  if (nodeValidationError.reason === ValidationErrorType.PROPERTY_FAILED) {
+    for (const previousError of nodeValidationError.previousErrors) {
+      messages.push(...flattenValidationError(previousError, path));
+    }
+    return messages;
+  }
+
   switch (nodeValidationError.type) {
     case 'array':
     case 'tuple':
@@ -104,9 +113,9 @@ export function flattenValidationError(
         for (const previousError of nodeValidationError.previousErrors) {
           messages.push(...flattenValidationError(previousError, path));
         }
-      } else if (nodeValidationError.reason === ValidationErrorType.DECORATORS_FAILED) {
-        for (const classError of nodeValidationError.previousErrors) {
-          messages.push(...flattenValidationError(classError, path));
+      } else if (isArrayNodeValidatorError(nodeValidationError) && nodeValidationError.previousErrors.length) {
+        for (const previousError of nodeValidationError.previousErrors) {
+          messages.push(...flattenValidationError(previousError, path));
         }
       } else {
         messages.push({
@@ -117,18 +126,12 @@ export function flattenValidationError(
       break;
     case 'intersection':
       if (nodeValidationError.reason === ValidationErrorType.OBJECT_PROPERTY_FAILED) {
-        const classErrors = nodeValidationError.previousErrors[0].previousErrors;
-        const errs = nodeValidationError.previousErrors[0];
-        // if (errs.type === "")
-        // for (const classError of classErrors) {
-        //   if (classError.type === 'intersection') {
-        //   } else if (classError.type === 'class') {
-        //     const propertyPath = [...path, (classError.context as any).propertyName as any];
-        //     messages.push(...flattenValidationError(classError as INodeValidationError, propertyPath));
-        //   }
-        // }
+        for (const classError of nodeValidationError.previousErrors) {
+          if (classError.type === 'class' || classError.type === 'intersection') {
+            messages.push(...flattenValidationError(classError as INodeValidationError, path));
+          }
+        }
       } else {
-        // const propertyPath = [...path, nodeValidationError.previousErrors[0].previousErrors[0].context.propertyName];
         messages.push({
           path,
           nodeValidationError,
@@ -165,11 +168,6 @@ export function flattenValidationError(
         messages.push({
           path,
           nodeValidationError,
-          // reason: nodeValidationError.reason,
-          // value: nodeValidationError.value,
-          // context: {
-          //   unionErrors: errors,
-          // },
         });
       }
 
@@ -191,13 +189,12 @@ export function flattenValidationError(
       break;
 
     case 'record':
-      // const recordPath = nodeValidationError.context.key ? [...path, nodeValidationError.context.key] : path;
-      // if (nodeValidationError.reason === ValidationErrorType.NOT_AN_OBJECT) {
-      //   messages.push({ path: recordPath, nodeValidationError });
-      // } else {
-      //   console.log(nodeValidationError);
-      //   messages.push({ path: recordPath, nodeValidationError: nodeValidationError.previousErrors[0] });
-      // }
+      const recordPath = nodeValidationError.context.key ? [...path, nodeValidationError.context.key] : path;
+      if (nodeValidationError.reason === ValidationErrorType.NOT_AN_OBJECT) {
+        messages.push({ path: recordPath, nodeValidationError });
+      } else {
+        messages.push({ path: recordPath, nodeValidationError: nodeValidationError.previousErrors[0] });
+      }
       break;
 
     default:
