@@ -109,7 +109,7 @@ export function flattenValidationError(
     case 'array':
     case 'tuple':
       if (isArrayNodeItemValidatorError(nodeValidationError)) {
-        path = [...path, `[${nodeValidationError?.context?.element}]`];
+        path = [...path, `[${nodeValidationError.context.element}]`];
         for (const previousError of nodeValidationError.previousErrors) {
           messages.push(...flattenValidationError(previousError, path));
         }
