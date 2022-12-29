@@ -2,7 +2,7 @@
 import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { ClassNodeFixture, IntersectionNodeFixture, NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
-import { expectValidationError, genValidationErrorTest, project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('intersection', () => {
   const v = new ValidatorInstance({ project });
@@ -21,7 +21,7 @@ describe('intersection', () => {
 
   it('should construct the correct tree', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-    console.log(tree.children[0].children);
+
     expect(tree).toEqual(
       RootNodeFixture.createRequired({
         children: [
@@ -128,7 +128,5 @@ describe('intersection', () => {
         );
       });
     });
-
-    genValidationErrorTest(result);
   });
 });
