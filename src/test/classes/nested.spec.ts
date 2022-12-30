@@ -1,13 +1,16 @@
+/* eslint-disable @typescript-eslint/no-shadow */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { ParseError } from '../../errors';
-import { ClassNode, TypeNodeData, ValidationErrorType } from '../../nodes';
-import { isParseError } from '../../parser';
+import { ClassNode, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
+import { isParseError } from '../../validator-parser';
+import { ArrayNodeFixture, ClassNodeFixture, NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';
 
 describe('nested', () => {
-  describe('simple', () => {
-    const v = new ValidatorInstance({ project });
+  const v = new ValidatorInstance({ project });
 
+  describe(`simple`, () => {
     @v.validatorDecorator()
     class TestEmbed {
       embeddedProperty!: number;
@@ -33,31 +36,15 @@ describe('nested', () => {
 
       it('should construct the correct error', () => {
         expectValidationError(result, (result) => {
-          expect(result.rawErrors).toEqual({
-            success: false,
-            type: 'class',
-            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-            value: { embeddedObject: {} },
-            context: { className: 'Test' },
-            previousErrors: [
-              {
-                success: false,
-                type: 'class',
-                reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-                value: {},
-                context: { className: 'Test', propertyName: 'embeddedObject' },
-                previousErrors: [
-                  {
-                    success: false,
-                    type: 'root',
-                    previousErrors: [],
-                    reason: ValidationErrorType.VALUE_REQUIRED,
-                    context: { className: 'TestEmbed', propertyName: 'embeddedProperty' },
-                  },
-                ],
-              },
-            ],
-          });
+          expect(result.rawErrors).toEqual(
+            NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'embeddedObject', {
+              previousErrors: [
+                NodeValidationErrorMatcher.singleObjectPropertyFailed(TestEmbed, 'embeddedProperty', {
+                  reason: ValidationErrorType.VALUE_REQUIRED,
+                }),
+              ],
+            }),
+          );
         });
       });
     });
@@ -71,40 +58,21 @@ describe('nested', () => {
 
       it('should construct the correct error', () => {
         expectValidationError(result, (result) => {
-          expect(result.rawErrors).toEqual({
-            success: false,
-            type: 'class',
-            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-            value: { embeddedObject: { embeddedProperty: null } },
-            context: { className: 'Test' },
-            previousErrors: [
-              {
-                success: false,
-                type: 'class',
-                reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-                value: { embeddedProperty: null },
-                context: { className: 'Test', propertyName: 'embeddedObject' },
-                previousErrors: [
-                  {
-                    success: false,
-                    type: 'number',
-                    reason: ValidationErrorType.NOT_A_NUMBER,
-                    value: null,
-                    previousErrors: [],
-                    context: { className: 'TestEmbed', propertyName: 'embeddedProperty' },
-                  },
-                ],
-              },
-            ],
-          });
+          expect(result.rawErrors).toEqual(
+            NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'embeddedObject', {
+              previousErrors: [
+                NodeValidationErrorMatcher.singleObjectPropertyFailed(TestEmbed, 'embeddedProperty', {
+                  previousErrors: [NodeValidationErrorMatcher.numberError()],
+                }),
+              ],
+            }),
+          );
         });
       });
     });
   });
 
-  describe('cycle', () => {
-    const v = new ValidatorInstance({ project });
-
+  describe(`cycle`, () => {
     @v.validatorDecorator()
     class Test {
       name!: string;
@@ -113,28 +81,15 @@ describe('nested', () => {
 
     it('should construct the correct tree', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
-
-      expect(tree).toEqual({
-        kind: 'root',
-        optional: false,
-        children: [
-          {
-            kind: 'array',
-            children: [
-              {
-                kind: 'class',
-                name: 'Test',
-                children: [],
-                annotations: {},
-                meta: expect.anything(),
-                getClassTrees: expect.any(Function),
-              },
-            ],
-            annotations: {},
-          },
-        ],
-        annotations: {},
-      } as TypeNodeData);
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          children: [
+            ArrayNodeFixture.create({
+              children: [ClassNodeFixture.createForClass(Test)],
+            }),
+          ],
+        }),
+      );
     });
 
     it('should validate', () => {
@@ -165,76 +120,55 @@ describe('nested', () => {
 
       it('should construct the correct error', () => {
         expectValidationError(result, (result) => {
-          expect(result.rawErrors).toEqual({
-            success: false,
-            type: 'class',
-            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-            value: expect.anything(),
-            context: { className: 'Test' },
-            previousErrors: [
-              {
-                success: false,
-                type: 'array',
-                reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
-                value: expect.anything(),
-                context: { element: 1, className: 'Test', propertyName: 'children' },
-                previousErrors: [
-                  {
-                    success: false,
-                    type: 'class',
-                    reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-                    value: expect.anything(),
-                    context: { className: 'Test' },
-                    previousErrors: [
-                      {
-                        success: false,
-                        type: 'array',
-                        reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
-                        value: expect.anything(),
-                        context: { element: 0, className: 'Test', propertyName: 'children' },
-                        previousErrors: [
-                          {
-                            success: false,
-                            type: 'class',
-                            reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-                            value: { name: 123, children: [1337] },
-                            context: { className: 'Test' },
-                            previousErrors: [
-                              {
-                                success: false,
-                                type: 'string',
-                                reason: ValidationErrorType.NOT_A_STRING,
-                                value: 123,
-                                previousErrors: [],
-                                context: { className: 'Test', propertyName: 'name' },
-                              },
-                              {
-                                success: false,
-                                type: 'array',
-                                reason: ValidationErrorType.ELEMENT_TYPE_FAILED,
-                                value: [1337],
-                                context: { element: 0, className: 'Test', propertyName: 'children' },
-                                previousErrors: [
-                                  {
-                                    success: false,
-                                    type: 'class',
-                                    reason: ValidationErrorType.NOT_AN_OBJECT,
-                                    value: 1337,
-                                    previousErrors: [],
-                                    context: { className: 'Test' },
-                                  },
-                                ],
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          });
+          expect(result.rawErrors).toEqual(
+            NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'children', {
+              previousErrors: [
+                NodeValidationErrorMatcher.arrayError({
+                  previousErrors: [
+                    NodeValidationErrorMatcher.arrayItemError({
+                      context: { element: 1 },
+                      previousErrors: [
+                        NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'children', {
+                          previousErrors: [
+                            NodeValidationErrorMatcher.arrayError({
+                              previousErrors: [
+                                NodeValidationErrorMatcher.arrayItemError({
+                                  context: { element: 0 },
+                                  previousErrors: [
+                                    NodeValidationErrorMatcher.objectPropertyFailed(Test, {
+                                      previousErrors: [
+                                        NodeValidationErrorMatcher.rootError(Test, 'name', {
+                                          previousErrors: [NodeValidationErrorMatcher.stringError()],
+                                        }),
+                                        NodeValidationErrorMatcher.rootError(Test, 'children', {
+                                          previousErrors: [
+                                            NodeValidationErrorMatcher.arrayError({
+                                              previousErrors: [
+                                                NodeValidationErrorMatcher.arrayItemError({
+                                                  context: { element: 0 },
+                                                  previousErrors: [
+                                                    NodeValidationErrorMatcher.classNotAObjectError(Test),
+                                                  ],
+                                                }),
+                                              ],
+                                            }),
+                                          ],
+                                        }),
+                                      ],
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          );
         });
       });
     });
@@ -261,30 +195,17 @@ describe('nested', () => {
       }
 
       it('should construct the tree correctly (single propery omitted)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[0].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-        expect(tree).toEqual({
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'class',
-              name: 'TestEmbed',
-              children: [],
-              annotations: {},
-              getClassTrees: expect.any(Function),
-              meta: {
-                from: 'class',
-                reference: expect.any(String),
+        expect(tree).toEqual(
+          RootNodeFixture.createRequired({
+            children: [
+              ClassNodeFixture.createForClass(TestEmbed, {
                 omitted: new Set(['embeddedProperty2']),
-              },
-            },
-          ],
-          annotations: {},
-        });
+              }),
+            ],
+          }),
+        );
 
         expect((tree.children[0] as ClassNode).getClassTrees().map((t) => t.name)).toEqual([
           'embeddedProperty1',
@@ -293,57 +214,31 @@ describe('nested', () => {
       });
 
       it('should construct the tree correctly (multiple properties omitted)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[1].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
 
-        expect(tree).toEqual({
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'class',
-              name: 'TestEmbed',
-              meta: {
-                from: 'class',
-                reference: expect.any(String),
+        expect(tree).toEqual(
+          RootNodeFixture.createRequired({
+            children: [
+              ClassNodeFixture.createForClass(TestEmbed, {
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
-              },
-              getClassTrees: expect.any(Function),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        });
+              }),
+            ],
+          }),
+        );
       });
 
       it('should construct the tree correctly (aliased)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[2].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[2];
 
-        expect(tree).toEqual({
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'class',
-              name: 'TestEmbed',
-              meta: {
-                from: 'class',
-                reference: expect.any(String),
+        expect(tree).toEqual(
+          RootNodeFixture.createRequired({
+            children: [
+              ClassNodeFixture.createForClass(TestEmbed, {
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
-              },
-              getClassTrees: expect.any(Function),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        });
+              }),
+            ],
+          }),
+        );
       });
 
       it('should validate', () => {
@@ -369,37 +264,16 @@ describe('nested', () => {
 
         it('should construct the correct error', () => {
           expectValidationError(result, (result) => {
-            expect(result.rawErrors).toEqual({
-              success: false,
-              type: 'class',
-              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-              value: expect.anything(),
-              previousErrors: [
-                {
-                  success: false,
-                  type: 'class',
-                  value: { embeddedProperty3: 123 },
-                  context: {
-                    className: 'Test',
-                    propertyName: 'embeddedObject',
-                  },
-                  previousErrors: [
-                    {
-                      success: false,
-                      type: 'root',
-                      reason: ValidationErrorType.VALUE_REQUIRED,
-                      previousErrors: [],
-                      context: {
-                        className: 'TestEmbed',
-                        propertyName: 'embeddedProperty1',
-                      },
-                    },
-                  ],
-                  reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-                },
-              ],
-              context: { className: 'Test' },
-            });
+            expect(result.rawErrors).toEqual(
+              NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'embeddedObject', {
+                previousErrors: [
+                  NodeValidationErrorMatcher.singleObjectPropertyFailed(TestEmbed, 'embeddedProperty1', {
+                    reason: ValidationErrorType.VALUE_REQUIRED,
+                    previousErrors: [],
+                  }),
+                ],
+              }),
+            );
           });
         });
       });
@@ -417,38 +291,15 @@ describe('nested', () => {
 
         it('should construct the correct error', () => {
           expectValidationError(result, (result) => {
-            expect(result.rawErrors).toEqual({
-              success: false,
-              type: 'class',
-              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-              value: expect.anything(),
-              previousErrors: [
-                {
-                  success: false,
-                  type: 'class',
-                  reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-                  value: { embeddedProperty1: 123, embeddedProperty2: 123 },
-                  previousErrors: [
-                    {
-                      success: false,
-                      type: 'class',
-                      reason: ValidationErrorType.UNKNOWN_FIELD,
-                      value: 123,
-                      previousErrors: [],
-                      context: {
-                        className: 'TestEmbed',
-                        propertyName: 'embeddedProperty2',
-                      },
-                    },
-                  ],
-                  context: {
-                    className: 'Test',
-                    propertyName: 'embeddedObject',
-                  },
-                },
-              ],
-              context: { className: 'Test' },
-            });
+            expect(result.rawErrors).toEqual(
+              NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'embeddedObject', {
+                previousErrors: [
+                  NodeValidationErrorMatcher.objectPropertyFailed(TestEmbed, {
+                    previousErrors: [NodeValidationErrorMatcher.objectPropertyUnknown(TestEmbed, 'embeddedProperty2')],
+                  }),
+                ],
+              }),
+            );
           });
         });
       });
@@ -499,84 +350,45 @@ describe('nested', () => {
       }
 
       it('should construct the tree correctly (single propery picked)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[0].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-        expect(tree).toEqual({
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'class',
-              name: 'TestEmbed',
-              children: [],
-              getClassTrees: expect.any(Function),
-              meta: {
-                from: 'class',
-                reference: expect.any(String),
+        expect(tree).toEqual(
+          RootNodeFixture.createRequired({
+            children: [
+              ClassNodeFixture.createForClass(TestEmbed, {
                 picked: new Set(['embeddedProperty2']),
-              },
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        });
+              }),
+            ],
+          }),
+        );
       });
 
       it('should construct the tree correctly (multiple properties picked)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[1].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
 
-        expect(tree).toEqual({
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'class',
-              name: 'TestEmbed',
-              meta: {
-                from: 'class',
-                reference: expect.any(String),
+        expect(tree).toEqual(
+          RootNodeFixture.createRequired({
+            children: [
+              ClassNodeFixture.createForClass(TestEmbed, {
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
-              },
-              getClassTrees: expect.any(Function),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        });
+              }),
+            ],
+          }),
+        );
       });
 
       it('should construct the tree correctly (aliased)', () => {
-        const { filename, line } = v.getClassMetadata(Test);
-        const cls = v.classDiscovery.getClass('Test', filename, line);
-        const trees = v.getPropertyTypeTrees(cls);
-        const tree = trees[2].tree;
+        const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[2];
 
-        expect(tree).toEqual({
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'class',
-              name: 'TestEmbed',
-              meta: {
-                from: 'class',
-                reference: expect.any(String),
+        expect(tree).toEqual(
+          RootNodeFixture.createRequired({
+            children: [
+              ClassNodeFixture.createForClass(TestEmbed, {
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
-              },
-              getClassTrees: expect.any(Function),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        });
+              }),
+            ],
+          }),
+        );
       });
 
       it('should validate', () => {
@@ -601,50 +413,21 @@ describe('nested', () => {
         });
         it('should construct the correct error', () => {
           expectValidationError(result, (result) => {
-            expect(result.rawErrors).toEqual({
-              success: false,
-              type: 'class',
-              reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-              value: expect.anything(),
-              previousErrors: [
-                {
-                  success: false,
-                  type: 'class',
-                  reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-                  value: expect.anything(),
-                  previousErrors: [
-                    {
-                      success: false,
-                      type: 'number',
-                      reason: ValidationErrorType.NOT_A_NUMBER,
-                      value: '123',
-                      previousErrors: [],
-                      context: { className: 'TestEmbed', propertyName: 'embeddedProperty2' },
-                    },
-                    {
-                      success: false,
-                      type: 'class',
-                      reason: ValidationErrorType.UNKNOWN_FIELD,
-                      value: '123',
-                      previousErrors: [],
-                      context: { className: 'TestEmbed', propertyName: 'embeddedProperty1' },
-                    },
-
-                    {
-                      success: false,
-                      type: 'class',
-                      reason: ValidationErrorType.UNKNOWN_FIELD,
-                      value: '123',
-                      previousErrors: [],
-                      context: { className: 'TestEmbed', propertyName: 'embeddedProperty3' },
-                    },
-                  ],
-
-                  context: { className: 'Test', propertyName: 'embeddedObject' },
-                },
-              ],
-              context: { className: 'Test' },
-            });
+            expect(result.rawErrors).toEqual(
+              NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'embeddedObject', {
+                previousErrors: [
+                  NodeValidationErrorMatcher.objectPropertyFailed(TestEmbed, {
+                    previousErrors: [
+                      NodeValidationErrorMatcher.rootError(TestEmbed, 'embeddedProperty2', {
+                        previousErrors: [NodeValidationErrorMatcher.numberError()],
+                      }),
+                      NodeValidationErrorMatcher.objectPropertyUnknown(TestEmbed, 'embeddedProperty1'),
+                      NodeValidationErrorMatcher.objectPropertyUnknown(TestEmbed, 'embeddedProperty3'),
+                    ],
+                  }),
+                ],
+              }),
+            );
           });
         });
       });

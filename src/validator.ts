@@ -3,15 +3,16 @@ import 'reflect-metadata';
 import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { flattenValidationError, IErrorMessage } from './error-formatter';
+import { flattenValidationError, groupErrors } from './error-formatter';
 import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
-import { Parser } from './parser';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
 import { Constructor } from './types';
+import { ClassCache, Parser } from './validator-parser';
 
 export const validatorMetadataKey = Symbol('validatorMetadata');
 
-interface IValidatorOptions {}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface IValidatorOptions {}
 
 export interface IValidationSuccess<T> {
   success: true;
@@ -21,17 +22,29 @@ export interface IValidationSuccess<T> {
 export interface IValidationError<T> {
   success: false;
   object: null;
-  errors: IErrorMessage[];
+  errors: any; // IErrorMessage[];
   rawErrors: INodeValidationError;
 }
 
 export type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
 
-type MaybePartial<T> = Partial<T> & Record<any, any>;
+export type MaybePartial<T> = Partial<T> & Record<any, any>;
 
 export interface IValidatorConstructorOptions {
   project: Project;
   defaultOptions?: IValidationOptions;
+  parser?: (classDeclarationMapping: ClassCache<Constructor<unknown>>) => Parser;
+  classDiscovery?: ClassDiscovery;
+  decorator?: SourceCodeLocationDecorator<IValidatorOptions>;
+}
+
+export class ValidationError extends Error {
+  validationError: INodeValidationError;
+
+  constructor(errors: INodeValidationError) {
+    super('Validation failed');
+    this.validationError = errors;
+  }
 }
 
 export class ValidatorInstance {
@@ -45,9 +58,11 @@ export class ValidatorInstance {
 
   constructor(options: IValidatorConstructorOptions) {
     this.project = options.project;
-    this.classDiscovery = new ClassDiscovery(options.project);
-    this.decorator = new SourceCodeLocationDecorator<IValidatorOptions>(this.classDiscovery);
-    this.parser = new Parser(this.decorator.getClassDeclarationMapping());
+    this.classDiscovery = options.classDiscovery ?? new ClassDiscovery(options.project);
+    this.decorator = options.decorator ?? new SourceCodeLocationDecorator<IValidatorOptions>(this.classDiscovery);
+    this.parser =
+      options.parser?.(this.decorator.getClassDeclarationMapping()) ??
+      new Parser(this.decorator.getClassDeclarationMapping());
 
     this.defaultOptions = Object.assign(
       {
@@ -73,22 +88,24 @@ export class ValidatorInstance {
    * This loops through all direct and indirect properties of `cls` and outputs them in the internal
    * TypeNode tree format
    *
-   * @param cls - Class reference
    * @param classDeclaration - A ts-morph class declaration whose members will be processed
    */
   getPropertyTypeTrees(classDeclaration: ClassDeclaration): ITypeAndTree[] {
-    const trees = this.parser.getPropertyTypeTrees(classDeclaration);
-    return trees;
+    return this.parser.getPropertyTypeTrees(classDeclaration);
   }
 
   getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
     const validatorMeta = this.getClassMetadata(cls);
-    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
+    const classDeclaration = this.classDiscovery.getClass(
+      cls.name,
+      validatorMeta.filename,
+      validatorMeta.line,
+      validatorMeta.column,
+    );
     return this.getPropertyTypeTrees(classDeclaration);
   }
 
   validateClassDeclaration<T>(
-    cls: Constructor<T>,
     classDeclaration: ClassDeclaration,
     values: MaybePartial<T>,
     options: IValidationOptions = {},
@@ -110,7 +127,7 @@ export class ValidatorInstance {
       return {
         success: false,
         object: null,
-        errors: flattenValidationError(result),
+        errors: groupErrors(flattenValidationError(result)),
         rawErrors: result,
       };
     }
@@ -119,9 +136,14 @@ export class ValidatorInstance {
   validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
     // Get metadata + types
     const validatorMeta = this.getClassMetadata(cls);
-    const classDeclaration = this.classDiscovery.getClass(cls.name, validatorMeta.filename, validatorMeta.line);
+    const classDeclaration = this.classDiscovery.getClass(
+      cls.name,
+      validatorMeta.filename,
+      validatorMeta.line,
+      validatorMeta.column,
+    );
 
-    return this.validateClassDeclaration<T>(cls, classDeclaration, values, options);
+    return this.validateClassDeclaration<T>(classDeclaration, values, options);
   }
 
   validatorDecorator(options: IValidatorOptions = {}): ReturnType<typeof Reflect['metadata']> {

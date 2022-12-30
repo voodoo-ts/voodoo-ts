@@ -24,6 +24,7 @@ describe('', () => {
     expect(metadata).toEqual({
       filename: expect.stringMatching(new RegExp('/src/test/source-code-location-decorator.spec.ts$')),
       line: expect.any(Number),
+      column: expect.any(Number),
       options: {},
     });
   });
@@ -38,6 +39,7 @@ describe('', () => {
     expect(metadata).toEqual({
       filename: expect.stringMatching(new RegExp('/src/test/source-code-location-decorator.spec.ts$')),
       line: expect.any(Number),
+      column: expect.any(Number),
       options: {},
     });
   });

@@ -1,6 +1,13 @@
-import { TypeNodeData, ValidationErrorType } from '../../nodes';
+import { ParseError } from '../../errors';
 import { ValidatorInstance } from '../../validator';
-import { expectValidationError, getLineNumber, project } from '../utils';
+import {
+  BooleanNodeFixture,
+  ClassNodeFixture,
+  NumberNodeFixture,
+  RootNodeFixture,
+  StringNodeFixture,
+} from '../fixtures';
+import { getLineNumber, project } from '../utils';
 
 describe('generics', () => {
   const v = new ValidatorInstance({ project });
@@ -26,6 +33,13 @@ describe('generics', () => {
     property3!: V;
   }
 
+  interface ITest {
+    property1: string;
+  }
+
+  @v.validatorDecorator()
+  class TestExtending extends Generic<string, number, boolean> implements ITest {}
+
   it('should have cached all variants of `Generic`', () => {
     v.validate(Test, {});
 
@@ -38,26 +52,37 @@ describe('generics', () => {
 
   it('should construct the correct tree', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-    const x = v.getPropertyTypeTreesFromConstructor(Test);
-    console.log(tree);
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          kind: 'class',
-          name: 'Generic',
-          children: [],
-          annotations: {},
-          meta: {
-            from: 'class',
-            reference: expect.any(String),
-          },
-          getClassTrees: expect.any(Function),
-        },
-      ],
-      annotations: {},
-    } as TypeNodeData);
+
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [ClassNodeFixture.create('Generic', { from: 'class' })],
+      }),
+    );
+  });
+
+  it('should construct the correct tree for extending classes', () => {
+    const trees = v.getPropertyTypeTreesFromConstructor(TestExtending);
+
+    expect(trees).toEqual([
+      {
+        name: 'property1',
+        tree: RootNodeFixture.createRequired({
+          children: [StringNodeFixture.create()],
+        }),
+      },
+      {
+        name: 'property2',
+        tree: RootNodeFixture.createRequired({
+          children: [NumberNodeFixture.create()],
+        }),
+      },
+      {
+        name: 'property3',
+        tree: RootNodeFixture.createRequired({
+          children: [BooleanNodeFixture.create()],
+        }),
+      },
+    ]);
   });
 
   it('should validate', () => {
@@ -87,5 +112,9 @@ describe('generics', () => {
     });
 
     expect(result.success).toEqual(true);
+  });
+
+  it('should not validate generic classes', () => {
+    expect(() => v.validate(Generic, { property1: 1, property2: 2, property3: 3 })).toThrowError(ParseError);
   });
 });

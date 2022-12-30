@@ -2,7 +2,5 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  silent: false,
-  testPathIgnorePatterns: ['<rootDir>/src/test'],
   setupFilesAfterEnv: ['jest-extended/all'],
 };
