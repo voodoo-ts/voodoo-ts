@@ -63,32 +63,38 @@ export function getNodeTypeName(e: INodeValidationError): string {
   }
 }
 
-const translations: { EN: Record<ValidationErrorType, (error: any) => string> } = {
+const translations: {
+  EN: Record<ValidationErrorType, (error: any) => string>;
+} = {
   EN: {
     [ValidationErrorType.VALUE_REQUIRED]: (e: IBaseNodeValidationError) => `Value is required`,
     [ValidationErrorType.UNKNOWN_FIELD]: (e) => `No unknown fields allowed`,
-    [ValidationErrorType.NOT_A_STRING]: (e) => `'${e.value}' (type: ${getTypeName(e.value)}) is not a valid string`,
-    [ValidationErrorType.NOT_A_NUMBER]: (e) => `'${e.value}' (type: ${getTypeName(e.value)}) is not a valid number`,
-    [ValidationErrorType.NOT_AN_ENUM]: (e: IEnumNodeValidationError & IBaseNodeValidationError) =>
-      `'${e.value}' is not a valid ${e.context.enumName}. Allowed values: ${e.context.allowedValues}`,
-    [ValidationErrorType.NOT_A_BOOLEAN]: (e) => `'${e.value}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
-    [ValidationErrorType.NOT_NULL]: (e) => `'${e.value}' should be null`,
-    [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError & IBaseNodeValidationError) =>
-      `'${e.value}' did not match any of these types ${getNodeTypeName(e)}`,
+    [ValidationErrorType.NOT_A_STRING]: (e) =>
+      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid string`,
+    [ValidationErrorType.NOT_A_NUMBER]: (e) =>
+      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid number`,
+    [ValidationErrorType.NOT_AN_ENUM]: (e: IEnumNodeValidationError) =>
+      `Value '${e.value}' is not a valid ${e.context.enumName}. Allowed values: ${e.context.allowedValues}`,
+    [ValidationErrorType.NOT_A_BOOLEAN]: (e) =>
+      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
+    [ValidationErrorType.NOT_NULL]: (e) => `Value '${e.value}' (type: ${getTypeName(e.value)}) should be null`,
+    [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError) =>
+      `'Value ${e.value}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(e)}`,
     [ValidationErrorType.OBJECT_PROPERTY_FAILED]: (e) => `todo ${e}`,
     [ValidationErrorType.NOT_AN_OBJECT]: (e) => `Not a valid object`,
     [ValidationErrorType.RECORD_PROPERTY_FAILED]: (e: IRecordNodeValidationError) =>
-      `Type of property ${e.context.key} is not ${'todo'}`,
-    [ValidationErrorType.ARRAY_FAILED]: (e: IArrayNodeValidationError) => `array faile`,
+      `Value of ${e.context.key} (type: ${getTypeName(e.value)}) is not a valid ${getNodeTypeName(e)}`,
+    [ValidationErrorType.ARRAY_FAILED]: (e: IArrayNodeValidationError) => `array failed`,
     [ValidationErrorType.ARRAY_ITEM_FAILED]: (e: IArrayNodeItemValidationError) =>
       `Invalid value at index ${e.context.element}`,
-    [ValidationErrorType.NOT_AN_ARRAY]: (e) => `'${e.value}' (type: ${getTypeName(e.value)}) is not a valid array`,
+    [ValidationErrorType.NOT_AN_ARRAY]: (e) =>
+      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid array`,
     [ValidationErrorType.NO_LENGTH_MATCH]: (e) => `${e.value.length}`,
-    [ValidationErrorType.LITERAL_NOT_MATCHING]: (e: ILiteralNodeValidationError & IBaseNodeValidationError) =>
-      `'${e.value}' is not '${e.context.expected}'`,
+    [ValidationErrorType.LITERAL_NOT_MATCHING]: (e: ILiteralNodeValidationError) =>
+      `Value '${e.value}' is not '${e.context.expected}'`,
     [ValidationErrorType.DECORATORS_FAILED]: (e) => `todo`,
     [ValidationErrorType.CUSTOM]: (e) => `Unknown error`,
-    [ValidationErrorType.PROPERTY_FAILED]: () => `propfailed`,
+    [ValidationErrorType.PROPERTY_FAILED]: () => `Generic property error`,
   },
 };
 
@@ -159,7 +165,7 @@ export function flattenValidationError(
           if (previousError.type === 'class') {
             return previousError.context.className;
           } else if (previousError.type === 'enum') {
-            return previousError.context;
+            return previousError.context.enumName;
           } else {
             return previousError.type;
           }
