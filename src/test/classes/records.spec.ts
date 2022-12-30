@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TypeNodeData, ValidationErrorType } from '../../nodes';
+import { NumberNode, StringNode, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
+import { NodeValidationErrorMatcher, RecordNodeFixture, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';
 
 describe('records', () => {
@@ -14,21 +16,15 @@ describe('records', () => {
   it('should construct the correct tree', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          kind: 'record',
-          children: [
-            { kind: 'string', reason: expect.anything(), children: [], annotations: {} },
-            { kind: 'number', reason: expect.anything(), children: [], annotations: {} },
-          ],
-          annotations: {},
-        },
-      ],
-      annotations: {},
-    } as TypeNodeData);
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [
+          RecordNodeFixture.create({
+            children: [new StringNode(), new NumberNode()],
+          }),
+        ],
+      }),
+    );
   });
 
   it('should validate a record', () => {
@@ -52,26 +48,11 @@ describe('records', () => {
 
     it('should construct the correct error', () => {
       expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          success: false,
-          type: 'class',
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          value: { recordProperty: false },
-          context: { className: 'Test' },
-          previousErrors: [
-            {
-              success: false,
-              type: 'record',
-              reason: ValidationErrorType.NOT_AN_OBJECT,
-              value: false,
-              previousErrors: [],
-              context: {
-                className: 'Test',
-                propertyName: 'recordProperty',
-              },
-            },
-          ],
-        });
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test.name, 'recordProperty', {
+            previousErrors: [NodeValidationErrorMatcher.recordError({ reason: ValidationErrorType.NOT_AN_OBJECT })],
+          }),
+        );
       });
     });
   });
@@ -85,35 +66,20 @@ describe('records', () => {
 
     it('should construct the correct error', () => {
       expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          success: false,
-          type: 'class',
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          value: { recordProperty: { one: 'one', two: 2 } },
-          context: { className: 'Test' },
-          previousErrors: [
-            {
-              success: false,
-              type: 'record',
-              value: { one: 'one', two: 2 },
-              previousErrors: [
-                {
-                  success: false,
-                  type: 'number',
-                  reason: ValidationErrorType.NOT_A_NUMBER,
-                  value: 'one',
-                  previousErrors: [],
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test.name, 'recordProperty', {
+            previousErrors: [
+              NodeValidationErrorMatcher.recordError({
+                reason: ValidationErrorType.RECORD_PROPERTY_FAILED,
+                context: {
+                  key: 'one',
+                  valueInvalid: true,
                 },
-              ],
-              context: {
-                className: 'Test',
-                propertyName: 'recordProperty',
-                valueInvalid: true,
-                key: 'one',
-              },
-            },
-          ],
-        });
+                previousErrors: [NodeValidationErrorMatcher.numberError()],
+              }),
+            ],
+          }),
+        );
       });
     });
   });

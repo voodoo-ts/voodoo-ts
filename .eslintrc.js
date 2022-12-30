@@ -144,6 +144,7 @@ module.exports = {
     ],
     '@typescript-eslint/unified-signatures': 'error',
     '@typescript-eslint/no-namespace': 'off',
+    '@typescript-eslint/no-shadow': ['warn'],
     // ESLint rules
     'arrow-parens': ['off', 'always'],
     'brace-style': ['off', 'off'],
@@ -214,10 +215,10 @@ module.exports = {
     'jsdoc/check-indentation': 'warn',
     'jsdoc/check-param-names': 'warn',
     'jsdoc/no-types': 'warn',
-    'jsdoc/require-description': 'warn',
+    'jsdoc/require-description': 'off',
     'jsdoc/require-hyphen-before-param-description': 'warn',
     'jsdoc/require-jsdoc': [
-      'warn',
+      'off',
       {
         checkConstructors: false,
         require: {
@@ -228,7 +229,7 @@ module.exports = {
     ],
     'jsdoc/require-param-description': 'warn',
     'jsdoc/require-param-name': 'warn',
-    'jsdoc/require-param': 'warn',
+    'jsdoc/require-param': 'off',
     'linebreak-style': 'off',
     'max-classes-per-file': 'off',
     'max-len': 'off',
@@ -248,12 +249,7 @@ module.exports = {
     'no-multiple-empty-lines': 'off',
     'no-new-wrappers': 'error',
     'no-restricted-syntax': ['error', 'ForInStatement'],
-    'no-shadow': [
-      'warn',
-      {
-        hoist: 'all',
-      },
-    ],
+    'no-shadow': 'off',
     'no-throw-literal': 'error',
     'no-trailing-spaces': 'off',
     'no-undef-init': 'error',

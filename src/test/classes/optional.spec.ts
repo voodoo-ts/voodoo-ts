@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { TypeNodeData, ValidationErrorType } from '../../nodes';
+import { StringNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
+import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';
 
 describe('optional', () => {
@@ -14,19 +16,11 @@ describe('optional', () => {
   it('should construct the correct tree', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-    expect(tree).toEqual({
-      kind: 'root',
-      children: [
-        {
-          kind: 'string',
-          children: [],
-          annotations: {},
-          reason: expect.anything(),
-        },
-      ],
-      annotations: {},
-      optional: true,
-    } as TypeNodeData);
+    expect(tree).toEqual(
+      RootNodeFixture.createOptional({
+        children: [new StringNode()],
+      }),
+    );
   });
 
   it('should validate optional string with valid string', () => {
@@ -49,23 +43,11 @@ describe('optional', () => {
 
     it('should construct the correct error', () => {
       expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          success: false,
-          type: 'class',
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          value: { stringProperty: 123 },
-          context: { className: 'Test' },
-          previousErrors: [
-            {
-              success: false,
-              type: 'string',
-              reason: ValidationErrorType.NOT_A_STRING,
-              value: 123,
-              context: { className: 'Test', propertyName: 'stringProperty' },
-              previousErrors: [],
-            },
-          ],
-        });
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'stringProperty', {
+            previousErrors: [NodeValidationErrorMatcher.stringError()],
+          }),
+        );
       });
     });
   });
@@ -79,26 +61,11 @@ describe('optional', () => {
 
     it('should construct the correct error', () => {
       expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          success: false,
-          type: 'class',
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          value: { stringProperty: null },
-          context: { className: 'Test' },
-          previousErrors: [
-            {
-              success: false,
-              type: 'string',
-              value: null,
-              previousErrors: [],
-              reason: ValidationErrorType.NOT_A_STRING,
-              context: {
-                className: 'Test',
-                propertyName: 'stringProperty',
-              },
-            },
-          ],
-        });
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.objectPropertyFailedForClass(Test, 'stringProperty', {
+            previousErrors: [NodeValidationErrorMatcher.stringError()],
+          }),
+        );
       });
     });
   });

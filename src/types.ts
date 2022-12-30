@@ -1,4 +1,4 @@
 export interface Constructor<T> {
-  new (...args: unknown[]): T;
+  new (...args: any[]): T;
   prototype: object;
 }

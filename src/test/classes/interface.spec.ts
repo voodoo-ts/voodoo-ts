@@ -1,5 +1,6 @@
-import { ClassNode, TypeNode, TypeNodeData } from '../../nodes';
+import { ClassNode, TypeNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
+import { ClassNodeFixture, NumberNodeFixture, RootNodeFixture, StringNodeFixture } from '../fixtures';
 import { project } from '../utils';
 
 /**
@@ -95,24 +96,11 @@ describe('interface', () => {
     const { name, tree } = trees[0];
 
     expect(name).toEqual('embedded');
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          kind: 'class',
-          name: 'ITest',
-          getClassTrees: expect.any(Function),
-          meta: {
-            reference: expect.any(String),
-            from: 'interface',
-          },
-          children: [],
-          annotations: {},
-        },
-      ],
-      annotations: {},
-    } as TypeNodeData);
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [ClassNodeFixture.create('ITest', { from: 'interface' })],
+      }),
+    );
   });
 
   it('should construct the correct trees for extending interfaces', () => {
@@ -120,57 +108,24 @@ describe('interface', () => {
     const { name, tree } = trees[2];
 
     expect(name).toEqual('embedded2');
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          kind: 'class',
-          name: 'ITest2',
-          getClassTrees: expect.any(Function),
-          meta: {
-            reference: expect.any(String),
-            from: 'interface',
-          },
-          children: [],
-          annotations: {},
-        },
-      ],
-      annotations: {},
-    } as TypeNodeData);
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [ClassNodeFixture.create('ITest2', { from: 'interface' })],
+      }),
+    );
 
     expect((tree.children[0] as ClassNode).getClassTrees()).toEqual([
       {
         name: 'test',
-        tree: {
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'number',
-              reason: expect.anything(),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [NumberNodeFixture.create()],
+        }),
       },
       {
         name: 'stringProperty',
-        tree: {
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'string',
-              reason: expect.anything(),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [StringNodeFixture.create()],
+        }),
       },
     ]);
   });
@@ -180,25 +135,17 @@ describe('interface', () => {
     const { name, tree } = trees[3];
 
     expect(name).toEqual('embedded3');
-
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          kind: 'class',
-          name: expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/),
-          getClassTrees: expect.any(Function),
-          meta: {
-            reference: expect.any(String),
-            from: 'object',
-          },
-          children: [],
-          annotations: {},
-        },
-      ],
-      annotations: {},
-    } as TypeNodeData);
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [
+          ClassNodeFixture.create(
+            Test.name,
+            { from: 'object' },
+            { name: expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/) },
+          ),
+        ],
+      }),
+    );
   });
 
   it('should construct the correct trees for interfaces extending an intersection', () => {
@@ -207,24 +154,16 @@ describe('interface', () => {
 
     expect(name).toEqual('embedded4');
 
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          kind: 'class',
-          name: 'ITest3',
-          children: [],
-          annotations: {},
-          meta: {
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [
+          ClassNodeFixture.create('ITest3', {
             reference: expect.any(String),
             from: 'interface',
-          },
-          getClassTrees: expect.any(Function),
-        },
-      ],
-      annotations: {},
-    });
+          }),
+        ],
+      }),
+    );
 
     assertClassTree(tree.children[0]);
     const interfaceTrees = tree.children[0].getClassTrees();
@@ -233,51 +172,21 @@ describe('interface', () => {
     expect(interfaceTrees).toEqual([
       {
         name: 'test',
-        tree: {
-          children: [
-            {
-              kind: 'number',
-              children: [],
-              annotations: {},
-              reason: 'NOT_A_NUMBER',
-            },
-          ],
-          annotations: {},
-          kind: 'root',
-          optional: false,
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [NumberNodeFixture.create()],
+        }),
       },
       {
         name: 'objectProperty',
-        tree: {
-          children: [
-            {
-              kind: 'number',
-              children: [],
-              annotations: {},
-              reason: 'NOT_A_NUMBER',
-            },
-          ],
-          annotations: {},
-          kind: 'root',
-          optional: false,
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [NumberNodeFixture.create()],
+        }),
       },
       {
         name: 'test3Property',
-        tree: {
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'string',
-              reason: expect.anything(),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [StringNodeFixture.create()],
+        }),
       },
     ]);
   });

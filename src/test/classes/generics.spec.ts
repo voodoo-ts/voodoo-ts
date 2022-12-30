@@ -1,6 +1,12 @@
 import { ParseError } from '../../errors';
-import { TypeNodeData } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
+import {
+  BooleanNodeFixture,
+  ClassNodeFixture,
+  NumberNodeFixture,
+  RootNodeFixture,
+  StringNodeFixture,
+} from '../fixtures';
 import { getLineNumber, project } from '../utils';
 
 describe('generics', () => {
@@ -47,24 +53,11 @@ describe('generics', () => {
   it('should construct the correct tree', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-    expect(tree).toEqual({
-      kind: 'root',
-      optional: false,
-      children: [
-        {
-          kind: 'class',
-          name: 'Generic',
-          children: [],
-          annotations: {},
-          meta: {
-            from: 'class',
-            reference: expect.any(String),
-          },
-          getClassTrees: expect.any(Function),
-        },
-      ],
-      annotations: {},
-    } as TypeNodeData);
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [ClassNodeFixture.create('Generic', { from: 'class' })],
+      }),
+    );
   });
 
   it('should construct the correct tree for extending classes', () => {
@@ -73,51 +66,21 @@ describe('generics', () => {
     expect(trees).toEqual([
       {
         name: 'property1',
-        tree: {
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'string',
-              reason: expect.anything(),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [StringNodeFixture.create()],
+        }),
       },
       {
         name: 'property2',
-        tree: {
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'number',
-              reason: expect.anything(),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [NumberNodeFixture.create()],
+        }),
       },
       {
         name: 'property3',
-        tree: {
-          kind: 'root',
-          optional: false,
-          children: [
-            {
-              kind: 'boolean',
-              reason: expect.anything(),
-              children: [],
-              annotations: {},
-            },
-          ],
-          annotations: {},
-        } as TypeNodeData,
+        tree: RootNodeFixture.createRequired({
+          children: [BooleanNodeFixture.create()],
+        }),
       },
     ]);
   });

@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { ClassDeclaration } from 'ts-morph';
 
 import { ClassDiscovery } from '../class-discovery';
 import { ClassNotFoundError } from '../errors';
+import { Constructor } from '../types';
 import {
   LINE_NUMBER_MULTI_DECORATOR_CLASS,
   LINE_NUMBER_DECORATED_CLASS,
@@ -47,7 +49,9 @@ describe('class-discovery', () => {
 
     const cacheEntries = Object.fromEntries(classDiscovery.classCache.entries());
     expect(cacheEntries).toEqual({
-      [`${LINE_NUMBER_DECORATED_CLASS}:${COLUMN}:${FIXTURE_FILENAME}`]: expect.any(ClassDeclaration),
+      [`${LINE_NUMBER_DECORATED_CLASS}:${COLUMN}:${FIXTURE_FILENAME}`]: expect.any(
+        ClassDeclaration as unknown as Constructor<unknown>,
+      ),
     });
   });
 

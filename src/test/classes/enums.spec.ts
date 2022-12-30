@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
+import { NodeValidationErrorMatcher } from '../fixtures';
 import { expectValidationError, project } from '../utils';
 
 describe('enums', () => {
@@ -30,28 +30,18 @@ describe('enums', () => {
 
     it('should construct the correct error', () => {
       expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual({
-          success: false,
-          type: 'class',
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          value: { enumProperty: 123 },
-          previousErrors: [
-            {
-              success: false,
-              type: 'enum',
-              reason: ValidationErrorType.NOT_AN_ENUM,
-              value: 123,
-              previousErrors: [],
-              context: {
-                className: 'Test',
-                propertyName: 'enumProperty',
-                enumName: 'TestEnum',
-                allowedValues: ['yes', 'no'],
-              },
-            },
-          ],
-          context: { className: 'Test' },
-        });
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.objectPropertyFailedForClass(Test, 'enumProperty', {
+            previousErrors: [
+              NodeValidationErrorMatcher.enumError({
+                context: {
+                  enumName: 'TestEnum',
+                  allowedValues: ['yes', 'no'],
+                },
+              }),
+            ],
+          }),
+        );
       });
     });
   });
