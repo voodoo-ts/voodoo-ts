@@ -5,23 +5,21 @@ import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, iterParsers, project } from '../utils';
 
-describe('strings - tree', () => {
-  for (const [parserName, v, decorator] of iterParsers()) {
-    it(`should construct the correct tree (${parserName})`, () => {
-      @decorator()
-      class Test {
-        stringProperty!: string;
-      }
+describe.each(Array.from(iterParsers()))('strings - tree', (parserName, v, decorator) => {
+  it(`should construct the correct tree (${parserName})`, () => {
+    @decorator()
+    class Test {
+      stringProperty!: string;
+    }
 
-      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+    const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-      expect(tree).toEqual(
-        RootNodeFixture.createRequired({
-          children: [new StringNode()],
-        }),
-      );
-    });
-  }
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [new StringNode()],
+      }),
+    );
+  });
 });
 
 describe('strings', () => {

@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
   AnyNode,
@@ -9,6 +10,7 @@ import {
   IArrayNodeValidationError,
   IBaseNodeValidationError,
   IClassMeta,
+  IConstraintNodeValidationError,
   IEnumNodeValidationError,
   IIntersectionNodeValidationError,
   ILeafNodeValidationError,
@@ -167,7 +169,7 @@ export class RootNodeFixture extends RootNode {
   }
 }
 
-export function expectFilenameAndLine(): ReturnType<typeof expect['stringMatching']> {
+export function expectFilenameAndLine(): ReturnType<(typeof expect)['stringMatching']> {
   return expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/);
 }
 
@@ -282,7 +284,7 @@ export class NodeValidationErrorFixture {
     return this.create({
       type: 'class',
       reason: ValidationErrorType.UNKNOWN_FIELD,
-      context: { className, propertyName },
+      context: { className, propertyName, resolvedPropertyName: propertyName },
       ...values,
     });
   }
@@ -320,6 +322,7 @@ export class NodeValidationErrorFixture {
       context: {
         className,
         propertyName,
+        resolvedPropertyName: propertyName,
       },
       ...values,
     });
@@ -339,7 +342,7 @@ export class NodeValidationErrorFixture {
         this.create({
           type: 'root',
           reason: ValidationErrorType.PROPERTY_FAILED,
-          context: { className, propertyName },
+          context: { className, propertyName, resolvedPropertyName: propertyName },
           ...values,
         }),
       ],
@@ -352,6 +355,14 @@ export class NodeValidationErrorFixture {
     values: Partial<IRootNodeValidationError>,
   ): INodeValidationError {
     return this.singleObjectPropertyFailed(cls.name, propertyName as string, values);
+  }
+
+  static constraintError(values: Partial<IConstraintNodeValidationError> & { reason: string }): INodeValidationError {
+    return this.create({
+      type: 'constraint',
+      context: {},
+      ...values,
+    });
   }
 }
 

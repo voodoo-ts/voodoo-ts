@@ -14,7 +14,7 @@
     "test:js": "npm run build && jest",
     "test:js:all": "npm run test:js dist/",
     "test:build": "npm run build && jest --verbose",
-    "test:coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage --coverageReporters cobertura text --reporters default jest-junit -- dist/test",
+    "test:coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage --coverageReporters cobertura lcov text --reporters default jest-junit -- dist/test",
     "test": "npm run test:ts:all",
     "build": "tsc",
     "linter": "npx eslint src/"
@@ -31,19 +31,19 @@
     "typescript": "^4.9.5"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.4.2",
-    "@commitlint/config-conventional": "^17.4.2",
+    "@commitlint/cli": "^17.4.4",
+    "@commitlint/config-conventional": "^17.4.4",
     "@types/jest": "^29.4.0",
-    "@types/node": "^18.13.0",
-    "@typescript-eslint/eslint-plugin": "^5.51.0",
-    "@typescript-eslint/parser": "^5.51.0",
-    "eslint": "^8.33.0",
+    "@types/node": "^18.14.2",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.54.0",
+    "eslint": "^8.35.0",
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-import": "^2.27.5",
-    "eslint-plugin-jsdoc": "^39.8.0",
+    "eslint-plugin-jsdoc": "^40.0.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "jest": "^29.4.2",
-    "jest-extended": "^3.2.3",
+    "jest": "^29.4.3",
+    "jest-extended": "^3.2.4",
     "prettier": "^2.8.4",
     "ts-jest": "^29.0.5"
   }

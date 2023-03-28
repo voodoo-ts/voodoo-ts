@@ -1,3 +1,4 @@
+import { LengthValidationError, StringValidationError } from './decorators';
 import {
   IArrayNodeItemValidationError,
   IArrayNodeValidationError,
@@ -31,7 +32,7 @@ export function getTypeName(obj: unknown): string {
     return typeof obj;
   }
 }
-
+//
 export function getNodeTypeName(e: INodeValidationError): string {
   switch (e.type) {
     case 'any':
@@ -60,11 +61,13 @@ export function getNodeTypeName(e: INodeValidationError): string {
       return e.previousErrors.map(getNodeTypeName).join(' | ');
     case 'root':
       return `Root<>`;
+    case 'constraint':
+      return `Constraint<>`;
   }
 }
-
+//
 const translations: {
-  EN: Record<ValidationErrorType, (error: any) => string>;
+  EN: Record<ValidationErrorType | LengthValidationError | StringValidationError, (error: any) => string>;
 } = {
   EN: {
     [ValidationErrorType.VALUE_REQUIRED]: (e: IBaseNodeValidationError) => `Value is required`,
@@ -95,6 +98,12 @@ const translations: {
     [ValidationErrorType.DECORATORS_FAILED]: (e) => `todo`,
     [ValidationErrorType.CUSTOM]: (e) => `Unknown error`,
     [ValidationErrorType.PROPERTY_FAILED]: () => `Generic property error`,
+    [ValidationErrorType.TYPE_CONSTRAINT_FAILED]: () => `Type constraint failed`,
+    [LengthValidationError.LENGTH_FAILED]: (e) =>
+      `Length of '${e.value}' must be at least ${e.context.min} and at most ${e.context.max}`,
+    [StringValidationError.LENGTH_FAILED]: () => ``,
+    [StringValidationError.NOT_A_NUMBER_LIST]: () => ``,
+    [StringValidationError.NOT_A_NUMBER_STRING]: () => ``,
   },
 };
 

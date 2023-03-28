@@ -11,13 +11,7 @@ import {
   TypeLiteralNode,
 } from 'ts-morph';
 
-import {
-  getAnnotations,
-  getDecorators,
-  groupDecorators,
-  IAnnotationDecoratorMeta,
-  IValidationDecoratorMeta,
-} from './decorators';
+import { getAnnotations, groupDecorators, IAnnotationDecoratorMeta, IValidationDecoratorMeta } from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
   AnyNode,
@@ -744,6 +738,7 @@ export class Parser {
         name: getName(classDeclaration),
         meta: {
           from: 'class',
+          reference: TypeCache.getKey(classDeclaration, []),
         },
       },
       () => trees,
@@ -771,19 +766,19 @@ export class Parser {
       throw new RuntimeError(`Referenced class '${getName(classDeclaration)}' is not decorated`);
     }
 
-    const decorators = getDecorators(cls.prototype, propertyKey);
+    // const decorators = getDecorators(cls.prototype, propertyKey);
     const annotations = getAnnotations(cls.prototype, propertyKey);
 
-    const propertyDecoratorMap = groupDecorators<IValidationDecoratorMeta>(decorators);
+    // const propertyDecoratorMap = groupDecorators<IValidationDecoratorMeta>(decorators);
     const annotationDecoratorMap = groupDecorators<IAnnotationDecoratorMeta>(annotations);
 
     walkPropertyTypeTree(tree, (node) => {
-      const validatorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
+      // const validatorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
 
-      const decoratorNodes = validatorsForNodeKind.map(
-        (decorator) => new DecoratorNode(decorator.name, decorator.type, decorator.validator),
-      );
-      node.children.push(...decoratorNodes);
+      // const decoratorNodes = validatorsForNodeKind.map(
+      // (decorator) => new DecoratorNode(decorator.name, decorator.type, decorator.validator),
+      // );
+      // node.children.push(...decoratorNodes);
 
       const annotationsForNodeKind = annotationDecoratorMap.get(node.kind) ?? [];
       // Treat note.annotations as a record from here to allow assignment

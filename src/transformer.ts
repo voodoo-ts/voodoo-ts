@@ -1,7 +1,7 @@
 import { Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { IValidationOptions, ITypeAndTree } from './nodes';
+import { IValidationOptions, ITypeAndTree, INodeValidationResult } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
 import { Factory, TransformerParser } from './transformer-parser';
 import { Constructor } from './types';
@@ -88,7 +88,19 @@ export class TransformerInstance {
     }
   }
 
-  async transform<T>(cls: Constructor<T>, values: MaybePartial<T>): Promise<T> {
+  async transformOrThrow<T>(cls: Constructor<T>, values: MaybePartial<T>): Promise<T> {
+    const result = await this.transform(cls, values);
+    if (result.success) {
+      return result.object;
+    } else {
+      throw new ValidationError(result.rawErrors);
+    }
+  }
+
+  async transform<T>(
+    cls: Constructor<T>,
+    values: MaybePartial<T>,
+  ): Promise<IValidationResult<T> & { object: unknown }> {
     const validatorMeta = this.getClassMetadata(cls);
     const classDeclaration = this.classDiscovery.getClass(
       cls.name,
@@ -99,9 +111,17 @@ export class TransformerInstance {
 
     const result = await this.parser.transform(classDeclaration, values);
     if (result.success) {
-      return result.value as T;
+      return {
+        success: true,
+        object: result.value as T,
+      };
     } else {
-      throw new ValidationError(result);
+      return {
+        success: false,
+        rawErrors: result,
+        object: null,
+        errors: [],
+      };
     }
   }
 
@@ -120,7 +140,7 @@ export class TransformerInstance {
     return this.parser.getPropertyTypeTrees(classDeclaration);
   }
 
-  transformerDecorator(options: ITransformerOptions = {}): ReturnType<typeof Reflect['metadata']> {
+  transformerDecorator(options: ITransformerOptions = {}): ReturnType<(typeof Reflect)['metadata']> {
     return this.transformerClassDecoratorFactory.decorator(new Error(), options);
   }
 
