@@ -124,7 +124,7 @@ export class ValidatorInstance {
         object: values as T,
       };
     } else {
-      console.log(groupErrors(flattenValidationError(result)));
+      // console.log(groupErrors(flattenValidationError(result)));
       return {
         success: false,
         object: null,

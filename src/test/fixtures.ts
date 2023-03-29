@@ -5,7 +5,6 @@ import {
   ArrayNode,
   BooleanNode,
   ClassNode,
-  DecoratorNode,
   IArrayNodeItemValidationError,
   IArrayNodeValidationError,
   IBaseNodeValidationError,
@@ -139,17 +138,6 @@ export class ArrayNodeFixture {
 export class UnionNodeFixture {
   static create(extra: Partial<UnionNode> = {}): UnionNode {
     const fixture = new UnionNode();
-    return Object.assign(fixture, extra);
-  }
-}
-
-export class DecoratorNodeFixture extends DecoratorNode {
-  static create(name: string, type: string, extra: Partial<DecoratorNode> = {}): DecoratorNode {
-    const validatorFunc = extra.validationFunc ?? ((...args: unknown[]) => null);
-    const fixture = new DecoratorNode(name, type, validatorFunc as any);
-    if (!extra.validationFunc) {
-      extra.validationFunc = expect.any(Function) as any;
-    }
     return Object.assign(fixture, extra);
   }
 }

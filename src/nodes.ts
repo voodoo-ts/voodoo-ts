@@ -149,16 +149,6 @@ export interface IStringDecoratorNodeError extends IBaseNodeValidationError {
   };
 }
 
-export interface IDecoratorNodeValidationError extends IBaseNodeValidationError {
-  type: 'decorator';
-  context: {
-    decorator: {
-      name: string;
-      type: string;
-    };
-  } & Record<string, unknown>;
-}
-
 export interface IRootNodeValidationError extends IBaseNodeValidationError {
   type: 'root';
   context: {
@@ -209,7 +199,6 @@ export type INodeValidationError =
   | ILeafNodeValidationError
   | IUnionNodeValidationError
   | IEnumNodeValidationError
-  | IDecoratorNodeValidationError
   | IArrayNodeValidationError
   | IArrayNodeItemValidationError
   | IRecordNodeValidationError
@@ -232,10 +221,6 @@ export function walkPropertyTypeTree(node: TypeNode, callback: (n: TypeNode) => 
     callback(child);
     walkPropertyTypeTree(child, callback);
   }
-}
-
-export class Blorb {
-  foobar() {}
 }
 
 export abstract class TypeNodeBase {
@@ -279,30 +264,6 @@ export abstract class TypeNodeBase {
 
   fail(value: unknown, extra: Partial<INodeValidationError> = {}): INodeValidationError {
     return this.createNodeValidationError(value, this.kind as TypeNode['kind'], extra);
-  }
-
-  validateAllChildren(
-    value: unknown,
-    context: IValidationContext,
-    errorExtra: Partial<INodeValidationError> = {},
-  ): INodeValidationResult {
-    const errors: INodeValidationError[] = [];
-    for (const child of this.children) {
-      const result = child.validate(value, context);
-      if (!result.success) {
-        errors.push(result);
-      }
-    }
-
-    if (!errors.length) {
-      return this.success();
-    } else {
-      if (!errorExtra.reason) {
-        errorExtra.reason = ValidationErrorType.DECORATORS_FAILED;
-      }
-
-      return this.fail(value, { ...errorExtra, previousErrors: errors } as INodeValidationError);
-    }
   }
 
   validateDecorators(value: unknown, context: IValidationContext): INodeValidationError[] {
@@ -369,19 +330,6 @@ export class RootNode extends TypeNodeBase {
 
     return this.success(previousMatches);
   }
-
-  // validateChildren(children: TypeNode[], value: unknown, context: IValidationContext): INodeValidationResult {
-  //   const previousMatches: INodeValidationSuccess[] = [];
-  //   for (const child of children) {
-  //     const result = child.validate(value, context);
-  //     if (!result.success) {
-  //       return result;
-  //     } else {
-  //       previousMatches.push(result);
-  //     }
-  //   }
-  //   return this.success(previousMatches);
-  // }
 }
 
 export abstract class LeafNode extends TypeNodeBase {
@@ -410,7 +358,6 @@ export class StringNode extends LeafNode {
         previousErrors: errors,
       });
     }
-    // return this.validateAllChildren(value, context);
   }
 }
 
@@ -498,7 +445,6 @@ export class AnyNode extends LeafNode {
         previousErrors: errors,
       });
     }
-    // return this.validateAllChildren(value, context);
   }
 }
 
@@ -763,10 +709,6 @@ export class ClassNode extends TypeNodeBase {
         if (decoratorErrors.length) {
           errors.push(...decoratorErrors);
         }
-        // const childrenResult = this.validateAllChildren(value, context);
-        // if (!childrenResult.success) {
-        //   errors.push(childrenResult);
-        // }
       }
 
       errors.push(...this.getUnknownFieldErrors(properties, context.options.allowUnknownFields, values));
@@ -888,45 +830,6 @@ export class RecordNode extends TypeNodeBase {
   }
 }
 
-export class DecoratorNode extends TypeNodeBase {
-  kind = 'decorator' as const;
-  name: string;
-  type: string;
-  validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult;
-
-  constructor(
-    name: string,
-    type: string,
-    validationFunc: (value: unknown, context: IValidationContext) => INodeValidationResult,
-  ) {
-    super();
-    this.name = name;
-    this.type = type;
-    this.validationFunc = validationFunc.bind(this);
-  }
-
-  fail(
-    value: unknown,
-    extra: Partial<INodeValidationError & { context: Record<string, unknown> }> = {},
-  ): INodeValidationError {
-    const decoratorContext = {
-      name: this.name,
-      type: this.type,
-    };
-    if (!extra.context) {
-      extra.context = { decorator: decoratorContext };
-    } else {
-      extra.context.decorator = decoratorContext;
-    }
-
-    return super.fail(value, extra as Partial<INodeValidationError>);
-  }
-
-  validate(value: unknown, context: IValidationContext): INodeValidationResult {
-    return this.validationFunc(value, context);
-  }
-}
-
 export type TypeNode =
   | RootNode
   | StringNode
@@ -938,7 +841,6 @@ export type TypeNode =
   | ArrayNode
   | TupleNode
   | RecordNode
-  | DecoratorNode
   | BooleanNode
   | UndefinedNode
   | LiteralNode
@@ -947,14 +849,7 @@ export type TypeNode =
 
 export type TypeNodeData = Omit<
   TypeNode,
-  | 'validate'
-  | 'wrapBoolean'
-  | 'success'
-  | 'fail'
-  | 'validateAllChildren'
-  | 'children'
-  | 'getAnnotation'
-  | 'validateDecorators'
+  'validate' | 'wrapBoolean' | 'success' | 'fail' | 'children' | 'getAnnotation' | 'validateDecorators'
 > & {
   children: TypeNodeData[];
 };

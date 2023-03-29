@@ -3,7 +3,7 @@ import { Project } from 'ts-morph';
 import { ClassDiscovery } from './class-discovery';
 import { IValidationOptions, ITypeAndTree, INodeValidationResult } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
-import { Factory, TransformerParser } from './transformer-parser';
+import { defaultFactory, Factory, TransformerParser } from './transformer-parser';
 import { Constructor } from './types';
 import {
   IValidatorConstructorOptions,
@@ -23,14 +23,6 @@ export interface ITransformerConstructorOptions {
   project: Project;
   validator?: Omit<IValidatorConstructorOptions, 'project'>;
   transformer?: {};
-}
-
-function defaultFactory(cls: Constructor<unknown>): Factory<unknown> {
-  return (values) => {
-    const obj = new cls();
-    Object.assign(obj as Record<string, unknown>, values);
-    return obj;
-  };
 }
 
 export class TransformerInstance {

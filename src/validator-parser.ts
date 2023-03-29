@@ -11,14 +11,13 @@ import {
   TypeLiteralNode,
 } from 'ts-morph';
 
-import { getAnnotations, groupDecorators, IAnnotationDecoratorMeta, IValidationDecoratorMeta } from './decorators';
+import { getAnnotations, groupDecorators, IAnnotationDecoratorMeta } from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
   AnyNode,
   ArrayNode,
   BooleanNode,
   ClassNode,
-  DecoratorNode,
   EnumNode,
   IntersectionNode,
   ITypeAndTree,
@@ -562,11 +561,6 @@ export class Parser {
   handleUnion(type: Type): TypeNode {
     const unionNode = new UnionNode();
     for (const unionType of type.getUnionTypes()) {
-      // Skip undefined, it is already handled by the RootNode
-      // if (tree.kind === 'root' && unionType.isUndefined()) {
-      //   continue;
-      // }
-      // this.walkTypeNodes(unionType, { tree: unionNode });
       unionNode.children.push(this.walkTypeNodes(unionType));
     }
     return unionNode;
@@ -766,20 +760,10 @@ export class Parser {
       throw new RuntimeError(`Referenced class '${getName(classDeclaration)}' is not decorated`);
     }
 
-    // const decorators = getDecorators(cls.prototype, propertyKey);
     const annotations = getAnnotations(cls.prototype, propertyKey);
-
-    // const propertyDecoratorMap = groupDecorators<IValidationDecoratorMeta>(decorators);
     const annotationDecoratorMap = groupDecorators<IAnnotationDecoratorMeta>(annotations);
 
     walkPropertyTypeTree(tree, (node) => {
-      // const validatorsForNodeKind = propertyDecoratorMap.get(node.kind) ?? [];
-
-      // const decoratorNodes = validatorsForNodeKind.map(
-      // (decorator) => new DecoratorNode(decorator.name, decorator.type, decorator.validator),
-      // );
-      // node.children.push(...decoratorNodes);
-
       const annotationsForNodeKind = annotationDecoratorMap.get(node.kind) ?? [];
       // Treat note.annotations as a record from here to allow assignment
       // Invalid fields should not be possible due to typechecking

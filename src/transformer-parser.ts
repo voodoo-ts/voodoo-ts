@@ -16,14 +16,12 @@ import {
   PropertyDecorator,
   OneOf2,
   IAnnotationDecoratorOptions,
-  getAnnotations,
 } from './decorators';
 import { ParseError } from './errors';
 import {
   ClassNode,
   IArrayNodeValidationError,
-  IClassNodeValidationError,
-  INodeValidationError,
+  IIntersectionNodeValidationError,
   INodeValidationResult,
   INodeValidationSuccess,
   IPropertyCallbackArguments,
@@ -31,10 +29,8 @@ import {
   RootNode,
   TypeNode,
   ValidationErrorType,
-  walkPropertyTypeTree,
 } from './nodes';
 import { BasicSourceCodeLocationDecorator } from './source-code-location-decorator';
-import { debug } from './test/utils';
 import { Constructor } from './types';
 import { enumerate, zip } from './utils';
 import {
@@ -256,14 +252,12 @@ export class TransformerParser extends Parser {
           if (transformResult.success) {
             newValues.push(transformResult.value);
           } else {
-            console.log(elementValidationResult);
             const arrayItemError = node.fail(arrayValue, {
               reason: ValidationErrorType.ARRAY_ITEM_FAILED,
               context: { element: i },
               previousErrors: [transformResult],
             });
             arrayError.previousErrors.push(arrayItemError);
-            // failValidationResult(nodeValidationResult, transformResult);
           }
         }
         if (!arrayError.previousErrors.length) {
@@ -322,21 +316,7 @@ export class TransformerParser extends Parser {
           context: {
             className: node.name,
           },
-          previousErrors: [
-            // {
-            //   type: 'root',
-            //   success: false,
-            //   value: propertyValue,
-            //   annotations: {},
-            //   reason: ValidationErrorType.PROPERTY_FAILED,
-            //   context: {
-            //     className: node.name,
-            //     propertyName,
-            //     resolvedPropertyName: propertyName, // TODO:
-            //   },
-            //   previousErrors: [transformDecoratorResult],
-            // },
-          ],
+          previousErrors: [],
         });
         const propertyNodeValidationResult = new Map<string, INodeValidationSuccess>(
           nodeValidationResult.previousMatches.map(
@@ -392,7 +372,6 @@ export class TransformerParser extends Parser {
               continue;
             } else {
               if (transformDecoratorResult.success) {
-                console.log('BLERB', transformDecoratorResult);
                 newValues[propertyName] = transformDecoratorResult.value;
               } else {
                 rootError.previousErrors = [transformDecoratorResult];
@@ -406,7 +385,6 @@ export class TransformerParser extends Parser {
             } else {
               rootError.previousErrors = [transformResult];
               classError.previousErrors.push(rootError);
-              // failValidationResult(nodeValidationResult, transformResult);
             }
           }
         }
@@ -418,14 +396,6 @@ export class TransformerParser extends Parser {
           return { ...classError, value: null };
         }
       }
-      // case 'root': {
-      //   const transformationResult = await this.recurse(nodeValidationResult.previousMatches[0], value);
-      //   if (transformationResult.success) {
-      //     return { ...node.success(), value: transformationResult.value };
-      //   } else {
-      //     return { ...node.fail(nodeValidationResult.value) };
-      //   }
-      // }
       case 'string':
       case 'number':
       case 'boolean':
@@ -444,7 +414,6 @@ export class TransformerParser extends Parser {
         };
       }
       case 'root':
-      case 'decorator':
       case 'union': {
         throw new ParseError(`Nodes of type ${node.kind} should not appear`);
       }
@@ -463,145 +432,6 @@ export class TransformerParser extends Parser {
     if (!validationResult.success) {
       return validationResult;
     }
-
-    // const recurse = async (
-    //   nodeValidationResult: INodeValidationSuccess,
-    //   value: unknown,
-    // ): Promise<INodeValidationResult & { value: unknown }> => {
-    //   const node = nodeValidationResult.node as TypeNode;
-    //
-    //   switch (node.kind) {
-    //     case 'tuple':
-    //     case 'array': {
-    //       const array = value as unknown[];
-    //       const newValues: unknown[] = [];
-    //       for (const [elementValidationResult, arrayValue] of zip(nodeValidationResult.previousMatches, array)) {
-    //         const transformResult = await recurse(elementValidationResult, arrayValue);
-    //         if (transformResult.success) {
-    //           newValues.push(transformResult.value);
-    //         } else {
-    //           failValidationResult(nodeValidationResult, transformResult);
-    //         }
-    //       }
-    //       if (nodeValidationResult.success) {
-    //         return { ...node.success(), value: newValues };
-    //       } else {
-    //         return { ...node.fail(value) };
-    //       }
-    //     }
-    //     case 'intersection':
-    //       const newValues: Record<string | symbol | number, unknown> = {};
-    //
-    //       const propertyNodeValidationResult = new Map<string, INodeValidationSuccess>(
-    //         nodeValidationResult.previousMatches.map(
-    //           (nvs) => [nvs.context.propertyName, nvs] as [string, INodeValidationSuccess],
-    //         ),
-    //       );
-    //
-    //       const objectValues = value as Record<string | symbol | number, unknown>;
-    //
-    //       console.log(nodeValidationResult);
-    //       return { ...node.success(), value: objectValues };
-    //
-    //     case 'class': {
-    //       const cls = this.getClassFromDeclaration(classDeclaration);
-    //       const factory = this.getFactory(cls);
-    //       const newValues: Record<string | symbol | number, unknown> = {};
-    //
-    //       const propertyNodeValidationResult = new Map<string, INodeValidationSuccess>(
-    //         nodeValidationResult.previousMatches.map(
-    //           (nvs) => [nvs.context.propertyName, nvs] as [string, INodeValidationSuccess],
-    //         ),
-    //       );
-    //
-    //       const objectValues = value as Record<string | symbol | number, unknown>;
-    //       for (const [propertyName, propertyValue] of Object.entries(objectValues)) {
-    //         const propertyValidationResult = propertyNodeValidationResult.get(propertyName);
-    //         if (!propertyValidationResult) {
-    //           throw new ParseError('No propertyValidationResult found');
-    //         }
-    //
-    //         // Is a transformed type but there was no handler
-    //         if (
-    //           propertyValidationResult.node.annotations.isTransformedType &&
-    //           !propertyValidationResult.node.annotations.transformerFunction
-    //         ) {
-    //           throw new ParseError(`Can't resolve transformer`);
-    //         }
-    //
-    //         // Has a @Transform() decorator
-    //         if (propertyValidationResult.node.annotations.transformerFunction) {
-    //           const transformDecoratorResult = await Promise.resolve(
-    //             propertyValidationResult.node.annotations.transformerFunction[0]({
-    //               value: propertyValue,
-    //               values: value as IPropertyCallbackArguments['values'],
-    //               success: node.success.bind(node),
-    //               fail: node.fail.bind(node),
-    //             }),
-    //           );
-    //
-    //           if (!isNodeValidationResult(transformDecoratorResult)) {
-    //             newValues[propertyName] = transformDecoratorResult;
-    //
-    //             // Stop default handling -- we don't need to recurse further, a @Transformed has to recurse if needed
-    //             continue;
-    //           } else {
-    //             if (transformDecoratorResult.success) {
-    //               newValues[propertyName] = transformDecoratorResult.value;
-    //             } else {
-    //               failValidationResult(nodeValidationResult, transformDecoratorResult);
-    //             }
-    //           }
-    //         }
-    //
-    //         const transformResult = await recurse(propertyValidationResult.previousMatches[0], propertyValue);
-    //         if (transformResult.success) {
-    //           newValues[propertyName] = transformResult.value;
-    //         } else {
-    //           failValidationResult(nodeValidationResult, transformResult);
-    //         }
-    //       }
-    //
-    //       const obj = factory(newValues);
-    //       if (nodeValidationResult.success) {
-    //         return { ...node.success(), value: obj };
-    //       } else {
-    //         return { ...node.fail(objectValues) };
-    //       }
-    //     }
-    //     case 'root': {
-    //       const transformationResult = await recurse(nodeValidationResult.previousMatches[0], value);
-    //       if (transformationResult.success) {
-    //         return { ...node.success(), value: transformationResult.value };
-    //       } else {
-    //         return { ...node.fail(nodeValidationResult.value) };
-    //       }
-    //     }
-    //     case 'string':
-    //     case 'number':
-    //     case 'boolean':
-    //     case 'null':
-    //     case 'enum':
-    //     case 'any':
-    //     case 'literal':
-    //     case 'record':
-    //     case 'undefined': {
-    //       return {
-    //         success: true,
-    //         value,
-    //         node,
-    //         context: nodeValidationResult.context,
-    //         previousMatches: nodeValidationResult.previousMatches,
-    //       };
-    //     }
-    //     case 'decorator': {
-    //       throw new Error('Not implemented yet: "decorator" case');
-    //     }
-    //     case 'union': {
-    //       throw new ParseError('Union should not appear');
-    //     }
-    //   }
-    // };
 
     return this.recurse(validationResult, values);
   }
@@ -913,7 +743,18 @@ export class TransformerParser extends Parser {
     // TODO: Allow nesting
     const options: Record<string, unknown> = {};
     if (options) {
-      const optionProperties = getFirstSymbolDeclaration(optionsNode).getProperties();
+      let optionProperties: ReturnType<ClassOrInterfaceOrLiteral['getProperties']>;
+      try {
+        optionProperties = getFirstSymbolDeclaration(optionsNode).getProperties();
+      } catch (e: unknown) {
+        if (e instanceof ParseError && e.message === 'No declaration found') {
+          throw new ParseError('Invalid options object', {
+            options: optionsNode.getText(),
+          });
+        } else {
+          throw e;
+        }
+      }
       for (const optionProperty of optionProperties) {
         if (!optionProperty.getType().isLiteral()) {
           throw new ParseError(
