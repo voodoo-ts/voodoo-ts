@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { formatErrors } from '../../error-formatter';
 import { StringNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
-import { expectValidationError, iterParsers, project } from '../utils';
+import { debug, expectValidationError, iterParsers, project } from '../utils';
 
 describe.each(Array.from(iterParsers()))('strings - tree', (parserName, v, decorator) => {
   it(`should construct the correct tree (${parserName})`, () => {
@@ -56,6 +57,18 @@ describe('strings', () => {
             previousErrors: [NodeValidationErrorMatcher.stringError()],
           }),
         );
+      });
+    });
+
+    it('should format the error correctly', () => {
+      expectValidationError(result, (result) => {
+        const errors = formatErrors(result.rawErrors);
+        expect(errors).toEqual({
+          ['$.stringProperty']: {
+            message: expect.any(String),
+            context: {},
+          },
+        });
       });
     });
   });
