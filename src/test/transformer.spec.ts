@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-import { debug, expectValidationError, getLineNumber, project } from './utils';
-import { ClassDiscovery } from '../class-discovery';
+import { NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
+import { expectValidationError, project } from './utils';
+import { ParseError } from '../errors';
+import { ValidationErrorType } from '../nodes';
 import { TransformerInstance } from '../transformer';
 import {
   IGetTransformerContext,
@@ -10,159 +12,8 @@ import {
   registry,
   Transform,
   Transformed,
-  TransformerParser,
-  defaultFactory,
   TransformerFunction,
-  StringToNumberValueTransformer,
 } from '../transformer-parser';
-import { Constructor } from '../types';
-import { ClassCache } from '../validator-parser';
-import {
-  BooleanNodeFixture,
-  NodeValidationErrorMatcher,
-  NumberNodeFixture,
-  RootNodeFixture,
-  StringNodeFixture,
-} from './fixtures';
-import { ValidationErrorType } from '../nodes';
-import { ParseError } from '../errors';
-
-class Nested {
-  nestedStringToNumber!: Transformed<string, number>;
-}
-
-// @registry.decorate<Transformed<string, DateTime, never>>()
-// class StringToDateTimeValueTransformer extends AbstractValueTransformerFactory {
-//   getTransformer(ctx: IGetTransformerContext): TransformationNodeBase<unknown, unknown, unknown> {
-//     return new TransformationNode(
-//       [
-//         (value: string) => {
-//           console.log({ value, date: DateTime.fromISO(value) });
-//           return DateTime.fromISO(value);
-//         },
-//       ],
-//       { name: 'datetime' },
-//     );
-//   }
-// }
-
-// @registry.decorate<Transformed<string | null, number | null, never>>()
-// class X extends AbstractValueTransformerFactory {
-//   getTransformer(ctx: IGetTransformerContext): TransformationNodeBase<unknown, unknown, unknown> {
-//     return new TransformationNode(
-//       [
-//         (value: string | null) => {
-//           return 0;
-//         },
-//       ],
-//       { name: 'xyz' },
-//     );
-//   }
-// }
-
-type StringToNumber<Options extends { radix?: number }> = Transformed<string, number, Options>;
-interface ISTONOPT {
-  radix?: number;
-}
-type StringToNumberOptions<T extends ISTONOPT> = T;
-
-@registry.decorate<StringToNumber<never>>()
-class TestStringToNumberalueTransformer extends AbstractValueTransformerFactory {
-  getTransformer(ctx: IGetTransformerContext): TransformerFunction<string, number> {
-    console.log(ctx);
-    return ({ value }) => {
-      return 123;
-    };
-  }
-}
-
-const LINE = getLineNumber();
-class Test {
-  blorb!: StringToNumber<{ radix: 10 }>;
-  str!: string;
-
-  stringToNumber!: Transformed<string, number, { radix: 16 }>;
-  // stn2: Transformed<string, number> | undefined;
-  // rr: Record<string, Transformed<string, number>>;
-  // rr: Transformed<Record<string, string>, Record<string, number>;
-  // specialStringToNumber1!: Transformed<string, number, StringToNumberOptions<{ radix: 16 }>>;
-
-  // // specialStringToNumber2!: StringToNumber<{ radix: 16 }>;
-
-  // stringToBool!: Transformed<string, boolean>;
-
-  @Transform<string>(({ value }) => value.split(','))
-  stringToList!: Transformed<string, string[]>;
-  // // nested!: NestedTransformer<Nested>;
-
-  // stringToDateTime!: Transformed<string, DateTime>;
-
-  // t1!: Transformed<string | null, number | null>;
-  // t2!: Transformed<null | string, number | null>;
-}
-
-describe.skip('transformer', () => {
-  it('shoud', async () => {
-    const cd = new ClassDiscovery(project);
-    const cc = new ClassCache<Constructor<any>>();
-    const dclr = cd.getClass('Test', 'src/test/transformer.spec.ts', LINE, 0);
-    cc.set(dclr, Test);
-    // const p = new TransformerValidatorParser(cc);
-    // const pn = p.getClassNode(dclr);
-    // console.log(pn);
-
-    const tp = TransformerParser.default(cc, cd, defaultFactory, [
-      /*new X(), new StringToDateTimeValueTransformer()*/
-      new TestStringToNumberalueTransformer(),
-    ]);
-    const tree = tp.getPropertyTypeTrees(dclr);
-
-    console.log(JSON.stringify(tree));
-
-    const x = await tp.transform(dclr, {
-      blorb: '44',
-      str: 'str',
-      stringToNumber: '9001',
-      stringToList: '1,2,3',
-    });
-
-    console.log(x);
-    // const n = tp.getTransformerNode(dclr);
-    // console.log(n);
-    // const result = await n.transform({
-    //   str: '123',
-    //   stringToNumber: '9001',
-    //   specialStringToNumber1: '0xFF',
-    //   stringToList: '1,9001',
-    //   stringToBool: 'true',
-    //   stringToDateTime: '2022-08-15T12:34:56Z',
-    //   t1: null,
-    //   t2: null,
-    // });
-    // console.log(result);
-    // console.log(JSON.stringify(result, null, 2));
-    // const x = tp.parse(dclr);
-    // console.debug(x);
-    // console.log(JSON.stringify(x, null, 2));
-    // cd.classCache.set()
-    // const cn = p.getClassNode(dclr);
-    // console.log(cn);
-  });
-
-  // it('should', async () => {
-  //   const v = new TransformerInstance({ project });
-  //
-  //   @v.transformerDecorator()
-  //   class Test {
-  //     test!: Transformed<string, boolean>;
-  //   }
-  //
-  //   const tree = v.getPropertyTypeTreesFromConstructor(Test)[0];
-  //
-  //   const result = await v.validate(Test, { test: 'truex' } as any);
-  //   console.log(result);
-  // });
-});
 
 describe('Transformer', () => {
   describe('StringToNumber transformer', () => {
@@ -325,6 +176,11 @@ describe('Transformer', () => {
   });
 
   describe('@Transformer', () => {
+    beforeEach(() => {
+      callback.mockClear();
+      callbackWithNodeValidationResult.mockClear();
+    });
+
     const v = new TransformerInstance({ project });
 
     const callback = jest.fn(() => 9001);
@@ -363,6 +219,8 @@ describe('Transformer', () => {
   });
 
   describe('Runtime errors', () => {
+    beforeEach(() => callback.mockClear());
+
     const v = new TransformerInstance({ project });
 
     const callback = jest.fn(({ fail, value }) => fail(value));
@@ -385,12 +243,16 @@ describe('Transformer', () => {
       array!: TestEmbed[];
     }
 
-    it('should report transform errors correctly', async () => {
+    @v.transformerDecorator()
+    class TestWithIntersection {
+      test!: Test & { otherProperty: number };
+    }
+
+    it('should report transform errors correctly for simple and array', async () => {
       const result = await v.transform(Test, { test: '123' } as any);
       expect(callback).toHaveBeenCalledOnce();
       expect(result.success).toBeFalse();
       expectValidationError(result, (result) => {
-        console.log(JSON.stringify(result, null, 2));
         expect(result.rawErrors).toEqual(
           NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'test', {
             previousErrors: [
@@ -447,6 +309,34 @@ describe('Transformer', () => {
                             ],
                           }),
                         ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        );
+      });
+    });
+
+    it('should report transform errors correctly for intersections', async () => {
+      const result = await v.transform(TestWithIntersection, { test: { test: '123' as any, otherProperty: 123 } });
+      expect(callback).toHaveBeenCalledOnce();
+      expect(result.success).toBeFalse();
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(TestWithIntersection, 'test', {
+            previousErrors: [
+              NodeValidationErrorMatcher.intersectionPropertyFailed({
+                context: { className: expect.any(String) },
+                previousErrors: [
+                  NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'test', {
+                    previousErrors: [
+                      expect.objectContaining({
+                        success: false,
+                        reason: 'CUSTOM',
+                        previousErrors: [],
                       }),
                     ],
                   }),
@@ -538,6 +428,11 @@ describe('Transformer', () => {
       test!: Transformed<string, number, { radix: number }>;
     }
 
+    @v.transformerDecorator()
+    class TestWithNullOptions {
+      test!: Transformed<string, number, null>;
+    }
+
     it('should not construct when Transformed<> uses generic ToType', () => {
       expect(() => v.getPropertyTypeTreesFromConstructor(TestWithGenericEmbedToType)).toThrowWithMessage(
         ParseError,
@@ -549,6 +444,13 @@ describe('Transformer', () => {
       expect(() => v.getPropertyTypeTreesFromConstructor(TestWithGenericEmbedFromType)).toThrowWithMessage(
         ParseError,
         /Transformed<FromType, ToType, Options> can only be used with concrete types. FromType is generic type T/,
+      );
+    });
+
+    it('should not construct when Transformed<> receives null as options', () => {
+      expect(() => v.getPropertyTypeTreesFromConstructor(TestWithNullOptions)).toThrowWithMessage(
+        ParseError,
+        /Invalid options object/,
       );
     });
 
@@ -644,7 +546,6 @@ describe('Transformer', () => {
         testNested!: TestEmbed;
         testArray!: TestEmbed[];
         testOptional?: string;
-        // testIntersection!: IInterface & IOtherInterface;
         testGeneric!: TestGeneric;
       }
 
@@ -658,7 +559,8 @@ describe('Transformer', () => {
         t!: TestGenericEmeb<number>;
       }
 
-      const trees = t.getPropertyTypeTreesFromConstructor(Test);
+      // console.time('a');
+      // for (let i = 0; i < 10000; i++) {
       const r2 = await t.transformOrThrow(Test, {
         testString: 'str',
         testNumber: 9001,
@@ -684,17 +586,11 @@ describe('Transformer', () => {
         testGeneric: {
           t: { genericProperty: 123 },
         },
-        // testIntersection: {
-        //   interfaceProperty: 1,
-        //   otherInterfaceProperty: 2,
-        // },
       });
 
-      console.log(r2);
-    });
-
-    it('should', () => {
-      const inst = new TransformerInstance({ project });
+      expect(r2).toBeTruthy();
+      // }
+      // console.timeEnd('a');
     });
   });
 });

@@ -274,6 +274,13 @@ export class TransformerParser extends Parser {
       }
       case 'intersection': {
         const newValues: Record<string | symbol | number, unknown> = {};
+        const intersectionError = node.fail(value, {
+          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+          context: {
+            className: node.name,
+          },
+          previousErrors: [],
+        }) as IIntersectionNodeValidationError;
         for (const previousMatch of nodeValidationResult.previousMatches) {
           if (previousMatch.node.kind !== 'class') {
             throw new ParseError('Expected class node');
@@ -288,11 +295,15 @@ export class TransformerParser extends Parser {
               newValues[key] = prop;
             }
           } else {
-            return node.fail(value); // TODO: review
+            intersectionError.previousErrors.push(result);
           }
         }
 
-        return { ...node.success(), value: newValues };
+        if (!intersectionError.previousErrors.length) {
+          return { ...node.success(), value: newValues };
+        } else {
+          return { ...intersectionError, value: null };
+        }
       }
       case 'class': {
         if (!node.meta.reference) {
