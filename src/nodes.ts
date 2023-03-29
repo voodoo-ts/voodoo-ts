@@ -379,7 +379,6 @@ export class NumberNode extends LeafNode {
         previousErrors: errors,
       });
     }
-    // return this.validateAllChildren(value, context);
   }
 }
 
@@ -528,17 +527,6 @@ export class IntersectionNode extends TypeNodeBase {
 
         const result = child.validate(childClassNodeValues, context);
         if (!result.success) {
-          if (result.reason === ValidationErrorType.OBJECT_PROPERTY_FAILED) {
-            // TODO: implement subtype missing field handling
-            // const previousErrors = (result.previousErrors as INodeValidationError[]).filter(
-            //   (e) => e.reason !== ValidationErrorType.UNKNOWN_FIELD,
-            // );
-            // if (!previousErrors.length) {
-            // continue;
-            // } else {
-            // result.previousErrors = previousErrors;
-            // }
-          }
           errors.push(result);
         } else {
           previousMatches.push(result);

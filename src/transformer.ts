@@ -1,7 +1,7 @@
 import { Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { IValidationOptions, ITypeAndTree, INodeValidationResult } from './nodes';
+import { IValidationOptions, ITypeAndTree } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
 import { defaultFactory, Factory, TransformerParser } from './transformer-parser';
 import { Constructor } from './types';

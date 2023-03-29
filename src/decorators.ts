@@ -4,7 +4,6 @@ import {
   IAnnotationMap,
   INodeValidationResult,
   IPropertyCallbackArguments2,
-  IValidationContext,
   TypeNode,
   ValidationErrorType,
 } from './nodes';

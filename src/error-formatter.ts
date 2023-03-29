@@ -179,13 +179,6 @@ export function flattenValidationError(
 
       break;
     }
-    case 'enum': {
-      messages.push({
-        path,
-        nodeValidationError,
-      });
-      break;
-    }
 
     case 'record':
       const recordPath = nodeValidationError.context.key ? [...path, nodeValidationError.context.key] : path;
@@ -195,14 +188,6 @@ export function flattenValidationError(
         messages.push({ path: recordPath, nodeValidationError: nodeValidationError.previousErrors[0] });
       }
       break;
-
-    case 'constraint': {
-      messages.push({
-        path,
-        nodeValidationError,
-      });
-      break;
-    }
 
     default: {
       messages.push({
