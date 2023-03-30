@@ -1,14 +1,15 @@
+/* istanbul ignore file */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
   AnyNode,
   ArrayNode,
   BooleanNode,
   ClassNode,
-  DecoratorNode,
   IArrayNodeItemValidationError,
   IArrayNodeValidationError,
   IBaseNodeValidationError,
   IClassMeta,
+  IConstraintNodeValidationError,
   IEnumNodeValidationError,
   IIntersectionNodeValidationError,
   ILeafNodeValidationError,
@@ -141,17 +142,6 @@ export class UnionNodeFixture {
   }
 }
 
-export class DecoratorNodeFixture extends DecoratorNode {
-  static create(name: string, type: string, extra: Partial<DecoratorNode> = {}): DecoratorNode {
-    const validatorFunc = extra.validationFunc ?? ((...args: unknown[]) => null);
-    const fixture = new DecoratorNode(name, type, validatorFunc as any);
-    if (!extra.validationFunc) {
-      extra.validationFunc = expect.any(Function) as any;
-    }
-    return Object.assign(fixture, extra);
-  }
-}
-
 export class RootNodeFixture extends RootNode {
   static create(optional: boolean, extra: Partial<RootNode>): RootNode {
     const fixture = new RootNode(optional);
@@ -167,7 +157,7 @@ export class RootNodeFixture extends RootNode {
   }
 }
 
-export function expectFilenameAndLine(): ReturnType<typeof expect['stringMatching']> {
+export function expectFilenameAndLine(): ReturnType<(typeof expect)['stringMatching']> {
   return expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/);
 }
 
@@ -282,7 +272,7 @@ export class NodeValidationErrorFixture {
     return this.create({
       type: 'class',
       reason: ValidationErrorType.UNKNOWN_FIELD,
-      context: { className, propertyName },
+      context: { className, propertyName, resolvedPropertyName: propertyName },
       ...values,
     });
   }
@@ -320,6 +310,7 @@ export class NodeValidationErrorFixture {
       context: {
         className,
         propertyName,
+        resolvedPropertyName: propertyName,
       },
       ...values,
     });
@@ -339,7 +330,7 @@ export class NodeValidationErrorFixture {
         this.create({
           type: 'root',
           reason: ValidationErrorType.PROPERTY_FAILED,
-          context: { className, propertyName },
+          context: { className, propertyName, resolvedPropertyName: propertyName },
           ...values,
         }),
       ],
@@ -352,6 +343,14 @@ export class NodeValidationErrorFixture {
     values: Partial<IRootNodeValidationError>,
   ): INodeValidationError {
     return this.singleObjectPropertyFailed(cls.name, propertyName as string, values);
+  }
+
+  static constraintError(values: Partial<IConstraintNodeValidationError> & { reason: string }): INodeValidationError {
+    return this.create({
+      type: 'constraint',
+      context: {},
+      ...values,
+    });
   }
 }
 
