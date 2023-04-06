@@ -57,8 +57,8 @@ export class TransformerInstance {
     this.defaultOptions = {};
   }
 
-  static withDefaultProject(): ValidatorInstance {
-    return new ValidatorInstance({
+  static withDefaultProject(): TransformerInstance {
+    return new TransformerInstance({
       project: new Project({
         tsConfigFilePath: 'tsconfig.json',
         // Optionally specify compiler options, tsconfig.json, in-memory file system, and more here.
