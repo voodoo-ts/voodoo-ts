@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
+import { expectAnyFunction, NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
+import { expectValidationError, project } from './utils';
 import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
 import { IAnnotationMap } from '../nodes';
 import { ValidatorInstance } from '../validator';
-import { expectAnyFunction, NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
-import { expectValidationError, project } from './utils';
 
 describe('general', () => {
   it('should construct', () => {

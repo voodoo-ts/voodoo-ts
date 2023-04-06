@@ -96,6 +96,7 @@ describe('intersection', () => {
                     context: {
                       className: expect.any(String),
                       propertyName: 'unknownProperty',
+                      resolvedPropertyName: 'unknownProperty',
                     },
                   }),
                 ],

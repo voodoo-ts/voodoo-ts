@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { formatErrors } from '../../error-formatter';
 import { NumberNode, TypeNodeData, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { ArrayNodeFixture, NodeValidationErrorMatcher, NumberNodeFixture, RootNodeFixture } from '../fixtures';
@@ -63,6 +64,18 @@ describe('arrays', () => {
         );
       });
     });
+
+    it('should format the error correctly', () => {
+      expectValidationError(result, (result) => {
+        const errors = formatErrors(result.rawErrors);
+        expect(errors).toEqual({
+          ['$.arrayProperty.[1]']: {
+            message: "Value 'Two' (type: string) is not a valid number",
+            context: {},
+          },
+        });
+      });
+    });
   });
 
   describe('should fail for invalid arrays', () => {
@@ -83,6 +96,18 @@ describe('arrays', () => {
             ],
           }),
         );
+      });
+    });
+
+    it('should format the error correctly', () => {
+      expectValidationError(result, (result) => {
+        const errors = formatErrors(result.rawErrors);
+        expect(errors).toEqual({
+          ['$.arrayProperty']: {
+            message: "Value '123' (type: number) is not a valid array",
+            context: {},
+          },
+        });
       });
     });
   });

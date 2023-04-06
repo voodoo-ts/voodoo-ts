@@ -124,6 +124,7 @@ export class ValidatorInstance {
         object: values as T,
       };
     } else {
+      // console.log(groupErrors(flattenValidationError(result)));
       return {
         success: false,
         object: null,
@@ -146,7 +147,7 @@ export class ValidatorInstance {
     return this.validateClassDeclaration<T>(classDeclaration, values, options);
   }
 
-  validatorDecorator(options: IValidatorOptions = {}): ReturnType<typeof Reflect['metadata']> {
+  validatorDecorator(options: IValidatorOptions = {}): ReturnType<(typeof Reflect)['metadata']> {
     return this.decorator.decorator(new Error(), options);
   }
 

@@ -4,7 +4,7 @@ voodoo-ts aims to be a validation library with short syntax and a nice developer
 
 ## Example
 
-```ts
+```typescript
 @Validator()
 class UserDto {
   username!: string;
@@ -12,7 +12,7 @@ class UserDto {
 
   description?: string;
 
-  friends: string[];
+  itemsCollected: string[];
 }
 
 const result = validate(UserDto, {
@@ -21,7 +21,7 @@ const result = validate(UserDto, {
 
   description: 'Purple dude',
 
-  friends: [],
+  itemCollected: ['Soul Stone'],
 });
 ```
 
@@ -36,7 +36,7 @@ This information is used to locate the class definition in the source code. As f
 
 ### Basic types
 
-```ts
+```typescript
 @Validator()
 class UserDto {
   username!: string;
@@ -49,7 +49,7 @@ class UserDto {
 
 ### Inheritance
 
-```ts
+```typescript
 @Validator()
 class UserDto {
   username!: string;
@@ -64,7 +64,7 @@ class AdminUserDto extends UserDto {
 
 ### Enums
 
-```ts
+```typescript
 enum TestEnum {
   YES = 'yes',
   NO = 'no',
@@ -78,7 +78,7 @@ class Test {
 
 ### Arrays
 
-```ts
+```typescript
 @Validator()
 class Gauntlet {
   infinityStones: string[];
@@ -90,7 +90,7 @@ Arrays support basic types, nested validators & enums.
 
 ### Unions
 
-```ts
+```typescript
 @Validator()
 class Test {
   basicProperty!: number | string | boolean;
@@ -100,7 +100,7 @@ class Test {
 
 ### Nested
 
-```ts
+```typescript
 interface IAnimal {
   animalName: string;
   rating: number;
@@ -130,7 +130,7 @@ class User {
 
 Self-referential structures are also possible
 
-```ts
+```typescript
 @Validator()
 class TreeNode {
   name!: string;
@@ -140,7 +140,7 @@ class TreeNode {
 
 ### Tuples
 
-```ts
+```typescript
 @Validator()
 class Test {
   tuple!: [number, string];
@@ -149,7 +149,7 @@ class Test {
 
 ### Records
 
-```ts
+```typescript
 @Validator()
 class Test {
   record!: Record<string, number>;
@@ -202,7 +202,7 @@ There are also minor restricitons. For example you can't put the decorator and t
 
 Related to this, you **must** use the decorator syntax to annotate the class, so this
 
-```ts
+```typescript
 class Test {
   foo!: number;
 }

@@ -3,7 +3,7 @@ import { Project } from 'ts-morph';
 import { ClassDiscovery } from './class-discovery';
 import { IValidationOptions, ITypeAndTree } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
-import { Factory, TransformerParser } from './transformer-parser';
+import { defaultFactory, Factory, TransformerParser } from './transformer-parser';
 import { Constructor } from './types';
 import {
   IValidatorConstructorOptions,
@@ -23,14 +23,6 @@ export interface ITransformerConstructorOptions {
   project: Project;
   validator?: Omit<IValidatorConstructorOptions, 'project'>;
   transformer?: {};
-}
-
-function defaultFactory(cls: Constructor<unknown>): Factory<unknown> {
-  return (values) => {
-    const obj = new cls();
-    Object.assign(obj as Record<string, unknown>, values);
-    return obj;
-  };
 }
 
 export class TransformerInstance {
@@ -88,7 +80,19 @@ export class TransformerInstance {
     }
   }
 
-  async transform<T>(cls: Constructor<T>, values: MaybePartial<T>): Promise<T> {
+  async transformOrThrow<T>(cls: Constructor<T>, values: MaybePartial<T>): Promise<T> {
+    const result = await this.transform(cls, values);
+    if (result.success) {
+      return result.object;
+    } else {
+      throw new ValidationError(result.rawErrors);
+    }
+  }
+
+  async transform<T>(
+    cls: Constructor<T>,
+    values: MaybePartial<T>,
+  ): Promise<IValidationResult<T> & { object: unknown }> {
     const validatorMeta = this.getClassMetadata(cls);
     const classDeclaration = this.classDiscovery.getClass(
       cls.name,
@@ -99,9 +103,17 @@ export class TransformerInstance {
 
     const result = await this.parser.transform(classDeclaration, values);
     if (result.success) {
-      return result.value as T;
+      return {
+        success: true,
+        object: result.value as T,
+      };
     } else {
-      throw new ValidationError(result);
+      return {
+        success: false,
+        rawErrors: result,
+        object: null,
+        errors: [],
+      };
     }
   }
 
@@ -120,7 +132,7 @@ export class TransformerInstance {
     return this.parser.getPropertyTypeTrees(classDeclaration);
   }
 
-  transformerDecorator(options: ITransformerOptions = {}): ReturnType<typeof Reflect['metadata']> {
+  transformerDecorator(options: ITransformerOptions = {}): ReturnType<(typeof Reflect)['metadata']> {
     return this.transformerClassDecoratorFactory.decorator(new Error(), options);
   }
 

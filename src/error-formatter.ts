@@ -1,7 +1,5 @@
+import { LengthValidationError, StringValidationError } from './decorators';
 import {
-  IArrayNodeItemValidationError,
-  IArrayNodeValidationError,
-  IBaseNodeValidationError,
   IEnumNodeValidationError,
   ILiteralNodeValidationError,
   INodeValidationError,
@@ -14,9 +12,6 @@ import {
 
 export interface IErrorMessage {
   path: string[];
-  // reason: INodeValidationError['reason'];
-  // value: unknown;
-  // context?: Record<string, unknown>;
   nodeValidationError: INodeValidationError;
 }
 
@@ -31,7 +26,7 @@ export function getTypeName(obj: unknown): string {
     return typeof obj;
   }
 }
-
+//
 export function getNodeTypeName(e: INodeValidationError): string {
   switch (e.type) {
     case 'any':
@@ -43,8 +38,6 @@ export function getNodeTypeName(e: INodeValidationError): string {
       return e.type;
     case 'enum':
       return e.context.enumName;
-    case 'decorator':
-      return e.context.decorator.name;
     case 'array':
     case 'tuple':
       return `${getNodeTypeName(e)}[]`;
@@ -60,15 +53,18 @@ export function getNodeTypeName(e: INodeValidationError): string {
       return e.previousErrors.map(getNodeTypeName).join(' | ');
     case 'root':
       return `Root<>`;
+    case 'constraint':
+      return `Constraint<>`;
   }
 }
-
+//
+type ErrorFunc = (error: any) => string;
 const translations: {
-  EN: Record<ValidationErrorType, (error: any) => string>;
+  EN: Partial<Record<ValidationErrorType | LengthValidationError | StringValidationError, (error: any) => string>>;
 } = {
   EN: {
-    [ValidationErrorType.VALUE_REQUIRED]: (e: IBaseNodeValidationError) => `Value is required`,
-    [ValidationErrorType.UNKNOWN_FIELD]: (e) => `No unknown fields allowed`,
+    [ValidationErrorType.VALUE_REQUIRED]: () => `Value is required`,
+    [ValidationErrorType.UNKNOWN_FIELD]: () => `No unknown fields allowed`,
     [ValidationErrorType.NOT_A_STRING]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid string`,
     [ValidationErrorType.NOT_A_NUMBER]: (e) =>
@@ -80,23 +76,27 @@ const translations: {
     [ValidationErrorType.NOT_NULL]: (e) => `Value '${e.value}' (type: ${getTypeName(e.value)}) should be null`,
     [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError) =>
       `'Value ${e.value}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(e)}`,
-    [ValidationErrorType.OBJECT_PROPERTY_FAILED]: (e) => `todo ${e}`,
     [ValidationErrorType.NOT_AN_OBJECT]: (e) => `Not a valid object`,
     [ValidationErrorType.RECORD_PROPERTY_FAILED]: (e: IRecordNodeValidationError) =>
       `Value of ${e.context.key} (type: ${getTypeName(e.value)}) is not a valid ${getNodeTypeName(e)}`,
-    [ValidationErrorType.ARRAY_FAILED]: (e: IArrayNodeValidationError) => `array failed`,
-    [ValidationErrorType.ARRAY_ITEM_FAILED]: (e: IArrayNodeItemValidationError) =>
-      `Invalid value at index ${e.context.element}`,
     [ValidationErrorType.NOT_AN_ARRAY]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid array`,
     [ValidationErrorType.NO_LENGTH_MATCH]: (e) => `${e.value.length}`,
     [ValidationErrorType.LITERAL_NOT_MATCHING]: (e: ILiteralNodeValidationError) =>
       `Value '${e.value}' is not '${e.context.expected}'`,
-    [ValidationErrorType.DECORATORS_FAILED]: (e) => `todo`,
-    [ValidationErrorType.CUSTOM]: (e) => `Unknown error`,
-    [ValidationErrorType.PROPERTY_FAILED]: () => `Generic property error`,
+    [ValidationErrorType.CUSTOM]: () => `Unknown error`,
+    [ValidationErrorType.TYPE_CONSTRAINT_FAILED]: () => `Type constraint failed`,
+    [LengthValidationError.LENGTH_FAILED]: (e) =>
+      `Length of '${e.value}' must be at least ${e.context.min} and at most ${e.context.max}`,
+    [StringValidationError.STRING_LENGTH_FAILED]: () => ``,
+    [StringValidationError.NOT_A_NUMBER_LIST]: () => ``,
+    [StringValidationError.NOT_A_NUMBER_STRING]: () => ``,
   },
 };
+
+export function formatErrors(nodeValidationError: INodeValidationError) {
+  return groupErrors(flattenValidationError(nodeValidationError));
+}
 
 export function flattenValidationError(
   nodeValidationError: INodeValidationError,
@@ -179,20 +179,6 @@ export function flattenValidationError(
 
       break;
     }
-    case 'enum': {
-      messages.push({
-        path,
-        nodeValidationError,
-      });
-      break;
-    }
-
-    case 'decorator':
-      messages.push({
-        path,
-        nodeValidationError,
-      });
-      break;
 
     case 'record':
       const recordPath = nodeValidationError.context.key ? [...path, nodeValidationError.context.key] : path;
@@ -203,16 +189,12 @@ export function flattenValidationError(
       }
       break;
 
-    default:
-      if (nodeValidationError.reason !== ValidationErrorType.DECORATORS_FAILED) {
-        messages.push({
-          path,
-          nodeValidationError,
-        });
-      }
-      for (const classError of nodeValidationError.previousErrors) {
-        messages.push(...flattenValidationError(classError, path));
-      }
+    default: {
+      messages.push({
+        path,
+        nodeValidationError,
+      });
+    }
   }
 
   return messages;
