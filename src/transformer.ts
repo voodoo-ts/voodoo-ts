@@ -3,7 +3,7 @@ import { Project } from 'ts-morph';
 import { ClassDiscovery } from './class-discovery';
 import { IValidationOptions, ITypeAndTree } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
-import { defaultFactory, Factory, TransformerParser } from './transformer-parser';
+import { AbstractValueTransformerFactory, defaultFactory, Factory, TransformerParser } from './transformer-parser';
 import { Constructor } from './types';
 import {
   IValidatorConstructorOptions,
@@ -22,7 +22,7 @@ interface ITransformerOptions extends IValidatorOptions {
 export interface ITransformerConstructorOptions {
   project: Project;
   validator?: Omit<IValidatorConstructorOptions, 'project'>;
-  transformer?: {};
+  transformer?: AbstractValueTransformerFactory[];
 }
 
 export class TransformerInstance {
@@ -44,6 +44,7 @@ export class TransformerInstance {
       this.transformerClassDecoratorFactory.getClassDeclarationMapping(),
       this.classDiscovery,
       (cls) => this.getFactory(cls),
+      options.transformer ?? [],
     );
 
     this.validatorInstance = new ValidatorInstance({
