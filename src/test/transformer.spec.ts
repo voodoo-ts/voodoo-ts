@@ -84,7 +84,6 @@ describe('Transformer', () => {
 
     it('should transform correctly', async () => {
       const result = await v.transformOrThrow(Test, { test: 'true' } as any);
-      console.log(result);
       expect(result).toEqual({ test: true });
     });
 
