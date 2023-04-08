@@ -13,6 +13,7 @@ import {
   IValidatorOptions,
   ValidationError,
 } from './validator';
+import { formatErrors } from './error-formatter';
 
 interface ITransformerOptions extends IValidatorOptions {
   cls?: Constructor<unknown>;
@@ -113,7 +114,7 @@ export class TransformerInstance {
         success: false,
         rawErrors: result,
         object: null,
-        errors: [],
+        errors: formatErrors(result),
       };
     }
   }
