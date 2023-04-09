@@ -613,7 +613,12 @@ export class TransformerParser extends Parser {
 
       const vtTypeNameDefinition = vtTypeName.getDefinitions()[0].getDeclarationNode();
 
-      if (vtTypeNameDefinition === propertyTypeNameDefinition) {
+      /* istanbul ignore if */
+      if (!vtTypeNameDefinition) {
+        throw new ParseError(`Value transformer type definition is undefined. This should not happen`);
+      }
+
+      if (this.isSameTypeNameDefinition(vtTypeNameDefinition, propertyTypeNameDefinition)) {
         if (propertyTypeName.getText() !== 'Transformed' || (fromType === vtFromType && toType === vtToType)) {
           if (!fromType || !toType) {
             throw new ParseError(`Can't resolve from/to types from '${propertyTypeNameDefinition.getText()}'`);
@@ -633,6 +638,22 @@ export class TransformerParser extends Parser {
     }
 
     return null;
+  }
+
+  isSameTypeNameDefinition(a: Node, b: TypeAliasDeclaration): boolean {
+    if (a.getText() !== b.getText()) {
+      return false;
+    }
+    const path1 = a.getSourceFile().getFilePath();
+    const path2 = b.getSourceFile().getFilePath();
+
+    const isMine = (p: string): boolean => !!p.match(new RegExp('node_modules/@vvalidator/vvalidator/(src|lib)/'));
+
+    if (path1 === path2 || (isMine(path1) && isMine(path2))) {
+      return true;
+    }
+
+    return false;
   }
 
   getComputedTypes(property: IMinimalProperty): [Type, Type, Record<string, unknown>] | null {
