@@ -59,16 +59,12 @@ export class TransformerInstance {
     this.defaultOptions = {};
   }
 
-  static withDefaultProject(): TransformerInstance {
-    return new TransformerInstance({
-      project: new Project({
-        tsConfigFilePath: 'tsconfig.json',
-        // Optionally specify compiler options, tsconfig.json, in-memory file system, and more here.
-        // If you initialize with a tsconfig.json, then it will automatically populate the project
-        // with the associated source files.
-        // Read more: https://ts-morph.com/setup/
-      }),
+  static withDefaultProject(options: Omit<ITransformerConstructorOptions, 'project'> = {}): TransformerInstance {
+    const project = new Project({
+      tsConfigFilePath: 'tsconfig.json',
     });
+
+    return new TransformerInstance({ project, ...options });
   }
 
   getFactory(cls: Constructor<unknown>): Factory<unknown> {
