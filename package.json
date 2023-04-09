@@ -1,15 +1,15 @@
 {
   "name": "@vvalidator/vvalidator",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/"
+    "lib/"
   ],
   "exports": {
-    ".": "./dist/index.js",
-    "./*": "./dist/*.js"
+    ".": "./lib/index.js",
+    "./*": "./lib/*.js"
   },
   "scripts": {
     "prepare": "echo npm run build",
@@ -21,6 +21,7 @@
     "test:coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage --coverageReporters cobertura lcov text --reporters default jest-junit -- dist/test",
     "test": "npm run test:ts:all",
     "build": "tsc",
+    "build:release": "tsc --project tsconfig.build.json",
     "linter": "npx eslint src/"
   },
   "author": "",
