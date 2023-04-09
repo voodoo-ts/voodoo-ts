@@ -1,6 +1,7 @@
 import { Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
+import { formatErrors } from './error-formatter';
 import { IValidationOptions, ITypeAndTree } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
 import { AbstractValueTransformerFactory, defaultFactory, Factory, TransformerParser } from './transformer-parser';
@@ -13,7 +14,6 @@ import {
   IValidatorOptions,
   ValidationError,
 } from './validator';
-import { formatErrors } from './error-formatter';
 
 interface ITransformerOptions extends IValidatorOptions {
   cls?: Constructor<unknown>;
