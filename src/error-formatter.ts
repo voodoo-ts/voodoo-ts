@@ -57,8 +57,7 @@ export function getNodeTypeName(e: INodeValidationError): string {
       return `Constraint<>`;
   }
 }
-//
-type ErrorFunc = (error: any) => string;
+
 const translations: {
   EN: Partial<Record<ValidationErrorType | LengthValidationError | StringValidationError, (error: any) => string>>;
 } = {
@@ -93,7 +92,9 @@ const translations: {
   },
 };
 
-export function formatErrors(nodeValidationError: INodeValidationError) {
+export function formatErrors(
+  nodeValidationError: INodeValidationError,
+): Record<string, { message: string; context: Record<string, unknown> }> {
   return groupErrors(flattenValidationError(nodeValidationError));
 }
 
@@ -199,7 +200,9 @@ export function flattenValidationError(
   return messages;
 }
 
-export function groupErrors(errors: IErrorMessage[]) {
+export function groupErrors(
+  errors: IErrorMessage[],
+): Record<string, { message: string; context: Record<string, unknown> }> {
   const groupedErrors: Record<string, any> = {};
   for (const error of errors) {
     const jsonPath = `$.${error.path.join('.')}`;
