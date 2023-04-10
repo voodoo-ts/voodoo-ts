@@ -41,7 +41,6 @@ declare module './nodes' {
   // Extends the IAnnoationMap from ./nodes.ts
   // eslint-disable-next-line no-shadow
   export interface IAnnotationMap {
-    from?: string;
     validateIf?: (value: unknown, values: unknown) => boolean;
   }
 }
@@ -113,13 +112,13 @@ export function groupDecorators<T extends IDecoratorMeta>(decorators: T[]): Prop
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Validate2 = createAnnotationDecorator<
-  [func: (args: IPropertyCallbackArguments2) => INodeValidationResult]
->({
-  name: 'validationFunctions',
-  type: 'root',
-  transformParameters: stackingTransform,
-});
+export const Validate = createAnnotationDecorator<[func: (args: IPropertyCallbackArguments2) => INodeValidationResult]>(
+  {
+    name: 'validationFunctions',
+    type: 'root',
+    transformParameters: stackingTransform,
+  },
+);
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateString = createAnnotationDecorator<
@@ -187,7 +186,7 @@ export function validateNumberString({ value, success, fail }: IPropertyCallback
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const IsNumber2 = () => Validate2(validateNumberString);
+export const IsNumber = () => Validate(validateNumberString);
 
 export function validateIntegerString(
   { value, success, fail }: IPropertyCallbackArguments2<string>,
@@ -212,7 +211,7 @@ export function validateIntegerString(
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const IsInteger2 = (radix: 10 | 16 = 10): PropertyDecorator & { meta: IAnnotationDecoratorOptions } =>
+export const IsInteger = (radix: 10 | 16 = 10): PropertyDecorator & { meta: IAnnotationDecoratorOptions } =>
   ValidateString((args) => validateIntegerString(args, radix));
 
 export function validateRange(
@@ -230,8 +229,8 @@ export function validateRange(
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const Range2 = (min: number, max?: number) =>
-  Validate2((args) => validateRange(args as IPropertyCallbackArguments2<number>, min, max));
+export const Range = (min: number, max?: number) =>
+  Validate((args) => validateRange(args as IPropertyCallbackArguments2<number>, min, max));
 
 export function validateNumberList(
   { value, success, fail }: IPropertyCallbackArguments2<string>,
@@ -252,7 +251,7 @@ export function validateNumberList(
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const OneOf2 = (allowedValues: unknown[]) => {
+export const OneOf = (allowedValues: unknown[]) => {
   const allowed = new Set<unknown>(allowedValues);
   return ValidateString((args) => {
     if (allowed.has(args.value)) {
@@ -282,11 +281,5 @@ export const ErrorMessage = createAnnotationDecorator<
   [msg?: (value: never, values: Record<string, unknown>) => string]
 >({
   name: 'validateIf' as const,
-  type: 'root',
-});
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export const From = createAnnotationDecorator<[string]>({
-  name: 'from' as const,
   type: 'root',
 });

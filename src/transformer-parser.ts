@@ -11,10 +11,10 @@ import {
 import { ClassDiscovery } from './class-discovery';
 import {
   createAnnotationDecorator,
-  IsInteger2,
+  IsInteger,
   stackingTransform,
   PropertyDecorator,
-  OneOf2,
+  OneOf,
   IAnnotationDecoratorOptions,
 } from './decorators';
 import { ParseError } from './errors';
@@ -134,7 +134,7 @@ export interface IGetTransformerContext {
 @registry.decorate<Transformed<string, number, { radix?: number; integer?: boolean }>>()
 export class StringToNumberValueTransformer extends AbstractValueTransformerFactory {
   getDecorators(ctx: IGetTransformerContext): PropertyDecorator[] {
-    return [IsInteger2(ctx.options?.radix as 10 | 16)];
+    return [IsInteger(ctx.options?.radix as 10 | 16)];
   }
 
   getTransformer(ctx: IGetTransformerContext): TransformerFunction<string, number> {
@@ -159,7 +159,7 @@ export class StringToBooleanValueTransformer extends AbstractValueTransformerFac
   }
 
   getDecorators(): PropertyDecorator[] {
-    return [OneOf2([...this.trueList.values(), ...this.falseList.values()])];
+    return [OneOf([...this.trueList.values(), ...this.falseList.values()])];
   }
 
   getTransformer(): TransformerFunction<string> {
