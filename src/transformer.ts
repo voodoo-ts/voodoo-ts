@@ -4,7 +4,13 @@ import { ClassDiscovery } from './class-discovery';
 import { formatErrors } from './error-formatter';
 import { IValidationOptions, ITypeAndTree } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
-import { AbstractValueTransformerFactory, defaultFactory, Factory, TransformerParser } from './transformer-parser';
+import {
+  AbstractValueTransformerFactory,
+  defaultFactory,
+  Factory,
+  ITransformationOptions,
+  TransformerParser,
+} from './transformer-parser';
 import { Constructor } from './types';
 import {
   IValidatorConstructorOptions,
@@ -90,6 +96,7 @@ export class TransformerInstance {
   async transform<T>(
     cls: Constructor<T>,
     values: MaybePartial<T>,
+    options: ITransformationOptions = {},
   ): Promise<IValidationResult<T> & { object: unknown }> {
     const validatorMeta = this.getClassMetadata(cls);
     const classDeclaration = this.classDiscovery.getClass(
@@ -99,7 +106,7 @@ export class TransformerInstance {
       validatorMeta.column,
     );
 
-    const result = await this.parser.transform(classDeclaration, values);
+    const result = await this.parser.transform(classDeclaration, values, options);
     if (result.success) {
       return {
         success: true,

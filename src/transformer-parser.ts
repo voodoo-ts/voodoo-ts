@@ -26,6 +26,7 @@ import {
   INodeValidationSuccess,
   IPropertyCallbackArguments,
   IRootNodeValidationError,
+  IValidationOptions,
   RootNode,
   TypeNode,
   ValidationErrorType,
@@ -48,6 +49,9 @@ import {
 export type Transformed<FromType, ToType, TransformerOptions = {}> = ToType;
 export type JSONTransformer<ToType> = Transformed<string, ToType, never>;
 export type NestedTransformer<ToType> = Transformed<ToType, ToType, never>;
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface ITransformationOptions extends IValidationOptions {}
 
 export interface ITransformationSuccess<T = unknown> {
   success: true;
@@ -233,6 +237,7 @@ export class TransformerParser extends Parser {
   async recurse(
     nodeValidationResult: INodeValidationSuccess,
     value: unknown,
+    options: ITransformationOptions = {},
   ): Promise<INodeValidationResult & { value: unknown }> {
     const node = nodeValidationResult.node as TypeNode;
 
@@ -248,7 +253,7 @@ export class TransformerParser extends Parser {
         for (const [i, [elementValidationResult, arrayValue]] of enumerate(
           zip(nodeValidationResult.previousMatches, array),
         )) {
-          const transformResult = await this.recurse(elementValidationResult, arrayValue);
+          const transformResult = await this.recurse(elementValidationResult, arrayValue, options);
           if (transformResult.success) {
             newValues.push(transformResult.value);
           } else {
@@ -283,7 +288,7 @@ export class TransformerParser extends Parser {
           const classNodeProperties = Object.fromEntries(
             classNode.getClassTrees().map(({ name }) => [name, (value as Record<string, unknown>)[name]]),
           );
-          const result = await this.recurse(previousMatch, classNodeProperties);
+          const result = await this.recurse(previousMatch, classNodeProperties, options);
           if (result.success) {
             for (const [key, prop] of Object.entries(result.value as Record<string, unknown>)) {
               newValues[key] = prop;
@@ -328,9 +333,14 @@ export class TransformerParser extends Parser {
         for (const [propertyName, propertyValue] of Object.entries(objectValues)) {
           const propertyValidationResult = propertyNodeValidationResult.get(propertyName);
 
-          /* istanbul ignore if */
           if (!propertyValidationResult) {
-            throw new ParseError('No propertyValidationResult found');
+            /* istanbul ignore else */
+            if (options.allowUnknownFields) {
+              // This is to be expected since unknown fields were allowed, we just skip over it
+              continue;
+            } else {
+              throw new ParseError('No propertyValidationResult found');
+            }
           }
 
           const resolvedPropertyName = propertyValidationResult.context.resolvedPropertyName as string;
@@ -383,7 +393,11 @@ export class TransformerParser extends Parser {
               }
             }
           } else {
-            const transformResult = await this.recurse(propertyValidationResult.previousMatches[0], propertyValue);
+            const transformResult = await this.recurse(
+              propertyValidationResult.previousMatches[0],
+              propertyValue,
+              options,
+            );
             if (transformResult.success) {
               newValues[transformedPropertyName] = transformResult.value;
             } else {
@@ -427,17 +441,18 @@ export class TransformerParser extends Parser {
   async transform(
     classDeclaration: ClassOrInterfaceOrLiteral,
     values: Record<string | number | symbol, unknown>,
+    options: ITransformationOptions = {},
   ): Promise<INodeValidationResult & { value: unknown }> {
     const validationResult = this.getClassNode(classDeclaration).validate(values, {
       values,
-      options: { allowUnknownFields: false },
+      options: { allowUnknownFields: options.allowUnknownFields ?? false },
     });
 
     if (!validationResult.success) {
       return validationResult;
     }
 
-    return this.recurse(validationResult, values);
+    return this.recurse(validationResult, values, options);
   }
 
   getValueTransformerData(valueTransformer: AbstractValueTransformerFactory): IValueTransformerTypes {

@@ -163,6 +163,17 @@ describe('Transformer', () => {
       test!: string;
     }
 
+    @v.transformerDecorator()
+    class TestEmbed {
+      @From('TEST')
+      test!: number;
+    }
+
+    @v.transformerDecorator()
+    class TestWithIntersection {
+      test!: TestEmbed & { otherTest: number };
+    }
+
     it('should construct the correct tree', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
       expect(tree).toEqual(
@@ -178,6 +189,12 @@ describe('Transformer', () => {
     it('should transform the property name', async () => {
       const result = await v.transform(Test, { TEST: 'string' });
 
+      expect(result.success).toBeTrue();
+      expect(result.object).toEqual({ test: 'string' });
+    });
+
+    it('should transform the property name when used in an intersection', async () => {
+      const result = await v.transform(TestWithIntersection, { test: { TEST: 123, otherTest: 234 } as any });
       expect(result.success).toBeTrue();
       expect(result.object).toEqual({ test: 'string' });
     });
@@ -542,6 +559,30 @@ describe('Transformer', () => {
         success: expect.any(Function),
         fail: expect.any(Function),
       });
+    });
+  });
+
+  describe('Unknown fields', () => {
+    const v = new TransformerInstance({ project });
+
+    @v.transformerDecorator()
+    class Test {
+      test!: string;
+    }
+
+    it('should not allow unknown fields by default', async () => {
+      const result = await v.transform(Test, { test: 'string', unknown: 'should not be allowed' });
+      expect(result.success).toBeFalse();
+    });
+
+    it('should allow unknown fields if requested', async () => {
+      const result = await v.transform(
+        Test,
+        { test: 'string', unknown: 'should be allowed' },
+        { allowUnknownFields: true },
+      );
+      expect(result.success).toBeTrue();
+      expect(result.object).toEqual({ test: 'string' });
     });
   });
 
