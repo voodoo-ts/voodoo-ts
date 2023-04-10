@@ -662,7 +662,7 @@ export class ClassNode extends TypeNodeBase {
       const errors: INodeValidationError[] = [];
       const previousMatches: INodeValidationSuccess[] = [];
       for (const { name, tree } of this.getClassTrees()) {
-        const resolvedPropertyName = tree.annotations.from ?? name;
+        const resolvedPropertyName = tree.annotations.fromProperty ?? name;
 
         properties.delete(resolvedPropertyName);
         if (tree.annotations.validateIf) {

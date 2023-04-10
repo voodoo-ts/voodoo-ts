@@ -320,13 +320,21 @@ export class TransformerParser extends Parser {
         });
         const propertyNodeValidationResult = new Map<string, INodeValidationSuccess>(
           nodeValidationResult.previousMatches.map(
-            (nvs) => [nvs.context.propertyName, nvs] as [string, INodeValidationSuccess],
+            (nvs) => [nvs.context.resolvedPropertyName, nvs] as [string, INodeValidationSuccess],
           ),
         );
 
         const objectValues = value as Record<string | symbol | number, unknown>;
         for (const [propertyName, propertyValue] of Object.entries(objectValues)) {
           const propertyValidationResult = propertyNodeValidationResult.get(propertyName);
+
+          /* istanbul ignore if */
+          if (!propertyValidationResult) {
+            throw new ParseError('No propertyValidationResult found');
+          }
+
+          const resolvedPropertyName = propertyValidationResult.context.resolvedPropertyName as string;
+          const transformedPropertyName = propertyValidationResult.context.propertyName as string;
           const rootError: IRootNodeValidationError = {
             type: 'root',
             success: false,
@@ -336,14 +344,10 @@ export class TransformerParser extends Parser {
             context: {
               className: node.name,
               propertyName,
-              resolvedPropertyName: propertyName, // TODO:
+              resolvedPropertyName,
             },
             previousErrors: [],
           };
-          /* istanbul ignore if */
-          if (!propertyValidationResult) {
-            throw new ParseError('No propertyValidationResult found');
-          }
 
           // Is a transformed type but there was no handler
           if (
@@ -366,13 +370,13 @@ export class TransformerParser extends Parser {
 
             // Simple value returned
             if (!isNodeValidationResult(transformDecoratorResult)) {
-              newValues[propertyName] = transformDecoratorResult;
+              newValues[transformedPropertyName] = transformDecoratorResult;
 
               // Stop default handling -- we don't need to recurse further, a @Transformed has to recurse if needed
               continue;
             } else {
               if (transformDecoratorResult.success) {
-                newValues[propertyName] = transformDecoratorResult.value;
+                newValues[transformedPropertyName] = transformDecoratorResult.value;
               } else {
                 rootError.previousErrors = [transformDecoratorResult];
                 classError.previousErrors.push(rootError);
@@ -381,7 +385,7 @@ export class TransformerParser extends Parser {
           } else {
             const transformResult = await this.recurse(propertyValidationResult.previousMatches[0], propertyValue);
             if (transformResult.success) {
-              newValues[propertyName] = transformResult.value;
+              newValues[transformedPropertyName] = transformResult.value;
             } else {
               rootError.previousErrors = [transformResult];
               classError.previousErrors.push(rootError);
