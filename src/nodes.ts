@@ -22,6 +22,7 @@ export interface IAnnotationMap {
 export interface IValidationOptions {
   allowUnknownFields?: boolean;
 }
+
 export interface IValidationContext {
   propertyName?: string;
   values: Record<string, unknown>;
@@ -505,15 +506,26 @@ export class IntersectionNode extends TypeNodeBase {
     if (typeof value === 'object' && value !== null) {
       const errors: INodeValidationError[] = [];
       const previousMatches: INodeValidationSuccess[] = [];
+      const allowedFields = new Set<string>();
 
       for (const child of this.children) {
-        const childClassNodeProperties = (child as ClassNode).getClassTrees().map(({ name }) => name);
+        const childClassNodeProperties = (child as ClassNode)
+          .getClassTrees()
+          .map(({ name, tree }) => [name, tree.annotations.fromProperty ?? name]);
+
+        for (const [_, resolvedPropertyName] of childClassNodeProperties) {
+          allowedFields.add(resolvedPropertyName);
+        }
 
         const childClassNodeValues = Object.fromEntries(
-          childClassNodeProperties.map((name) => [name, (value as Record<string, unknown>)[name]]),
+          childClassNodeProperties.map(([name, resolvedPropertyName]) => [
+            resolvedPropertyName,
+            (value as Record<string, unknown>)[resolvedPropertyName],
+          ]),
         );
 
         const result = child.validate(childClassNodeValues, context);
+
         if (!result.success) {
           errors.push(result);
         } else {
@@ -522,7 +534,6 @@ export class IntersectionNode extends TypeNodeBase {
       }
 
       const values = value as Record<string, unknown>;
-      const allowedFields = this.getAllowedFields();
       for (const name of Object.keys(values)) {
         // TODO: resolved name
         if (!allowedFields.has(name)) {

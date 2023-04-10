@@ -196,7 +196,7 @@ describe('Transformer', () => {
     it('should transform the property name when used in an intersection', async () => {
       const result = await v.transform(TestWithIntersection, { test: { TEST: 123, otherTest: 234 } as any });
       expect(result.success).toBeTrue();
-      expect(result.object).toEqual({ test: 'string' });
+      expect(result.object).toEqual({ test: { test: 123, otherTest: 234 } });
     });
   });
 

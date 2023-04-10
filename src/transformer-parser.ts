@@ -281,13 +281,20 @@ export class TransformerParser extends Parser {
           previousErrors: [],
         }) as IIntersectionNodeValidationError;
         for (const previousMatch of nodeValidationResult.previousMatches) {
+          /* istanbul ignore if */
           if (previousMatch.node.kind !== 'class') {
             throw new ParseError('Expected class node');
           }
           const classNode = previousMatch.node as ClassNode;
           const classNodeProperties = Object.fromEntries(
-            classNode.getClassTrees().map(({ name }) => [name, (value as Record<string, unknown>)[name]]),
+            classNode
+              .getClassTrees()
+              .map(({ name, tree }) => [
+                tree.annotations.fromProperty ?? name,
+                (value as Record<string, unknown>)[tree.annotations.fromProperty ?? name],
+              ]),
           );
+
           const result = await this.recurse(previousMatch, classNodeProperties, options);
           if (result.success) {
             for (const [key, prop] of Object.entries(result.value as Record<string, unknown>)) {
@@ -339,7 +346,7 @@ export class TransformerParser extends Parser {
               // This is to be expected since unknown fields were allowed, we just skip over it
               continue;
             } else {
-              throw new ParseError('No propertyValidationResult found');
+              throw new ParseError(`No propertyValidationResult found: ${propertyName}`);
             }
           }
 
@@ -430,8 +437,9 @@ export class TransformerParser extends Parser {
           previousMatches: nodeValidationResult.previousMatches,
         };
       }
-      case 'root':
-      case 'union': {
+
+      /* istanbul ignore next */
+      default: {
         throw new ParseError(`Nodes of type ${node.kind} should not appear`);
       }
     }
