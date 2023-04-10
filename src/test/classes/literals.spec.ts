@@ -30,6 +30,11 @@ describe('literals', () => {
     booleanLiteralProperty!: false;
   }
 
+  @v.validatorDecorator()
+  class TestNull {
+    nullLiteralProperty!: null;
+  }
+
   const tests: ITests[] = [
     {
       property: 'string',
@@ -48,6 +53,12 @@ describe('literals', () => {
       validValue: false,
       invalidValue: true,
       cls: TestBoolean,
+    },
+    {
+      property: 'null',
+      validValue: null,
+      invalidValue: true,
+      cls: TestNull,
     },
   ];
 

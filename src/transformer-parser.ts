@@ -417,7 +417,6 @@ export class TransformerParser extends Parser {
       case 'string':
       case 'number':
       case 'boolean':
-      case 'null':
       case 'enum':
       case 'any':
       case 'literal':

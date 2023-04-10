@@ -73,7 +73,6 @@ const translations: {
       `Value '${e.value}' is not a valid ${e.context.enumName}. Allowed values: ${e.context.allowedValues}`,
     [ValidationErrorType.NOT_A_BOOLEAN]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
-    [ValidationErrorType.NOT_NULL]: (e) => `Value '${e.value}' (type: ${getTypeName(e.value)}) should be null`,
     [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError) =>
       `'Value ${e.value}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(e)}`,
     [ValidationErrorType.NOT_AN_OBJECT]: (e) => `Not a valid object`,

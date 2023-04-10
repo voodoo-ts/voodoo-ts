@@ -22,7 +22,6 @@ import {
   IntersectionNode,
   ITypeAndTree,
   LiteralNode,
-  NullNode,
   NumberNode,
   RecordNode,
   RootNode,
@@ -505,7 +504,7 @@ export class Parser {
     } else if (type.isBoolean()) {
       return new BooleanNode();
     } else if (type.isNull()) {
-      return new NullNode();
+      return new LiteralNode(null);
     } else if (type.isUndefined()) {
       return new UndefinedNode();
     } else if (type.isNumberLiteral() || type.isStringLiteral()) {

@@ -250,7 +250,10 @@ describe('union', () => {
             NodeValidationErrorMatcher.singleObjectPropertyFailed(Test.name, 'unionProperty', {
               previousErrors: [
                 NodeValidationErrorMatcher.unionError({
-                  previousErrors: [NodeValidationErrorMatcher.nullError(), NodeValidationErrorMatcher.stringError()],
+                  previousErrors: [
+                    NodeValidationErrorMatcher.literalError({ context: { expected: null, type: 'null' } }),
+                    NodeValidationErrorMatcher.stringError(),
+                  ],
                 }),
               ],
             }),

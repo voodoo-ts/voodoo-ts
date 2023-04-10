@@ -243,10 +243,6 @@ export class NodeValidationErrorFixture {
     return this.create({ type: 'union', reason: ValidationErrorType.NO_UNION_MATCH, ...values });
   }
 
-  static nullError(): INodeValidationError {
-    return this.create({ type: 'null', reason: ValidationErrorType.NOT_NULL });
-  }
-
   static literalError(values: Partial<ILiteralNodeValidationError> = {}): INodeValidationError {
     return this.create({ type: 'literal', reason: ValidationErrorType.LITERAL_NOT_MATCHING, ...values });
   }

@@ -49,9 +49,6 @@ export enum ValidationErrorType {
   // Boolean
   NOT_A_BOOLEAN = 'NOT_A_BOOLEAN',
 
-  // Null
-  NOT_NULL = 'NOT_NULL',
-
   // Union
   NO_UNION_MATCH = 'NO_UNION_MATCH',
 
@@ -391,15 +388,6 @@ export class BooleanNode extends LeafNode {
   }
 }
 
-export class NullNode extends LeafNode {
-  kind = 'null' as const;
-  reason = ValidationErrorType.NOT_NULL;
-
-  validate(value: unknown): INodeValidationResult {
-    return this.wrapBoolean(value, value === null);
-  }
-}
-
 export class UndefinedNode extends LeafNode {
   kind = 'undefined' as const;
   reason = ValidationErrorType.CUSTOM;
@@ -423,7 +411,7 @@ export class LiteralNode extends LeafNode {
   validate(value: unknown): INodeValidationResult {
     return this.wrapBoolean(value, value === this.expected, {
       context: {
-        type: typeof this.expected,
+        type: this.expected !== null ? typeof this.expected : 'null',
         expected: this.expected,
       },
     });
@@ -822,7 +810,6 @@ export type TypeNode =
   | RootNode
   | StringNode
   | NumberNode
-  | NullNode
   | EnumNode
   | UnionNode
   | ClassNode
