@@ -13,6 +13,7 @@ import {
   Transform,
   Transformed,
   TransformerFunction,
+  From,
 } from '../transformer-parser';
 
 describe('Transformer', () => {
@@ -150,6 +151,35 @@ describe('Transformer', () => {
         test: [{ test: [null, 'null'], transformed: false }, 'root'],
         transformed: true,
       });
+    });
+  });
+
+  describe('@From', () => {
+    const v = new TransformerInstance({ project });
+
+    @v.transformerDecorator()
+    class Test {
+      @From('TEST')
+      test!: string;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            fromProperty: 'TEST',
+          },
+          children: [StringNodeFixture.create({})],
+        }),
+      );
+    });
+
+    it('should transform the property name', async () => {
+      const result = await v.transform(Test, { TEST: 'string' });
+
+      expect(result.success).toBeTrue();
+      expect(result.object).toEqual({ test: 'string' });
     });
   });
 

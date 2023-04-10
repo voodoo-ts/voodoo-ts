@@ -11,10 +11,10 @@ import {
 import { ClassDiscovery } from './class-discovery';
 import {
   createAnnotationDecorator,
-  IsInteger2,
+  IsInteger,
   stackingTransform,
   PropertyDecorator,
-  OneOf2,
+  OneOf,
   IAnnotationDecoratorOptions,
 } from './decorators';
 import { ParseError } from './errors';
@@ -134,7 +134,7 @@ export interface IGetTransformerContext {
 @registry.decorate<Transformed<string, number, { radix?: number; integer?: boolean }>>()
 export class StringToNumberValueTransformer extends AbstractValueTransformerFactory {
   getDecorators(ctx: IGetTransformerContext): PropertyDecorator[] {
-    return [IsInteger2(ctx.options?.radix as 10 | 16)];
+    return [IsInteger(ctx.options?.radix as 10 | 16)];
   }
 
   getTransformer(ctx: IGetTransformerContext): TransformerFunction<string, number> {
@@ -159,7 +159,7 @@ export class StringToBooleanValueTransformer extends AbstractValueTransformerFac
   }
 
   getDecorators(): PropertyDecorator[] {
-    return [OneOf2([...this.trueList.values(), ...this.falseList.values()])];
+    return [OneOf([...this.trueList.values(), ...this.falseList.values()])];
   }
 
   getTransformer(): TransformerFunction<string> {
@@ -320,13 +320,21 @@ export class TransformerParser extends Parser {
         });
         const propertyNodeValidationResult = new Map<string, INodeValidationSuccess>(
           nodeValidationResult.previousMatches.map(
-            (nvs) => [nvs.context.propertyName, nvs] as [string, INodeValidationSuccess],
+            (nvs) => [nvs.context.resolvedPropertyName, nvs] as [string, INodeValidationSuccess],
           ),
         );
 
         const objectValues = value as Record<string | symbol | number, unknown>;
         for (const [propertyName, propertyValue] of Object.entries(objectValues)) {
           const propertyValidationResult = propertyNodeValidationResult.get(propertyName);
+
+          /* istanbul ignore if */
+          if (!propertyValidationResult) {
+            throw new ParseError('No propertyValidationResult found');
+          }
+
+          const resolvedPropertyName = propertyValidationResult.context.resolvedPropertyName as string;
+          const transformedPropertyName = propertyValidationResult.context.propertyName as string;
           const rootError: IRootNodeValidationError = {
             type: 'root',
             success: false,
@@ -336,14 +344,10 @@ export class TransformerParser extends Parser {
             context: {
               className: node.name,
               propertyName,
-              resolvedPropertyName: propertyName, // TODO:
+              resolvedPropertyName,
             },
             previousErrors: [],
           };
-          /* istanbul ignore if */
-          if (!propertyValidationResult) {
-            throw new ParseError('No propertyValidationResult found');
-          }
 
           // Is a transformed type but there was no handler
           if (
@@ -366,13 +370,13 @@ export class TransformerParser extends Parser {
 
             // Simple value returned
             if (!isNodeValidationResult(transformDecoratorResult)) {
-              newValues[propertyName] = transformDecoratorResult;
+              newValues[transformedPropertyName] = transformDecoratorResult;
 
               // Stop default handling -- we don't need to recurse further, a @Transformed has to recurse if needed
               continue;
             } else {
               if (transformDecoratorResult.success) {
-                newValues[propertyName] = transformDecoratorResult.value;
+                newValues[transformedPropertyName] = transformDecoratorResult.value;
               } else {
                 rootError.previousErrors = [transformDecoratorResult];
                 classError.previousErrors.push(rootError);
@@ -381,7 +385,7 @@ export class TransformerParser extends Parser {
           } else {
             const transformResult = await this.recurse(propertyValidationResult.previousMatches[0], propertyValue);
             if (transformResult.success) {
-              newValues[propertyName] = transformResult.value;
+              newValues[transformedPropertyName] = transformResult.value;
             } else {
               rootError.previousErrors = [transformResult];
               classError.previousErrors.push(rootError);
@@ -613,7 +617,12 @@ export class TransformerParser extends Parser {
 
       const vtTypeNameDefinition = vtTypeName.getDefinitions()[0].getDeclarationNode();
 
-      if (vtTypeNameDefinition === propertyTypeNameDefinition) {
+      /* istanbul ignore if */
+      if (!vtTypeNameDefinition) {
+        throw new ParseError(`Value transformer type definition is undefined. This should not happen`);
+      }
+
+      if (this.isSameTypeNameDefinition(vtTypeNameDefinition, propertyTypeNameDefinition)) {
         if (propertyTypeName.getText() !== 'Transformed' || (fromType === vtFromType && toType === vtToType)) {
           if (!fromType || !toType) {
             throw new ParseError(`Can't resolve from/to types from '${propertyTypeNameDefinition.getText()}'`);
@@ -633,6 +642,22 @@ export class TransformerParser extends Parser {
     }
 
     return null;
+  }
+
+  isSameTypeNameDefinition(a: Node, b: TypeAliasDeclaration): boolean {
+    if (a.getText() !== b.getText()) {
+      return false;
+    }
+    const path1 = a.getSourceFile().getFilePath();
+    const path2 = b.getSourceFile().getFilePath();
+
+    const isMine = (p: string): boolean => !!p.match(new RegExp('node_modules/@vvalidator/vvalidator/(src|lib)/'));
+
+    if (path1 === path2 || (isMine(path1) && isMine(path2))) {
+      return true;
+    }
+
+    return false;
   }
 
   getComputedTypes(property: IMinimalProperty): [Type, Type, Record<string, unknown>] | null {

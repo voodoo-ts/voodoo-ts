@@ -17,7 +17,7 @@ import {
   LengthValidationError,
   NumberValidationError,
   StringValidationError,
-  Validate2,
+  Validate,
   validateIntegerString,
   validateLength,
   validateRange,
@@ -48,7 +48,7 @@ describe('decorators', () => {
 
     @v.validatorDecorator()
     class Test {
-      @Validate2(callback)
+      @Validate(callback)
       testProperty!: string;
     }
 
@@ -112,7 +112,6 @@ describe('decorators', () => {
           }),
         ),
       );
-      console.log(x);
     });
   });
 
