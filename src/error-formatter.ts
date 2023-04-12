@@ -1,5 +1,12 @@
-import { LengthValidationError, StringValidationError } from './decorators';
 import {
+  LengthValidationError,
+  NumberListValidationError,
+  NumberValidationError,
+  StringValidationError,
+} from './decorators';
+import { RuntimeError } from './errors';
+import {
+  IConstraintNodeValidationError,
   IEnumNodeValidationError,
   ILiteralNodeValidationError,
   INodeValidationError,
@@ -14,6 +21,7 @@ export interface IErrorMessage {
   path: string[];
   nodeValidationError: INodeValidationError;
 }
+export type FormattedErrors = Record<string, { message: string; context: Record<string, unknown> }>;
 
 export function getTypeName(obj: unknown): string {
   if (typeof obj === 'object') {
@@ -51,15 +59,23 @@ export function getNodeTypeName(e: INodeValidationError): string {
       return e.context.className;
     case 'union':
       return e.previousErrors.map(getNodeTypeName).join(' | ');
-    case 'root':
-      return `Root<>`;
-    case 'constraint':
-      return `Constraint<>`;
+    /* istanbul ignore next */
+    default:
+      throw new RuntimeError(`Unexpected node type ${e.type}`);
   }
 }
 
 const translations: {
-  EN: Partial<Record<ValidationErrorType | LengthValidationError | StringValidationError, (error: any) => string>>;
+  EN: Partial<
+    Record<
+      | ValidationErrorType
+      | LengthValidationError
+      | StringValidationError
+      | NumberValidationError
+      | NumberListValidationError,
+      (error: any) => string
+    >
+  >;
 } = {
   EN: {
     [ValidationErrorType.VALUE_REQUIRED]: () => `Value is required`,
@@ -74,34 +90,31 @@ const translations: {
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
     [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError) =>
       `'Value ${e.value}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(e)}`,
-    [ValidationErrorType.NOT_AN_OBJECT]: (e) => `Not a valid object`,
-    [ValidationErrorType.RECORD_PROPERTY_FAILED]: (e: IRecordNodeValidationError) =>
-      `Value of ${e.context.key} (type: ${getTypeName(e.value)}) is not a valid ${getNodeTypeName(e)}`,
+    [ValidationErrorType.NOT_AN_OBJECT]: () => `Not a valid object`,
     [ValidationErrorType.NOT_AN_ARRAY]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid array`,
     [ValidationErrorType.NO_LENGTH_MATCH]: (e) => `${e.value.length}`,
     [ValidationErrorType.LITERAL_NOT_MATCHING]: (e: ILiteralNodeValidationError) =>
       `Value '${e.value}' is not '${e.context.expected}'`,
     [ValidationErrorType.CUSTOM]: () => `Unknown error`,
-    [ValidationErrorType.TYPE_CONSTRAINT_FAILED]: () => `Type constraint failed`,
     [LengthValidationError.LENGTH_FAILED]: (e) =>
-      `Length of '${e.value}' must be at least ${e.context.min} and at most ${e.context.max}`,
-    [StringValidationError.STRING_LENGTH_FAILED]: () => ``,
-    [StringValidationError.NOT_A_NUMBER_LIST]: () => ``,
-    [StringValidationError.NOT_A_NUMBER_STRING]: () => ``,
+      `Length of '${e.value}' must be at least ${e.context.min} and at most ${e.context.max ?? 'MAX_SAFE_INTEGER'}`,
+    [StringValidationError.NOT_A_NUMBER_STRING]: (e: IConstraintNodeValidationError) =>
+      `Value "${e.value}" can't be parsed as float`,
+    [StringValidationError.NOT_A_INTEGER_STRING]: (e: IConstraintNodeValidationError) =>
+      `Value "${e.value}" can't be parsed as integer`,
+    [NumberListValidationError.INVALID_NUMBER_LIST_ITEM]: (e: IConstraintNodeValidationError) =>
+      `Item at index ${e.context.i} in number list is not a valid integer`,
+    [NumberValidationError.OUT_OF_RANGE]: (e: IConstraintNodeValidationError) =>
+      `Value ${e.value} is out of range (${e.context.min}, ${e.context.max ?? 'MAX_SAFE_INTEGER'})`,
   },
 };
 
-export function formatErrors(
-  nodeValidationError: INodeValidationError,
-): Record<string, { message: string; context: Record<string, unknown> }> {
-  return groupErrors(flattenValidationError(nodeValidationError));
+export function formatErrors(nodeValidationError: INodeValidationError): FormattedErrors {
+  return groupErrors(flattenValidationError(nodeValidationError, []));
 }
 
-export function flattenValidationError(
-  nodeValidationError: INodeValidationError,
-  path: string[] = [],
-): IErrorMessage[] {
+export function flattenValidationError(nodeValidationError: INodeValidationError, path: string[]): IErrorMessage[] {
   const messages: IErrorMessage[] = [];
 
   if (nodeValidationError.reason === ValidationErrorType.PROPERTY_FAILED) {
@@ -161,16 +174,6 @@ export function flattenValidationError(
 
     case 'union': {
       if (nodeValidationError.reason === ValidationErrorType.NO_UNION_MATCH) {
-        const errors = nodeValidationError.previousErrors.map((previousError) => {
-          if (previousError.type === 'class') {
-            return previousError.context.className;
-          } else if (previousError.type === 'enum') {
-            return previousError.context.enumName;
-          } else {
-            return previousError.type;
-          }
-        });
-
         messages.push({
           path,
           nodeValidationError,
@@ -189,27 +192,38 @@ export function flattenValidationError(
       }
       break;
 
+    case 'constraint': {
+      switch (nodeValidationError.reason) {
+        case NumberListValidationError.INVALID_NUMBER_LIST:
+          return nodeValidationError.previousErrors.flatMap((e) => flattenValidationError(e, path));
+        default:
+          return [{ path, nodeValidationError }];
+      }
+    }
+
     default: {
-      messages.push({
-        path,
-        nodeValidationError,
-      });
+      if (nodeValidationError.previousErrors[0]?.type === 'constraint') {
+        messages.push(...nodeValidationError.previousErrors.flatMap((e) => flattenValidationError(e, path)));
+      } else {
+        messages.push({
+          path,
+          nodeValidationError,
+        });
+      }
     }
   }
 
   return messages;
 }
 
-export function groupErrors(
-  errors: IErrorMessage[],
-): Record<string, { message: string; context: Record<string, unknown> }> {
+export function groupErrors(errors: IErrorMessage[]): FormattedErrors {
   const groupedErrors: Record<string, any> = {};
   for (const error of errors) {
     const jsonPath = `$.${error.path.join('.')}`;
 
-    let translator = translations.EN[error.nodeValidationError.reason as ValidationErrorType];
+    const translator = translations.EN[error.nodeValidationError.reason as ValidationErrorType];
     if (!translator) {
-      translator = () => `FALLBACK`;
+      throw new RuntimeError(`Can't find translator for ${error.nodeValidationError.reason}`);
     }
     groupedErrors[jsonPath] = {
       message: translator(error.nodeValidationError),

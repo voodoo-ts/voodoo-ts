@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { flattenValidationError, groupErrors } from './error-formatter';
+import { FormattedErrors, formatErrors } from './error-formatter';
 import { INodeValidationError, ITypeAndTree, IValidationOptions } from './nodes';
 import { IClassMeta, SourceCodeLocationDecorator } from './source-code-location-decorator';
 import { Constructor } from './types';
@@ -22,7 +22,7 @@ export interface IValidationSuccess<T> {
 export interface IValidationError<T> {
   success: false;
   object: null;
-  errors: any; // IErrorMessage[];
+  errors: FormattedErrors;
   rawErrors: INodeValidationError;
 }
 
@@ -39,11 +39,13 @@ export interface IValidatorConstructorOptions {
 }
 
 export class ValidationError extends Error {
-  validationError: INodeValidationError;
+  errors: FormattedErrors;
+  rawErrors: INodeValidationError;
 
-  constructor(errors: INodeValidationError) {
+  constructor(rawErros: INodeValidationError, formattedErrors: FormattedErrors) {
     super('Validation failed');
-    this.validationError = errors;
+    this.errors = formattedErrors;
+    this.rawErrors = rawErros;
   }
 }
 
@@ -124,11 +126,10 @@ export class ValidatorInstance {
         object: values as T,
       };
     } else {
-      // console.log(groupErrors(flattenValidationError(result)));
       return {
         success: false,
         object: null,
-        errors: groupErrors(flattenValidationError(result)),
+        errors: formatErrors(result),
         rawErrors: result,
       };
     }

@@ -89,7 +89,7 @@ export class TransformerInstance {
     if (result.success) {
       return result.object;
     } else {
-      throw new ValidationError(result.rawErrors);
+      throw new ValidationError(result.rawErrors, formatErrors(result.rawErrors));
     }
   }
 

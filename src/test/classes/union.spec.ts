@@ -197,6 +197,16 @@ describe('union', () => {
           );
         });
       });
+      it('should format the error correctly', () => {
+        expectValidationError(result, ({ errors }) => {
+          expect(errors).toEqual({
+            ['$.unionProperty']: {
+              message: "'Value false' (type: boolean) did not match any of these types string | number | TestEmbed",
+              context: {},
+            },
+          });
+        });
+      });
     });
   });
 

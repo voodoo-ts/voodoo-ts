@@ -82,5 +82,16 @@ describe('records', () => {
         );
       });
     });
+
+    it('should format the error correctly', () => {
+      expectValidationError(result, ({ errors }) => {
+        expect(errors).toEqual({
+          ['$.recordProperty.one']: {
+            message: "Value 'one' (type: string) is not a valid number",
+            context: {},
+          },
+        });
+      });
+    });
   });
 });
