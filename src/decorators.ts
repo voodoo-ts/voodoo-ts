@@ -2,8 +2,9 @@ import 'reflect-metadata';
 
 import {
   IAnnotationMap,
+  IConstraintNodeValidationError,
   INodeValidationResult,
-  IPropertyCallbackArguments2,
+  IPropertyValidatorCallbackArguments,
   TypeNode,
   ValidationErrorType,
 } from './nodes';
@@ -51,12 +52,16 @@ export enum LengthValidationError {
 
 export enum StringValidationError {
   NOT_A_NUMBER_STRING = 'NOT_A_NUMBER_STRING',
-  STRING_LENGTH_FAILED = 'STRING_LENGTH_FAILED',
-  NOT_A_NUMBER_LIST = 'NOT_A_NUMBER_LIST',
+  NOT_A_INTEGER_STRING = 'NOT_A_INTEGER_STRING',
 }
 
 export enum NumberValidationError {
   OUT_OF_RANGE = 'OUT_OF_RANGE',
+}
+
+export enum NumberListValidationError {
+  INVALID_NUMBER_LIST = 'INVALID_NUMBER_LIST',
+  INVALID_NUMBER_LIST_ITEM = 'INVALID_NUMBER_LIST_ELEMENT',
 }
 
 export function defaultTransform(args: unknown[]): unknown {
@@ -112,17 +117,17 @@ export function groupDecorators<T extends IDecoratorMeta>(decorators: T[]): Prop
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const Validate = createAnnotationDecorator<[func: (args: IPropertyCallbackArguments2) => INodeValidationResult]>(
-  {
-    name: 'validationFunctions',
-    type: 'root',
-    transformParameters: stackingTransform,
-  },
-);
+export const Validate = createAnnotationDecorator<
+  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult]
+>({
+  name: 'validationFunctions',
+  type: 'root',
+  transformParameters: stackingTransform,
+});
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateString = createAnnotationDecorator<
-  [func: (args: IPropertyCallbackArguments2<string>) => INodeValidationResult]
+  [func: (args: IPropertyValidatorCallbackArguments<string>) => INodeValidationResult]
 >({
   name: 'validationFunctions',
   type: 'string',
@@ -131,7 +136,7 @@ export const ValidateString = createAnnotationDecorator<
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateNumber = createAnnotationDecorator<
-  [func: (args: IPropertyCallbackArguments2) => INodeValidationResult]
+  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult]
 >({
   name: 'validationFunctions',
   type: 'number',
@@ -140,7 +145,7 @@ export const ValidateNumber = createAnnotationDecorator<
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateArray = createAnnotationDecorator<
-  [func: (args: IPropertyCallbackArguments2) => INodeValidationResult]
+  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult]
 >({
   name: 'validationFunctions',
   type: 'array',
@@ -148,7 +153,7 @@ export const ValidateArray = createAnnotationDecorator<
 });
 
 export function validateLength(
-  { value, success, fail }: IPropertyCallbackArguments2<string | unknown[]>,
+  { value, success, fail }: IPropertyValidatorCallbackArguments<string | unknown[]>,
   min: number,
   max?: number,
 ): INodeValidationResult {
@@ -168,15 +173,35 @@ export function validateLength(
   return success();
 }
 
-// // eslint-disable-next-line @typescript-eslint/naming-convention
-// export const Length = LengthFactory('root');
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const Length = (min: number, max?: number) =>
+  Validate((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max));
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const StringLength = (min: number, max?: number) =>
+  ValidateString((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max));
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const ArrayLength = (min: number, max?: number) =>
+  Validate((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max));
+
 // // eslint-disable-next-line @typescript-eslint/naming-convention
 // export const StringLength = LengthFactory('string');
 // // eslint-disable-next-line @typescript-eslint/naming-convention
 // export const ArrayLength = LengthFactory('array');
 
-export function validateNumberString({ value, success, fail }: IPropertyCallbackArguments2): INodeValidationResult {
-  const n = parseFloat(value as string);
+export function validateNumberString({
+  value,
+  success,
+  fail,
+}: IPropertyValidatorCallbackArguments<string>): INodeValidationResult {
+  if (value.toLowerCase().match(/[^.+0-9e-]/)) {
+    return fail(value, {
+      reason: StringValidationError.NOT_A_NUMBER_STRING,
+    });
+  }
+
+  const n = parseFloat(value);
   if (Number.isNaN(n)) {
     return fail(value, {
       reason: StringValidationError.NOT_A_NUMBER_STRING,
@@ -186,10 +211,10 @@ export function validateNumberString({ value, success, fail }: IPropertyCallback
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const IsNumber = () => Validate(validateNumberString);
+export const IsNumber = () => ValidateString(validateNumberString);
 
 export function validateIntegerString(
-  { value, success, fail }: IPropertyCallbackArguments2<string>,
+  { value, success, fail }: IPropertyValidatorCallbackArguments<string>,
   radix: 10 | 16 = 10,
 ): INodeValidationResult {
   let regex: RegExp;
@@ -204,7 +229,7 @@ export function validateIntegerString(
   const match = value.match(regex);
   if (!match) {
     return fail(value, {
-      reason: StringValidationError.NOT_A_NUMBER_STRING,
+      reason: StringValidationError.NOT_A_INTEGER_STRING,
     });
   }
   return success();
@@ -215,40 +240,60 @@ export const IsInteger = (radix: 10 | 16 = 10): PropertyDecorator & { meta: IAnn
   ValidateString((args) => validateIntegerString(args, radix));
 
 export function validateRange(
-  { value, success, fail }: IPropertyCallbackArguments2<number>,
+  { value, success, fail }: IPropertyValidatorCallbackArguments<number>,
   min: number,
   max?: number,
 ): INodeValidationResult {
   if (value < min) {
-    return fail(value, { reason: NumberValidationError.OUT_OF_RANGE });
+    return fail(value, {
+      reason: NumberValidationError.OUT_OF_RANGE,
+      context: { min, max },
+    });
   }
   if (max !== undefined && value > max) {
-    return fail(value, { reason: NumberValidationError.OUT_OF_RANGE });
+    return fail(value, {
+      reason: NumberValidationError.OUT_OF_RANGE,
+      context: { min, max },
+    });
   }
   return success();
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const Range = (min: number, max?: number) =>
-  Validate((args) => validateRange(args as IPropertyCallbackArguments2<number>, min, max));
+  ValidateNumber((args) => validateRange(args as IPropertyValidatorCallbackArguments<number>, min, max));
 
 export function validateNumberList(
-  { value, success, fail }: IPropertyCallbackArguments2<string>,
+  { value, values, success, fail }: IPropertyValidatorCallbackArguments<string>,
   splitter: Parameters<string['split']>[0] = /,\s*/,
-  radix: number = 10,
+  radix: 10 | 16 = 10,
 ): INodeValidationResult {
   const splitted = value.split(splitter);
+  const previousErrors: IConstraintNodeValidationError[] = [];
   for (const [i, item] of enumerate(splitted)) {
-    if (Number.isNaN(parseInt(item, radix))) {
-      return fail(value, {
-        reason: StringValidationError.NOT_A_NUMBER_LIST,
-        context: { element: i },
+    const result = validateIntegerString({ value: item, values, success, fail }, radix);
+    if (!result.success) {
+      const error = fail(item, {
+        reason: NumberListValidationError.INVALID_NUMBER_LIST_ITEM,
+        context: {
+          i,
+        },
+        previousErrors: [result],
       });
+      previousErrors.push(error);
     }
   }
-
-  return success();
+  if (!previousErrors.length) {
+    return success();
+  } else {
+    return fail(value, {
+      reason: NumberListValidationError.INVALID_NUMBER_LIST,
+      previousErrors,
+    });
+  }
 }
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const IsNumberList = () => ValidateString((args) => validateNumberList(args));
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const OneOf = (allowedValues: unknown[]) => {

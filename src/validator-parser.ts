@@ -19,6 +19,7 @@ import {
   BooleanNode,
   ClassNode,
   EnumNode,
+  IClassMeta,
   IntersectionNode,
   ITypeAndTree,
   LiteralNode,
@@ -602,11 +603,9 @@ export class Parser {
       );
     }
 
-    const getAllowedFields = (): Set<string> =>
-      new Set<string>(classNodes.flatMap((classNode) => classNode.getClassTrees()).flatMap(({ name }) => name));
     const references = classNodes.map((c) => c.meta.reference as string);
 
-    const intersectionNode = new IntersectionNode(type.getText(), getAllowedFields, references);
+    const intersectionNode = new IntersectionNode(type.getText(), references);
 
     intersectionNode.children.push(...classNodes);
     return intersectionNode;
@@ -615,7 +614,7 @@ export class Parser {
   createClassNode(
     type: Type,
     filter: (t: ITypeAndTree) => boolean = () => true,
-    meta: Record<string, unknown> = {},
+    meta: Omit<IClassMeta, 'from'> = {},
   ): ClassNode {
     const referencedDeclaration = getFirstSymbolDeclaration(type);
 

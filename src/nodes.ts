@@ -1,13 +1,13 @@
 import { enumerate, zip } from './utils';
 
-export interface IPropertyCallbackArguments<ValueType = unknown> {
+export interface IPropertyTransformerCallbackArguments<ValueType = unknown> {
   value: ValueType;
   values: Record<string, unknown>;
   success: TypeNodeBase['success'];
   fail: TypeNodeBase['fail'];
 }
 
-export interface IPropertyCallbackArguments2<ValueType = unknown> {
+export interface IPropertyValidatorCallbackArguments<ValueType = unknown> {
   value: ValueType;
   values: Record<string, unknown>;
   success: () => INodeValidationSuccess;
@@ -16,7 +16,7 @@ export interface IPropertyCallbackArguments2<ValueType = unknown> {
 
 // Will be extended from elsewhere
 export interface IAnnotationMap {
-  validationFunctions?: Array<(args: IPropertyCallbackArguments2<unknown>) => INodeValidationResult>;
+  validationFunctions?: Array<(args: IPropertyValidatorCallbackArguments<unknown>) => INodeValidationResult>;
 }
 
 export interface IValidationOptions {
@@ -491,14 +491,11 @@ export class IntersectionNode extends TypeNodeBase {
   kind = 'intersection' as const;
 
   name: string;
-  getAllowedFields: () => Set<string>;
-
   meta: IIntersectionMeta;
 
-  constructor(name: string, getAllowedFields: () => Set<string>, references: string[]) {
+  constructor(name: string, references: string[]) {
     super();
     this.name = name;
-    this.getAllowedFields = getAllowedFields;
     this.meta = { references };
   }
 
@@ -576,7 +573,7 @@ export class ArrayNode extends TypeNodeBase {
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
     if (Array.isArray(value)) {
-      const [arrayTypeNode, ...children] = this.children;
+      const arrayTypeNode = this.children[0];
       const previousMatches: INodeValidationSuccess[] = [];
       const previousErrors: INodeValidationError[] = [];
       // Validate type for each element
@@ -597,17 +594,9 @@ export class ArrayNode extends TypeNodeBase {
       }
 
       if (!previousErrors.length) {
-        // Validate decorators for each child
-        for (const child of children) {
-          const result = child.validate(value, context);
-          if (!result.success) {
-            previousErrors.push(
-              this.fail(value, {
-                reason: ValidationErrorType.DECORATORS_FAILED,
-                previousErrors: [result],
-              }),
-            );
-          }
+        const decoratorErrors = this.validateDecorators(value, context);
+        if (decoratorErrors.length) {
+          previousErrors.push(...decoratorErrors);
         }
       }
 

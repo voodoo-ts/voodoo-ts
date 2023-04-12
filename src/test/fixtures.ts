@@ -7,7 +7,6 @@ import {
   ClassNode,
   IArrayNodeItemValidationError,
   IArrayNodeValidationError,
-  IBaseNodeValidationError,
   IClassMeta,
   IConstraintNodeValidationError,
   IEnumNodeValidationError,
@@ -21,7 +20,6 @@ import {
   IRecordNodeValidationError,
   IRootNodeValidationError,
   IUnionNodeValidationError,
-  IValidationContext,
   LeafNode,
   LiteralNode,
   NumberNode,
@@ -29,7 +27,6 @@ import {
   RootNode,
   StringNode,
   TupleNode,
-  TypeNode,
   TypeNodeBase,
   UnionNode,
   ValidationErrorType,
@@ -73,7 +70,7 @@ export class ClassNodeFixture extends ClassNode {
 
 export class IntersectionNodeFixture extends IntersectionNode {
   static create(name: string, references: string[], r: Partial<IntersectionNode> = {}): IntersectionNode {
-    const f = new IntersectionNode(name, expect.any(Function) as any, references);
+    const f = new IntersectionNode(name, references);
     Object.assign(f, r);
     return f;
   }
