@@ -7,15 +7,19 @@ import {
   NodeResultFixture,
 } from '../fixtures';
 
-// Import this named export into your test file:
+const VALIDATION_OPTIONS = { values: {}, options: { allowUnknownFields: true } };
 
-function validateWithArrayFixture(value: unknown): INodeValidationResult {
-  const opts = { values: {}, options: { allowUnknownFields: true } };
+function getArrayNodeFixture(): ArrayNode {
   const arrayNode = new ArrayNode();
 
   arrayNode.children.push(new mockValidationNode() as TypeNode);
 
-  return arrayNode.validate(value, opts);
+  return arrayNode;
+}
+
+function validateWithArrayFixture(value: unknown): INodeValidationResult {
+  const arrayNode = getArrayNodeFixture();
+  return arrayNode.validate(value, VALIDATION_OPTIONS);
 }
 
 describe('ArrayNode', () => {
@@ -35,7 +39,7 @@ describe('ArrayNode', () => {
     const result = validateWithArrayFixture([true]);
 
     expect(mockValidate).toHaveBeenCalledTimes(1);
-    expect(mockValidate).toHaveBeenCalledWith(true, expect.anything());
+    expect(mockValidate).toHaveBeenCalledWith(true, VALIDATION_OPTIONS);
     expect(result).toEqual(
       expectNodeValidationSuccess.arraySuccess({
         previousMatches: [
@@ -63,5 +67,40 @@ describe('ArrayNode', () => {
         ],
       }),
     );
+  });
+
+  it('should validate array with valid value and successful decorator', () => {
+    mockValidate.mockReturnValueOnce(NodeResultFixture.success());
+
+    const arrayNode = getArrayNodeFixture();
+    const fn = jest.fn(() => NodeResultFixture.success());
+
+    arrayNode.annotations.validationFunctions = [fn];
+
+    const result = arrayNode.validate([true], VALIDATION_OPTIONS);
+
+    expect(result).toEqual(
+      expectNodeValidationSuccess.arraySuccess({
+        previousMatches: [
+          expectNodeValidationSuccess.mockSuccess({
+            context: { array: { i: 0 } },
+          }),
+        ],
+      }),
+    );
+    expect(fn).toHaveBeenCalledOnce();
+  });
+
+  it('should not validate array if decorator fails', () => {
+    mockValidate.mockReturnValueOnce(NodeResultFixture.success());
+
+    const arrayNode = getArrayNodeFixture();
+    const fn = jest.fn(({ fail }) => fail());
+
+    arrayNode.annotations.validationFunctions = [fn];
+
+    const result = arrayNode.validate([true], VALIDATION_OPTIONS);
+
+    expect(result.success).toBeFalse();
   });
 });
