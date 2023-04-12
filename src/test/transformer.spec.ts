@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
-import { expectValidationError, project } from './utils';
+import { debug, expectValidationError, project } from './utils';
 import { ParseError } from '../errors';
 import { ValidationErrorType } from '../nodes';
 import { TransformerInstance } from '../transformer';
@@ -15,6 +16,7 @@ import {
   TransformerFunction,
   From,
 } from '../transformer-parser';
+import { ValidationError } from '../validator';
 
 describe('Transformer', () => {
   describe('StringToNumber transformer', () => {
@@ -586,81 +588,126 @@ describe('Transformer', () => {
     });
   });
 
-  describe('transformer', () => {
-    it('mixed', async () => {
-      const t = new TransformerInstance({ project });
+  describe('End to end', () => {
+    const t = new TransformerInstance({ project });
 
-      interface IInterface {
-        interfaceProperty: number;
-      }
+    @t.transformerDecorator()
+    class TestEmbed {
+      // @In<Transformed<string, DateTime>>()
+      // @Out<Transformed<Date, string>>()
+      // date!: DateTime;
 
-      interface IOtherInterface {
-        otherInterfaceProperty: number;
-      }
+      emebeddedProperty!: number;
+      x!: Transformed<string, number>;
+    }
 
-      @t.transformerDecorator()
-      class TestEmbed {
-        // @In<Transformed<string, DateTime>>()
-        // @Out<Transformed<Date, string>>()
-        // date!: DateTime;
+    @t.transformerDecorator()
+    class Test {
+      testString!: string;
+      testNumber!: number;
+      testUnion!: Test | null;
+      testNested!: TestEmbed;
+      testArray!: TestEmbed[];
+      testOptional?: string;
+      testGeneric!: TestGeneric;
+    }
 
-        emebeddedProperty!: number;
-        x!: Transformed<string, number>;
-      }
+    @t.transformerDecorator()
+    class TestGenericEmeb<T> {
+      genericProperty!: T;
+    }
 
-      @t.transformerDecorator()
-      class Test {
-        testString!: string;
-        testNumber!: number;
-        testUnion!: Test | null;
-        testNested!: TestEmbed;
-        testArray!: TestEmbed[];
-        testOptional?: string;
-        testGeneric!: TestGeneric;
-      }
+    @t.transformerDecorator()
+    class TestGeneric {
+      t!: TestGenericEmeb<number>;
+    }
 
-      @t.transformerDecorator()
-      class TestGenericEmeb<T> {
-        genericProperty!: T;
-      }
+    const VALID_OBJECT = {
+      testString: 'str',
+      testNumber: 9001,
+      testArray: [{ emebeddedProperty: 123, x: '456' as any }],
+      testUnion: {
+        testString: '',
+        testNumber: 0,
+        testUnion: null,
+        testNested: {
+          emebeddedProperty: 23,
+          x: '123' as any,
+        },
+        testOptional: '123',
+        testGeneric: {
+          t: { genericProperty: 123 },
+        },
+        testArray: [],
+      },
+      testNested: {
+        emebeddedProperty: 9001,
+        x: '123' as any,
+      },
+      testGeneric: {
+        t: { genericProperty: 123 },
+      },
+    };
 
-      @t.transformerDecorator()
-      class TestGeneric {
-        t!: TestGenericEmeb<number>;
-      }
+    it('should construct an instance with TransformerInstance.withDefaultProject()', () => {
+      const v = TransformerInstance.withDefaultProject();
+      expect(v).toBeInstanceOf(TransformerInstance);
+    });
 
+    it('should transform with valid data', async () => {
       // console.time('a');
       // for (let i = 0; i < 10000; i++) {
-      const r2 = await t.transformOrThrow(Test, {
+      const result = await t.transformOrThrow(Test, VALID_OBJECT);
+
+      expect(result).toBeTruthy();
+      expect(result).toEqual({
         testString: 'str',
         testNumber: 9001,
-        testArray: [{ emebeddedProperty: 123, x: '456' as any }],
+        testArray: [{ emebeddedProperty: 123, x: 456 }],
         testUnion: {
           testString: '',
           testNumber: 0,
           testUnion: null,
-          testNested: {
-            emebeddedProperty: 23,
-            x: '123' as any,
-          },
+          testNested: { emebeddedProperty: 23, x: 123 },
           testOptional: '123',
-          testGeneric: {
-            t: { genericProperty: 123 },
-          },
+          testGeneric: { t: { genericProperty: 123 } },
           testArray: [],
         },
-        testNested: {
-          emebeddedProperty: 9001,
-          x: '123' as any,
-        },
-        testGeneric: {
-          t: { genericProperty: 123 },
-        },
+        testNested: { emebeddedProperty: 9001, x: 123 },
+        testGeneric: { t: { genericProperty: 123 } },
       });
 
-      expect(r2).toBeTruthy();
       // }
       // console.timeEnd('a');
+    });
+
+    it('should not validate with invalid data', async () => {
+      const result = await t.transform(Test, {} as any);
+      expect(result.success).toBeFalse();
+    });
+
+    it('should throw with invalid data when using TransformerInstance.transformOrThrow', async () => {
+      const getException = async () => {
+        try {
+          await t.transformOrThrow(Test, {} as any);
+        } catch (e: unknown) {
+          return e;
+        }
+      };
+
+      const error = await getException();
+      expect(error).toBeInstanceOf(ValidationError);
+      expect(error).toEqual(
+        expect.objectContaining({
+          errors: expect.toBeObject(),
+          rawErrors: expect.toBeObject(),
+        }),
+      );
+    });
+
+    it('should validate with the TransformerInstance.validate method', () => {
+      const validationResult = t.validate(Test, VALID_OBJECT);
+      expect(validationResult.success).toBeTrue();
     });
   });
 });
