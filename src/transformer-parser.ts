@@ -317,7 +317,8 @@ export class TransformerParser extends Parser {
         }
         const cls = this.classDeclarationToClassReference.getByTypeReference(node.meta.reference);
 
-        if (!cls && node.meta.from !== 'object') {
+        /* istanbul ignore if */
+        if (!cls && node.meta.from !== 'object' && node.meta.from !== 'interface') {
           throw new ParseError(`Can't find class by reference: ${node.meta.reference}`);
         }
 
