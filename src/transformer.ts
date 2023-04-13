@@ -30,6 +30,7 @@ export interface ITransformerConstructorOptions {
   project: Project;
   validator?: Omit<IValidatorConstructorOptions, 'project'>;
   transformer?: AbstractValueTransformerFactory[];
+  eager?: boolean;
 }
 
 const NODE_MODULE_PATH = './node_modules/@vvalidator/vvalidator/src/*';
@@ -47,7 +48,16 @@ export class TransformerInstance {
   constructor(options: ITransformerConstructorOptions) {
     this.project = options.project;
     this.classDiscovery = new ClassDiscovery(options.project);
-    this.transformerClassDecoratorFactory = new SourceCodeLocationDecorator<ITransformerOptions>(this.classDiscovery);
+
+    const onDecorate = (cls: object): void => {
+      if (options.eager) {
+        this.getPropertyTypeTreesFromConstructor(cls as Constructor<unknown>);
+      }
+    };
+    this.transformerClassDecoratorFactory = new SourceCodeLocationDecorator<ITransformerOptions>(
+      this.classDiscovery,
+      onDecorate,
+    );
 
     this.parser = TransformerParser.default(
       this.transformerClassDecoratorFactory.getClassDeclarationMapping(),
@@ -67,7 +77,9 @@ export class TransformerInstance {
     this.defaultOptions = {};
   }
 
-  static withDefaultProject(options: Omit<ITransformerConstructorOptions, 'project'> = {}): TransformerInstance {
+  static withDefaultProject(
+    options: Omit<ITransformerConstructorOptions, 'project'> = { eager: false },
+  ): TransformerInstance {
     const project = new Project({
       tsConfigFilePath: 'tsconfig.json',
     });
