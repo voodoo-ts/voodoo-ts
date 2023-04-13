@@ -25,7 +25,7 @@ export class BasicSourceCodeLocationDecorator<T> {
     this.onDecorate = onDecorate;
   }
 
-  decorator(error: Error, options: T | undefined = {} as T): ReturnType<typeof Reflect['metadata']> {
+  decorator(error: Error, options: T | undefined = {} as T): ReturnType<(typeof Reflect)['metadata']> {
     const stack = ErrorStackParser.parse(error);
 
     if (!stack[1]?.fileName || stack[1]?.lineNumber === undefined || stack[1]?.columnNumber === undefined) {
@@ -45,8 +45,8 @@ export class BasicSourceCodeLocationDecorator<T> {
     const position = `${filename}:${line}:${column}`;
 
     return (target: object) => {
-      this.onDecorate?.(target, classMetadata);
       this.setClassMetadata(target as Constructor<T>, classMetadata, position);
+      this.onDecorate?.(target, classMetadata);
     };
   }
 
