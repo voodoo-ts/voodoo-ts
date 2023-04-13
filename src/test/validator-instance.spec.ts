@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { expectAnyFunction, NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
-import { expectValidationError, project } from './utils';
+import { debug, expectValidationError, project } from './utils';
 import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
 import { IAnnotationMap } from '../nodes';
@@ -36,6 +36,33 @@ describe('general', () => {
     expect(trees[1].name).toEqual('derivedAttribute');
   });
 
+  it('should support computed properties from string literals', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      ['🦙']!: string;
+    }
+
+    const { name } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+    expect(name).toEqual('🦙');
+  });
+
+  it('should throw for computed properties not from string literals', () => {
+    const v = new ValidatorInstance({ project });
+
+    const propertyName = '🦙';
+    @v.validatorDecorator()
+    class Test {
+      [propertyName]!: string;
+    }
+
+    const classTreesWrapper = () => v.getPropertyTypeTreesFromConstructor(Test);
+
+    expect(classTreesWrapper).toThrow(ParseError);
+  });
+
   it('should throw for unsupported syntax nodes', () => {
     const v = new ValidatorInstance({ project });
 
@@ -46,18 +73,6 @@ describe('general', () => {
 
     const classTreesWrapper = () => v.getPropertyTypeTreesFromConstructor(Test);
 
-    expect(classTreesWrapper).toThrow(ParseError);
-  });
-
-  it.skip('should throw for unsupported type symbols', () => {
-    const v = new ValidatorInstance({ project });
-
-    @v.validatorDecorator()
-    class Test {
-      unknownAttribute!: Exclude<1 | 0, 0>;
-    }
-
-    const classTreesWrapper = () => v.getPropertyTypeTreesFromConstructor(Test);
     expect(classTreesWrapper).toThrow(ParseError);
   });
 

@@ -53,6 +53,7 @@ export interface IMinimalProperty {
   getSourceFile(): SourceFile;
   getParent(): Node;
   hasQuestionToken?(): boolean;
+  getNameNode(): Node;
 }
 
 export interface IPropertyListItem {
@@ -175,6 +176,7 @@ function getOmitParameters(type: Type): IOmitParameters {
       propertyNames.add(unionType.getLiteralValueOrThrow().toString());
     }
   } else {
+    /* istanbul ignore next */
     throw new ParseError('Unknown paramter U for Omit<T, U>', {
       asText: stringLiteralOrUnion.getText(),
       keys: stringLiteralOrUnion,
@@ -182,6 +184,24 @@ function getOmitParameters(type: Type): IOmitParameters {
   }
 
   return { referencedClassDeclaration, propertyNames, targetType };
+}
+
+function getPropertyName(property: IMinimalProperty): string {
+  const nameNode = property.getNameNode();
+  if (Node.isIdentifier(nameNode)) {
+    return property.getName();
+  } else if (Node.isComputedPropertyName(nameNode)) {
+    const [opening, stringLiteral, closing] = nameNode.getChildren();
+    /* istanbul ignore else */
+    if (opening && Node.isStringLiteral(stringLiteral) && closing) {
+      return stringLiteral.getLiteralText();
+    } else {
+      throw new ParseError(`Expected string literal for computed property`);
+    }
+  } else {
+    /* istanbul ignore next */
+    throw new ParseError(`Can't handle name node of type ${nameNode.getKindName()}`);
+  }
 }
 
 export class ClassCache<T> {
@@ -695,7 +715,7 @@ export class Parser {
         }
 
         try {
-          const name = property.getName();
+          const name = getPropertyName(property);
           const tree = this.buildTypeTree(declaration, property, mergedTypeMap);
           if (declaration && isClass(declaration)) {
             this.applyDecorators(declaration, name, tree);
