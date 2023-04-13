@@ -408,6 +408,11 @@ describe('nested', () => {
             ],
           }),
         );
+
+        const node = tree.children[0] as ClassNode;
+        expect(node.getClassTrees()).toEqual(
+          expect.arrayContaining([{ name: 'embeddedProperty2', tree: expect.anything() }]),
+        );
       });
 
       it('should construct the tree correctly (aliased)', () => {
@@ -421,6 +426,14 @@ describe('nested', () => {
               }),
             ],
           }),
+        );
+
+        const node = tree.children[0] as ClassNode;
+        expect(node.getClassTrees()).toEqual(
+          expect.arrayContaining([
+            { name: 'embeddedProperty1', tree: expect.anything() },
+            { name: 'embeddedProperty2', tree: expect.anything() },
+          ]),
         );
       });
 
