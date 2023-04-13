@@ -32,6 +32,8 @@ export interface ITransformerConstructorOptions {
   transformer?: AbstractValueTransformerFactory[];
 }
 
+const NODE_MODULE_PATH = './node_modules/@vvalidator/vvalidator/src/*';
+
 export class TransformerInstance {
   project: Project;
 
@@ -69,6 +71,7 @@ export class TransformerInstance {
     const project = new Project({
       tsConfigFilePath: 'tsconfig.json',
     });
+    project.addSourceFilesAtPaths(NODE_MODULE_PATH);
 
     return new TransformerInstance({ project, ...options });
   }
