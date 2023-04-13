@@ -72,6 +72,39 @@ describe('nested', () => {
     });
   });
 
+  describe(`Partial<T>`, () => {
+    @v.validatorDecorator()
+    class TestEmbed {
+      embeddedProperty!: number;
+    }
+
+    @v.validatorDecorator()
+    class Test {
+      embeddedObject!: Partial<TestEmbed>;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          children: [ClassNodeFixture.createForClass(TestEmbed, { partial: true })],
+        }),
+      );
+    });
+
+    it('should validate', () => {
+      const result = v.validate(Test, { embeddedObject: { embeddedProperty: 123 } });
+
+      expect(result.success).toEqual(true);
+    });
+
+    it('should validate if attribute is missing', () => {
+      const result = v.validate(Test, { embeddedObject: {} });
+
+      expect(result.success).toEqual(true);
+    });
+  });
+
   describe(`cycle`, () => {
     @v.validatorDecorator()
     class Test {

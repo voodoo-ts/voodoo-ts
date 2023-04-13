@@ -604,6 +604,10 @@ export class Parser {
       const [keyType, valueType] = type.getAliasTypeArguments();
       recordNode.children.push(this.walkTypeNodes(keyType, {}), this.walkTypeNodes(valueType, {}));
       return recordNode;
+    } else if (name === 'Partial') {
+      const [partialType] = type.getAliasTypeArguments();
+      const classNode = this.createClassNode(partialType, () => true, { partial: true });
+      return classNode;
     } else {
       throw new ParseError(`Syntax not supported: ${type.getText()}`, {
         asText: type.getText(),
