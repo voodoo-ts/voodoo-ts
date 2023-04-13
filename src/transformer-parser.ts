@@ -312,6 +312,7 @@ export class TransformerParser extends Parser {
         }
       }
       case 'class': {
+        /* istanbul ignore if */
         if (!node.meta.reference) {
           throw new ParseError('No class reference');
         }
@@ -351,8 +352,8 @@ export class TransformerParser extends Parser {
             }
           }
 
-          const resolvedPropertyName = propertyValidationResult.context.resolvedPropertyName as string;
-          const transformedPropertyName = propertyValidationResult.context.propertyName as string;
+          const sourcePropertyName = propertyValidationResult.context.resolvedPropertyName as string;
+          const targetPropertyName = propertyValidationResult.context.propertyName as string;
           const rootError: IRootNodeValidationError = {
             type: 'root',
             success: false,
@@ -362,7 +363,7 @@ export class TransformerParser extends Parser {
             context: {
               className: node.name,
               propertyName,
-              resolvedPropertyName,
+              resolvedPropertyName: sourcePropertyName,
             },
             previousErrors: [],
           };
@@ -388,13 +389,13 @@ export class TransformerParser extends Parser {
 
             // Simple value returned
             if (!isNodeValidationResult(transformDecoratorResult)) {
-              newValues[transformedPropertyName] = transformDecoratorResult;
+              newValues[targetPropertyName] = transformDecoratorResult;
 
               // Stop default handling -- we don't need to recurse further, a @Transformed has to recurse if needed
               continue;
             } else {
               if (transformDecoratorResult.success) {
-                newValues[transformedPropertyName] = transformDecoratorResult.value;
+                newValues[targetPropertyName] = transformDecoratorResult.value;
               } else {
                 rootError.previousErrors = [transformDecoratorResult];
                 classError.previousErrors.push(rootError);
@@ -407,7 +408,7 @@ export class TransformerParser extends Parser {
               options,
             );
             if (transformResult.success) {
-              newValues[transformedPropertyName] = transformResult.value;
+              newValues[targetPropertyName] = transformResult.value;
             } else {
               rootError.previousErrors = [transformResult];
               classError.previousErrors.push(rootError);
