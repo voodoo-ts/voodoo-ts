@@ -3,12 +3,11 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
-import { debug, expectValidationError, project } from './utils';
+import { expectValidationError, project } from './utils';
 import { ParseError } from '../errors';
 import { ValidationErrorType } from '../nodes';
 import { TransformerInstance } from '../transformer';
 import {
-  IGetTransformerContext,
   AbstractValueTransformerFactory,
   registry,
   Transform,
@@ -124,6 +123,10 @@ describe('Transformer', () => {
   describe('Self referencing / embed', () => {
     const v = new TransformerInstance({ project });
 
+    interface IEmbed {
+      interfaceProperty: string;
+    }
+
     @v.transformerDecorator()
     class TestSelfReference {
       id!: Transformed<string, number>;
@@ -136,7 +139,12 @@ describe('Transformer', () => {
       transformed!: Transformed<string, boolean>;
     }
 
-    it('should transform correctly', async () => {
+    @v.transformerDecorator()
+    class TestInterface {
+      test!: IEmbed;
+    }
+
+    it('should transform classes correctly', async () => {
       const result = await v.transform(TestSelfReference, { id: '1', children: [{ id: '2', children: [] }] } as any);
       expect(result.object).toEqual({
         id: 1,
@@ -152,6 +160,18 @@ describe('Transformer', () => {
       expect(result.object).toEqual({
         test: [{ test: [null, 'null'], transformed: false }, 'root'],
         transformed: true,
+      });
+    });
+
+    it('should transform interfaces correctly', async () => {
+      const result = await v.transform(TestInterface, {
+        test: { interfaceProperty: 'test' },
+      });
+
+      expect(result.object).toEqual({
+        test: {
+          interfaceProperty: 'test',
+        },
       });
     });
   });
@@ -517,6 +537,60 @@ describe('Transformer', () => {
     });
   });
 
+  describe('Custom ValueTransformers', () => {
+    const v = new TransformerInstance({ project });
+
+    @registry.decorate<Transformed<string[], Set<string>, unknown>>()
+    class StringArrayToSet extends AbstractValueTransformerFactory {
+      getTransformer(): TransformerFunction<string[], Set<string>> {
+        return ({ value }) => new Set<string>(value);
+      }
+    }
+
+    @registry.decorate<Transformed<string[], Set<number>, unknown>>()
+    class StringArrayToNumberSet extends AbstractValueTransformerFactory {
+      getTransformer(): TransformerFunction<string[], Set<number>> {
+        return ({ value }) => new Set<number>(value.map((v) => parseInt(v, 10)));
+      }
+    }
+
+    const stringArrayToSet = new StringArrayToSet();
+    jest.spyOn(stringArrayToSet, 'getTransformer');
+    jest.spyOn(stringArrayToSet, 'getDecorators');
+
+    const stringArrayToNumberSet = new StringArrayToNumberSet();
+    jest.spyOn(stringArrayToNumberSet, 'getTransformer');
+    jest.spyOn(stringArrayToNumberSet, 'getDecorators');
+
+    v.parser.valueTransformers.push(stringArrayToSet);
+    v.parser.valueTransformers.push(stringArrayToNumberSet);
+
+    @v.transformerDecorator()
+    class Test {
+      test1!: Transformed<string[], Set<string>>;
+      test2!: Transformed<string[], Set<number>>;
+    }
+
+    it('should add the correct annotations', () => {
+      const trees = v.getPropertyTypeTreesFromConstructor(Test);
+      const { tree: tree1 } = trees[0];
+      const { tree: tree2 } = trees[1];
+
+      expect(tree1.annotations.transformerFunction).toEqual([expect.any(Function)]);
+      expect(stringArrayToSet.getDecorators).toHaveBeenCalledOnceWith(expect.objectContaining({ options: {} }));
+      expect(tree2.annotations.transformerFunction).toEqual([expect.any(Function)]);
+      expect(stringArrayToNumberSet.getDecorators).toHaveBeenCalledOnceWith(expect.objectContaining({ options: {} }));
+    });
+
+    it('should transform correctly', async () => {
+      const result = await v.transform(Test, { test1: ['a', 'b'], test2: ['1', '2'] } as any);
+
+      expect(result.success).toBeTrue();
+      expect(result.object).toEqual({ test1: new Set(['a', 'b']), test2: new Set([1, 2]) });
+      expect(stringArrayToSet.getTransformer).toHaveBeenCalledOnceWith(expect.objectContaining({ options: {} }));
+    });
+  });
+
   describe('Aliased ValueTransformers', () => {
     const v = new TransformerInstance({ project });
 
@@ -526,7 +600,7 @@ describe('Transformer', () => {
 
     @registry.decorate<StringToNumber<never>>()
     class TestStringToNumberalueTransformer extends AbstractValueTransformerFactory {
-      getTransformer(ctx: IGetTransformerContext): TransformerFunction<string, number> {
+      getTransformer(): TransformerFunction<string, number> {
         return transformer;
       }
     }
@@ -654,36 +728,94 @@ describe('Transformer', () => {
       expect(v).toBeInstanceOf(TransformerInstance);
     });
 
+    it('should unwrap', async () => {
+      const t = new TransformerInstance({ project });
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      const { validate, validateOrThrow, transform, transformOrThrow, Dto } = t.unwrap();
+
+      @Dto()
+      class Test {
+        test!: number;
+      }
+
+      expect(validate(Test, { test: 1 }).success).toBeTrue();
+      expect(validate(Test, { test: 'a' as any }).success).toBeFalse();
+
+      expect((await transform(Test, { test: 1 })).success).toBeTrue();
+      expect((await transform(Test, { test: 'a' as any })).success).toBeFalse();
+
+      expect(validateOrThrow).toBeTruthy();
+      expect(transformOrThrow).toBeTruthy();
+    });
+
+    it('should load eager if enabled', () => {
+      const t = new TransformerInstance({ project, eager: true });
+      @t.transformerDecorator()
+      class Test {
+        test!: number;
+      }
+
+      expect(t.parser.classTreeCache.map.size).toEqual(1);
+    });
+
+    it('should not load eager if disabled', () => {
+      const t = new TransformerInstance({ project });
+      @t.transformerDecorator()
+      class Test {
+        test!: number;
+      }
+
+      expect(t.parser.classTreeCache.map.size).toEqual(0);
+    });
+
     it('should transform with valid data', async () => {
       // console.time('a');
       // for (let i = 0; i < 10000; i++) {
       const result = await t.transformOrThrow(Test, VALID_OBJECT);
+      const validationResult = t.validateOrThrow(Test, VALID_OBJECT);
+      // }
+      // console.timeEnd('a');
 
+      expect(validationResult).toEqual(VALID_OBJECT);
       expect(result).toBeTruthy();
       expect(result).toEqual({
         testString: 'str',
         testNumber: 9001,
-        testArray: [{ emebeddedProperty: 123, x: 456 }],
+        testArray: [
+          {
+            emebeddedProperty: 123,
+            x: 456,
+          },
+        ],
         testUnion: {
           testString: '',
           testNumber: 0,
           testUnion: null,
-          testNested: { emebeddedProperty: 23, x: 123 },
+          testNested: {
+            emebeddedProperty: 23,
+            x: 123,
+          },
           testOptional: '123',
-          testGeneric: { t: { genericProperty: 123 } },
+          testGeneric: {
+            t: {
+              genericProperty: 123,
+            },
+          },
           testArray: [],
         },
-        testNested: { emebeddedProperty: 9001, x: 123 },
+        testNested: {
+          emebeddedProperty: 9001,
+          x: 123,
+        },
         testGeneric: { t: { genericProperty: 123 } },
       });
-
-      // }
-      // console.timeEnd('a');
     });
 
     it('should not validate with invalid data', async () => {
       const result = await t.transform(Test, {} as any);
       expect(result.success).toBeFalse();
+
+      expect(() => t.validateOrThrow(Test, {} as any)).toThrowError(ValidationError);
     });
 
     it('should throw with invalid data when using TransformerInstance.transformOrThrow', async () => {

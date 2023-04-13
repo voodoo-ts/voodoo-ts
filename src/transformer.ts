@@ -141,6 +141,15 @@ export class TransformerInstance {
     return this.validatorInstance.validate(cls, values, options);
   }
 
+  validateOrThrow<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): T {
+    const result = this.validate(cls, values, options);
+    if (result.success) {
+      return result.object;
+    } else {
+      throw new ValidationError(result.rawErrors, formatErrors(result.rawErrors));
+    }
+  }
+
   getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {
     const validatorMeta = this.getClassMetadata(cls);
     const classDeclaration = this.classDiscovery.getClass(
@@ -158,5 +167,24 @@ export class TransformerInstance {
 
   getClassMetadata(cls: Constructor<unknown>): IClassMeta<ITransformerOptions> {
     return this.transformerClassDecoratorFactory.getClassMetadata(cls);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  unwrap(): {
+    validate: TransformerInstance['validate'];
+    validateOrThrow: TransformerInstance['validateOrThrow'];
+    transform: TransformerInstance['transform'];
+    transformOrThrow: TransformerInstance['transformOrThrow'];
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    Dto: TransformerInstance['transformerDecorator'];
+  } {
+    return {
+      validate: this.validate.bind(this),
+      validateOrThrow: this.validateOrThrow.bind(this),
+      transform: this.transform.bind(this),
+      transformOrThrow: this.transformOrThrow.bind(this),
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      Dto: this.transformerDecorator.bind(this),
+    };
   }
 }
