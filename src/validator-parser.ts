@@ -399,7 +399,7 @@ export class PropertyDiscovery {
       if (baseType.getTypeArguments().length) {
         const declarationForType = getFirstSymbolDeclaration(baseType);
         if (!isInterface(declarationForType)) {
-          throw new ParseError('Blorb');
+          throw new ParseError(`Type ${baseType.getText()} is not an interface`);
         }
 
         typeMap = this.buildTypeMap(declarationForType, baseType);
