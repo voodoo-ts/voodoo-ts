@@ -37,8 +37,8 @@
     "typescript": "^5.0.4"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.6.0",
-    "@commitlint/config-conventional": "^17.6.0",
+    "@commitlint/cli": "^17.6.1",
+    "@commitlint/config-conventional": "^17.6.1",
     "@conventional-commits/parser": "^0.4.1",
     "@types/jest": "^29.5.0",
     "@types/node": "^18.15.11",
