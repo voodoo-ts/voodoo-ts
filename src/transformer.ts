@@ -171,6 +171,7 @@ export class TransformerInstance {
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
   unwrap(): {
+    transformer: TransformerInstance;
     validate: TransformerInstance['validate'];
     validateOrThrow: TransformerInstance['validateOrThrow'];
     transform: TransformerInstance['transform'];
@@ -179,6 +180,7 @@ export class TransformerInstance {
     Dto: TransformerInstance['transformerDecorator'];
   } {
     return {
+      transformer: this,
       validate: this.validate.bind(this),
       validateOrThrow: this.validateOrThrow.bind(this),
       transform: this.transform.bind(this),

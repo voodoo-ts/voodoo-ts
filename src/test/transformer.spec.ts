@@ -731,7 +731,7 @@ describe('Transformer', () => {
     it('should unwrap', async () => {
       const t = new TransformerInstance({ project });
       // eslint-disable-next-line @typescript-eslint/naming-convention
-      const { validate, validateOrThrow, transform, transformOrThrow, Dto } = t.unwrap();
+      const { validate, validateOrThrow, transform, transformOrThrow, Dto, transformer } = t.unwrap();
 
       @Dto()
       class Test {
@@ -746,6 +746,8 @@ describe('Transformer', () => {
 
       expect(validateOrThrow).toBeTruthy();
       expect(transformOrThrow).toBeTruthy();
+
+      expect(transformer).toBeTruthy();
     });
 
     it('should load eager if enabled', () => {
@@ -814,7 +816,6 @@ describe('Transformer', () => {
     it('should not validate with invalid data', async () => {
       const result = await t.transform(Test, {} as any);
       expect(result.success).toBeFalse();
-
       expect(() => t.validateOrThrow(Test, {} as any)).toThrowError(ValidationError);
     });
 
