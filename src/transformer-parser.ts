@@ -148,8 +148,8 @@ export class StringToNumberValueTransformer extends AbstractValueTransformerFact
   }
 }
 
-const DEFAULT_TRUE_LIST = ['on', 'true', 'yes', '1'];
-const DEFAULT_FALSE_LIST = ['off', 'false', 'no', '0'];
+export const DEFAULT_TRUE_LIST = ['on', 'true', 'yes', '1'];
+export const DEFAULT_FALSE_LIST = ['off', 'false', 'no', '0'];
 
 @registry.decorate<Transformed<string, boolean, never>>()
 export class StringToBooleanValueTransformer extends AbstractValueTransformerFactory {
