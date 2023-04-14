@@ -69,7 +69,8 @@ function main(): void {
 
   readline.question(`❔ Will run "${versionCommand}"`, () => {
     console.log(`🚀 Running npm version. Good luck!`);
-    execSync(versionCommand);
+    const result = execSync(versionCommand);
+    console.log(result.toString());
 
     readline.close();
   });
