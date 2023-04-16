@@ -46,6 +46,10 @@ describe('tuple', () => {
             previousErrors: [
               NodeValidationErrorMatcher.tupleError({
                 reason: ValidationErrorType.NO_LENGTH_MATCH,
+                context: {
+                  expected: 3,
+                  length: 0,
+                },
               }),
             ],
           }),

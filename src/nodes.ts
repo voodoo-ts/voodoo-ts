@@ -181,6 +181,15 @@ export interface IArrayNodeItemValidationError extends IBaseNodeValidationError 
   };
 }
 
+export interface ITupleNodeValidationError extends IBaseNodeValidationError {
+  type: 'tuple';
+  reason: ValidationErrorType.NO_LENGTH_MATCH;
+  context: {
+    length: number;
+    expected: number;
+  };
+}
+
 export function isArrayNodeValidatorError(result: INodeValidationError): result is IArrayNodeValidationError {
   return result.reason === ValidationErrorType.ARRAY_FAILED && (result.type === 'array' || result.type === 'tuple');
 }
@@ -202,7 +211,8 @@ export type INodeValidationError =
   | IRecordNodeValidationError
   | ILiteralNodeValidationError
   | IRootNodeValidationError
-  | IConstraintNodeValidationError;
+  | IConstraintNodeValidationError
+  | ITupleNodeValidationError;
 
 export type INodeValidationResult = INodeValidationSuccess | INodeValidationError;
 
@@ -510,12 +520,12 @@ export class IntersectionNode extends TypeNodeBase {
           .getClassTrees()
           .map(({ name, tree }) => [name, tree.annotations.fromProperty ?? name]);
 
-        for (const [_, resolvedPropertyName] of childClassNodeProperties) {
+        for (const [, resolvedPropertyName] of childClassNodeProperties) {
           allowedFields.add(resolvedPropertyName);
         }
 
         const childClassNodeValues = Object.fromEntries(
-          childClassNodeProperties.map(([name, resolvedPropertyName]) => [
+          childClassNodeProperties.map(([, resolvedPropertyName]) => [
             resolvedPropertyName,
             (value as Record<string, unknown>)[resolvedPropertyName],
           ]),
@@ -742,7 +752,13 @@ export class TupleNode extends TypeNodeBase {
     }
 
     if (value.length !== this.children.length) {
-      return this.fail(value, { reason: ValidationErrorType.NO_LENGTH_MATCH });
+      return this.fail(value, {
+        reason: ValidationErrorType.NO_LENGTH_MATCH,
+        context: {
+          expected: this.children.length,
+          length: value.length,
+        },
+      });
     }
 
     const previousMatches: INodeValidationSuccess[] = [];
