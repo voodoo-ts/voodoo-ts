@@ -459,6 +459,7 @@ export class Parser {
   propertyDiscovery: PropertyDiscovery;
   classTreeCache = new TypeCache<ITypeAndTree[]>();
   declarationsDiscovered = new Set<string>();
+  classNodeCache: Map<ClassDeclaration, ClassNode> = new Map();
 
   constructor(classDeclarationToClassReference: ClassCache<Constructor<unknown>>) {
     this.classDeclarationToClassReference = classDeclarationToClassReference;
@@ -745,6 +746,17 @@ export class Parser {
     this.classTreeCache.set(classDeclaration, types, trees);
 
     return trees;
+  }
+
+  getCachedClassNode(classDeclaration: ClassDeclaration): ClassNode {
+    const cached = this.classNodeCache.get(classDeclaration);
+    if (!cached) {
+      const classNode = this.getClassNode(classDeclaration);
+      this.classNodeCache.set(classDeclaration, classNode);
+      return classNode;
+    } else {
+      return cached;
+    }
   }
 
   getClassNode(classDeclaration: ClassOrInterfaceOrLiteral): ClassNode {

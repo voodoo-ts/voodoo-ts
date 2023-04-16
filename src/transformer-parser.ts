@@ -448,11 +448,11 @@ export class TransformerParser extends Parser {
   }
 
   async transform(
-    classDeclaration: ClassOrInterfaceOrLiteral,
+    classDeclaration: ClassDeclaration,
     values: Record<string | number | symbol, unknown>,
     options: ITransformationOptions = {},
   ): Promise<INodeValidationResult & { value: unknown }> {
-    const validationResult = this.getClassNode(classDeclaration).validate(values, {
+    const validationResult = this.getCachedClassNode(classDeclaration).validate(values, {
       values,
       options: { allowUnknownFields: options.allowUnknownFields ?? false },
     });

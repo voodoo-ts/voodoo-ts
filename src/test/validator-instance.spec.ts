@@ -5,7 +5,7 @@ import { expectAnyFunction, NodeValidationErrorMatcher, RootNodeFixture, StringN
 import { debug, expectValidationError, project } from './utils';
 import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
-import { IAnnotationMap } from '../nodes';
+import { ClassNode, IAnnotationMap } from '../nodes';
 import { ValidatorInstance } from '../validator';
 
 describe('general', () => {
@@ -200,6 +200,29 @@ describe('validator', () => {
       const result = v.validate(Test, {});
 
       expect(result.success).toEqual(true);
+    });
+
+    it('should cache class nodes', () => {
+      const v = new ValidatorInstance({ project });
+
+      @v.validatorDecorator()
+      class Test {}
+
+      const validatorMeta = v.getClassMetadata(Test);
+      const classDeclaration = v.classDiscovery.getClass(
+        Test.name,
+        validatorMeta.filename,
+        validatorMeta.line,
+        validatorMeta.column,
+      );
+
+      expect(v.parser.classNodeCache.size).toEqual(0);
+      const node = v.parser.getCachedClassNode(classDeclaration);
+      expect(node).toBeInstanceOf(ClassNode);
+      expect(v.parser.classNodeCache.size).toEqual(1);
+      const cachedNode = v.parser.getCachedClassNode(classDeclaration);
+      expect(cachedNode).toBeInstanceOf(ClassNode);
+      expect(Object.is(node, cachedNode)).toBeTrue();
     });
   });
 
