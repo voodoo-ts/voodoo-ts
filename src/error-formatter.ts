@@ -10,9 +10,9 @@ import {
   IEnumNodeValidationError,
   ILiteralNodeValidationError,
   INodeValidationError,
-  IRecordNodeValidationError,
   isArrayNodeItemValidatorError,
   isArrayNodeValidatorError,
+  ITupleNodeValidationError,
   IUnionNodeValidationError,
   ValidationErrorType,
 } from './nodes';
@@ -65,17 +65,28 @@ export function getNodeTypeName(e: INodeValidationError): string {
   }
 }
 
+interface TranslationCallback {
+  [ValidationErrorType.VALUE_REQUIRED]: (error: INodeValidationError) => string;
+  [ValidationErrorType.UNKNOWN_FIELD]: (error: INodeValidationError) => string;
+  [ValidationErrorType.NOT_A_STRING]: (error: INodeValidationError) => string;
+  [ValidationErrorType.NOT_A_NUMBER]: (error: INodeValidationError) => string;
+  [ValidationErrorType.NOT_AN_ENUM]: (error: IEnumNodeValidationError) => string;
+  [ValidationErrorType.NOT_A_BOOLEAN]: (error: INodeValidationError) => string;
+  [ValidationErrorType.NO_UNION_MATCH]: (error: IUnionNodeValidationError) => string;
+  [ValidationErrorType.NOT_AN_OBJECT]: (error: INodeValidationError) => string;
+  [ValidationErrorType.NOT_AN_ARRAY]: (error: INodeValidationError) => string;
+  [ValidationErrorType.NO_LENGTH_MATCH]: (error: ITupleNodeValidationError) => string;
+  [ValidationErrorType.LITERAL_NOT_MATCHING]: (error: ILiteralNodeValidationError) => string;
+  [ValidationErrorType.CUSTOM]: (error: INodeValidationError) => string;
+  [LengthValidationError.LENGTH_FAILED]: (error: IConstraintNodeValidationError) => string;
+  [StringValidationError.NOT_A_NUMBER_STRING]: (error: IConstraintNodeValidationError) => string;
+  [StringValidationError.NOT_A_INTEGER_STRING]: (error: IConstraintNodeValidationError) => string;
+  [NumberListValidationError.INVALID_NUMBER_LIST_ITEM]: (error: IConstraintNodeValidationError) => string;
+  [NumberValidationError.OUT_OF_RANGE]: (error: IConstraintNodeValidationError) => string;
+}
+
 const translations: {
-  EN: Partial<
-    Record<
-      | ValidationErrorType
-      | LengthValidationError
-      | StringValidationError
-      | NumberValidationError
-      | NumberListValidationError,
-      (error: any) => string
-    >
-  >;
+  EN: Partial<TranslationCallback>;
 } = {
   EN: {
     [ValidationErrorType.VALUE_REQUIRED]: () => `Value is required`,
@@ -93,7 +104,8 @@ const translations: {
     [ValidationErrorType.NOT_AN_OBJECT]: () => `Not a valid object`,
     [ValidationErrorType.NOT_AN_ARRAY]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid array`,
-    [ValidationErrorType.NO_LENGTH_MATCH]: (e) => `${e.value.length}`,
+    [ValidationErrorType.NO_LENGTH_MATCH]: (e) =>
+      `Tuple with ${e.context.expected} elements expected, received ${e.context.length} elements`,
     [ValidationErrorType.LITERAL_NOT_MATCHING]: (e: ILiteralNodeValidationError) =>
       `Value '${e.value}' is not '${e.context.expected}'`,
     [ValidationErrorType.CUSTOM]: () => `Unknown error`,
@@ -217,11 +229,13 @@ export function flattenValidationError(nodeValidationError: INodeValidationError
 }
 
 export function groupErrors(errors: IErrorMessage[]): FormattedErrors {
-  const groupedErrors: Record<string, any> = {};
+  const groupedErrors: FormattedErrors = {};
   for (const error of errors) {
     const jsonPath = `$.${error.path.join('.')}`;
 
-    const translator = translations.EN[error.nodeValidationError.reason as ValidationErrorType];
+    const translator = translations.EN[error.nodeValidationError.reason as keyof TranslationCallback] as (
+      e: INodeValidationError,
+    ) => string;
     if (!translator) {
       throw new RuntimeError(`Can't find translator for ${error.nodeValidationError.reason}`);
     }
