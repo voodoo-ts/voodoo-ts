@@ -4,7 +4,7 @@ import { formatErrors } from '../../error-formatter';
 import { StringNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
-import { debug, expectValidationError, iterParsers, project } from '../utils';
+import { expectValidationError, iterParsers, project } from '../utils';
 
 describe.each(Array.from(iterParsers()))('strings - tree', (parserName, v, decorator) => {
   it(`should construct the correct tree (${parserName})`, () => {

@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { expectAnyFunction, NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
-import { debug, expectValidationError, project } from './utils';
+import { expectValidationError, project } from './utils';
 import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
 import { ClassNode, IAnnotationMap } from '../nodes';
@@ -260,8 +262,6 @@ describe('validator', () => {
     }
 
     it('should validate', () => {
-      // console.time('a');
-      // for (let i = 0; i < 10000; i++) {
       const result = v.validate(Test, {
         property0: 'property0',
         property1: { embeddedNumber: 9001 },
@@ -283,8 +283,6 @@ describe('validator', () => {
       if (!result.success) {
         throw new Error('');
       }
-      // }
-      // console.timeEnd('a');
     });
   });
 });

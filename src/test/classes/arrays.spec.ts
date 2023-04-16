@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { formatErrors } from '../../error-formatter';
-import { NumberNode, TypeNodeData, ValidationErrorType } from '../../nodes';
+import { ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { ArrayNodeFixture, NodeValidationErrorMatcher, NumberNodeFixture, RootNodeFixture } from '../fixtures';
 import { expectValidationError, project } from '../utils';

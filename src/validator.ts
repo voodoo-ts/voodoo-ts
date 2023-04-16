@@ -19,14 +19,14 @@ export interface IValidationSuccess<T> {
   object: T;
 }
 
-export interface IValidationError<T> {
+export interface IValidationError {
   success: false;
   object: null;
   errors: FormattedErrors;
   rawErrors: INodeValidationError;
 }
 
-export type IValidationResult<T> = IValidationSuccess<T> | IValidationError<T>;
+export type IValidationResult<T> = IValidationSuccess<T> | IValidationError;
 
 export type MaybePartial<T> = Partial<T> & Record<any, any>;
 

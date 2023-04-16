@@ -64,8 +64,6 @@ export interface IPropertyListItem {
 
 /**
  * Typeguard to ensure a thrown exception is a ParseError
- * @param error
- * @returns
  */
 export function isParseError(error: unknown): error is ParseError {
   return error instanceof ParseError;
@@ -73,7 +71,7 @@ export function isParseError(error: unknown): error is ParseError {
 
 /**
  * Typeguard to ensure obj is a class declaration
- * @param obj Must be a ts-morph node
+ * @param obj - Must be a ts-morph node
  * @returns
  */
 export function isClass(obj: Node): obj is ClassDeclaration {
@@ -395,14 +393,14 @@ export class PropertyDiscovery {
     const remainingTypes = baseTypes.filter((t) => !t.getSymbol() || !typesHandled.has(t.getSymbol()!.getName()));
 
     for (const baseType of remainingTypes) {
-      let typeMap: TypeMap | undefined;
+      let baseTypeTypeMap: TypeMap | undefined;
       if (baseType.getTypeArguments().length) {
         const declarationForType = getFirstSymbolDeclaration(baseType);
         if (!isInterface(declarationForType)) {
           throw new ParseError(`Type ${baseType.getText()} is not an interface`);
         }
 
-        typeMap = this.buildTypeMap(declarationForType, baseType);
+        baseTypeTypeMap = this.buildTypeMap(declarationForType, baseType);
       }
       const baseTypeProperties = baseType.getProperties();
       const baseTypeDeclarations = baseTypeProperties
@@ -419,7 +417,7 @@ export class PropertyDiscovery {
       properties.push({
         declaration: null,
         props: baseTypeDeclarations,
-        typeMap,
+        typeMap: baseTypeTypeMap,
       });
     }
 

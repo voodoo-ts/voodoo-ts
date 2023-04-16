@@ -382,7 +382,7 @@ export class TransformerParser extends Parser {
               propertyValidationResult.node.annotations.transformerFunction[0]({
                 value: propertyValue,
                 values: value as IPropertyTransformerCallbackArguments['values'],
-                success: (value) => ({ ...node.success(), value }),
+                success: (callbackValue) => ({ ...node.success(), value: callbackValue }),
                 fail: node.fail.bind(node),
               }),
             );

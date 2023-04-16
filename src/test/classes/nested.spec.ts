@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-shadow, @typescript-eslint/no-unsafe-argument */
 import { ParseError } from '../../errors';
 import { ClassNode, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';

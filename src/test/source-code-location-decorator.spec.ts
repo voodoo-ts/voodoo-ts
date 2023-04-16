@@ -1,6 +1,6 @@
+import { project } from './utils';
 import { ClassDiscovery } from '../class-discovery';
 import { SourceCodeLocationDecorator } from '../source-code-location-decorator';
-import { project } from './utils';
 
 const classDiscovery = new ClassDiscovery(project);
 

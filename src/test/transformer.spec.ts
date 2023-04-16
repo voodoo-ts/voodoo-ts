@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-shadow */
@@ -752,7 +753,9 @@ describe('Transformer', () => {
 
     it('should load eager if enabled', () => {
       const t = new TransformerInstance({ project, eager: true });
+
       @t.transformerDecorator()
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       class Test {
         test!: number;
       }
@@ -767,16 +770,22 @@ describe('Transformer', () => {
         test!: number;
       }
 
+      expect(t.getClassMetadata(Test)).toBeTruthy();
       expect(t.parser.classTreeCache.map.size).toEqual(0);
     });
 
+    it.skip('should test performance', async () => {
+      console.time('a');
+      for (let i = 0; i < 10000; i++) {
+        await t.transformOrThrow(Test, VALID_OBJECT);
+        t.validateOrThrow(Test, VALID_OBJECT);
+      }
+      console.timeEnd('a');
+    });
+
     it('should transform with valid data', async () => {
-      // console.time('a');
-      // for (let i = 0; i < 10000; i++) {
       const result = await t.transformOrThrow(Test, VALID_OBJECT);
       const validationResult = t.validateOrThrow(Test, VALID_OBJECT);
-      // }
-      // console.timeEnd('a');
 
       expect(validationResult).toEqual(VALID_OBJECT);
       expect(result).toBeTruthy();

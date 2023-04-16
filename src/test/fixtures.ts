@@ -43,7 +43,7 @@ export class ClassNodeFixture extends ClassNode {
       meta,
     );
 
-    const f = new ClassNode({ name, meta }, expect.any(Function) as any);
+    const f = new ClassNode({ name, meta }, expect.any(Function));
     Object.assign(f, r);
     return f;
   }
@@ -159,32 +159,8 @@ export function expectFilenameAndLine(): ReturnType<(typeof expect)['stringMatch
 }
 
 export function expectAnyFunction(): (...args: any[]) => any {
-  return expect.any(Function) as any;
+  return expect.any(Function);
 }
-
-// export class NodeValidationErrorFixture {
-//   create(
-//     values: Omit<INodeValidationError, 'success' | 'value' | 'previousErrors' | 'annotations'> &
-//       Partial<Pick<INodeValidationError, 'success' | 'value' | 'previousErrors' | 'annotations'>> & {
-//         context?: unknown;
-//       },
-
-//     // { type: INodeValidationError['type']; reason: INodeValidationError['reason'] } & Partial<
-//     // Omit<INodeValidationError, 'type' | 'reason'>
-//     // >,
-//   ): INodeValidationError {
-//     const error = {
-//       success: false,
-//       value: expect.toBeOneOf([null, expect.anything()]),
-//       previousErrors: [],
-//       annotations: {},
-//       context: {},
-//       ...values,
-//     } as INodeValidationError;
-
-//     return error;
-//   }
-// }
 
 export class NodeValidationErrorFixture {
   static create(
@@ -253,9 +229,6 @@ export class NodeValidationErrorFixture {
     return this.create({ type: 'class', reason: ValidationErrorType.NOT_AN_OBJECT, context: { className } });
   }
 
-  // decoratorError(values: IDecoratorNodeValidationError): INodeValidationError {
-  //   return this.create({ type: 'decorator', ...values });
-  // }
   static objectPropertyUnknown<T>(
     cls: string | Constructor<T>,
     propertyName: typeof cls extends string ? string : keyof T,
@@ -383,8 +356,8 @@ export class NodeValidationSuccessExpect {
 
 export const expectNodeValidationSuccess = new NodeValidationSuccessExpect();
 
-export const mockValidate = jest.fn((...args: unknown[]): INodeValidationResult => {
-  throw new Error('should not have been called');
+export const mockValidate = jest.fn((): INodeValidationResult => {
+  throw new Error('Should not have been called');
 });
 
 export const mockValidationNode = jest.fn().mockImplementation(() => {
