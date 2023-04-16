@@ -23,7 +23,8 @@
     "test": "npm run test:ts:all",
     "build": "tsc",
     "build:release": "tsc --project tsconfig.build.json",
-    "linter": "npx eslint src/"
+    "linter": "npx eslint src/",
+    "postversion": "git push --tags"
   },
   "author": "",
   "license": "GPL-3.0-or-later",
@@ -53,5 +54,8 @@
     "jest-extended": "^3.2.4",
     "prettier": "^2.8.7",
     "ts-jest": "^29.1.0"
+  },
+  "microrelease": {
+    "allowedBranch": "development"
   }
 }
