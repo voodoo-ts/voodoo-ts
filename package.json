@@ -2,6 +2,8 @@
   "name": "@vvalidator/vvalidator",
   "version": "0.4.2",
   "description": "",
+  "author": "",
+  "license": "GPL-3.0-or-later",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "files": [
@@ -26,8 +28,6 @@
     "linter": "npx eslint src/",
     "postversion": "git push --tags"
   },
-  "author": "",
-  "license": "GPL-3.0-or-later",
   "dependencies": {
     "error-stack-parser": "^2.1.4",
     "jest-junit": "^15.0.0",
