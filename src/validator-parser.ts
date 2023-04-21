@@ -57,11 +57,11 @@ interface IOmitParameters {
 //   hasQuestionToken?(): boolean;
 //   getNameNode(): Node;
 // }
-export type IMinimalProperty = PropertyDeclaration | PropertySignature;
+export type PropertyDeclarationOrSignature = PropertyDeclaration | PropertySignature;
 
 export interface IPropertyListItem {
   declaration: ClassOrInterfaceOrLiteral | null;
-  props: IMinimalProperty[];
+  props: PropertyDeclarationOrSignature[];
   typeMap?: TypeMap;
 }
 
@@ -187,7 +187,7 @@ function getOmitParameters(type: Type): IOmitParameters {
   return { referencedClassDeclaration, propertyNames, targetType };
 }
 
-function getPropertyName(property: IMinimalProperty): string {
+function getPropertyName(property: PropertyDeclarationOrSignature): string {
   const nameNode = property.getNameNode();
   if (Node.isIdentifier(nameNode)) {
     return property.getName();
@@ -475,7 +475,7 @@ export class Parser {
     this.propertyDiscovery = new PropertyDiscovery();
   }
 
-  handleRootNode(property: IMinimalProperty, typeMap?: TypeMap): RootNode {
+  handleRootNode(property: PropertyDeclarationOrSignature, typeMap?: TypeMap): RootNode {
     let type = this.getPropertyType(property);
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
     const structure = property.getStructure();
@@ -803,13 +803,13 @@ export class Parser {
     return classNode;
   }
 
-  getPropertyType(property: IMinimalProperty): Type {
+  getPropertyType(property: PropertyDeclarationOrSignature): Type {
     return property.getType();
   }
 
   buildTypeTree(
     currentClass: ClassOrInterfaceOrLiteral | null,
-    property: IMinimalProperty,
+    property: PropertyDeclarationOrSignature,
     typeMap?: TypeMap,
   ): RootNode {
     return this.handleRootNode(property, typeMap);

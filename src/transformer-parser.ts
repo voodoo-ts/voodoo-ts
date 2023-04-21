@@ -39,7 +39,7 @@ import {
   ClassOrInterfaceOrLiteral,
   getFirstSymbolDeclaration,
   getName,
-  IMinimalProperty,
+  PropertyDeclarationOrSignature,
   Parser,
   PropertyDiscovery,
   TypeMap,
@@ -500,7 +500,7 @@ export class TransformerParser extends Parser {
     return { typeName, fromType, toType };
   }
 
-  handleRootNode(property: IMinimalProperty, typeMap?: TypeMap): RootNode {
+  handleRootNode(property: PropertyDeclarationOrSignature, typeMap?: TypeMap): RootNode {
     const rootNode = super.handleRootNode(property, typeMap);
 
     const transformerMeta = this.getTransformerMeta(property);
@@ -544,7 +544,7 @@ export class TransformerParser extends Parser {
   /**
    * Needed to extract type before transformation
    */
-  getPropertyType(property: IMinimalProperty): Type {
+  getPropertyType(property: PropertyDeclarationOrSignature): Type {
     const transformerMeta = this.getTransformerMeta(property);
     if (transformerMeta) {
       if (!transformerMeta.fromType) {
@@ -565,7 +565,7 @@ export class TransformerParser extends Parser {
     return cls;
   }
 
-  getTransformerMeta(property: IMinimalProperty): {
+  getTransformerMeta(property: PropertyDeclarationOrSignature): {
     transformerFactory: AbstractValueTransformerFactory | null;
     fromType: Type;
     toType: Type;
@@ -676,7 +676,7 @@ export class TransformerParser extends Parser {
     return false;
   }
 
-  getComputedTypes(property: IMinimalProperty): [Type, Type, Record<string, unknown>] | null {
+  getComputedTypes(property: PropertyDeclarationOrSignature): [Type, Type, Record<string, unknown>] | null {
     const propertyTypeNode = property.getTypeNode();
 
     if (!propertyTypeNode) {
