@@ -96,7 +96,7 @@ const translations: {
     [ValidationErrorType.NOT_A_NUMBER]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid number`,
     [ValidationErrorType.NOT_AN_ENUM]: (e: IEnumNodeValidationError) =>
-      `Value '${e.value}' is not a valid ${e.context.enumName}. Allowed values: ${e.context.allowedValues}`,
+      `Value '${e.value}' is not a valid ${e.context.enumName}. Allowed values: ${e.context.allowedValues.join(', ')}`,
     [ValidationErrorType.NOT_A_BOOLEAN]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
     [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError) =>
