@@ -296,7 +296,7 @@ export function validateNumberList(
 export const IsNumberList = () => ValidateString((args) => validateNumberList(args));
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const OneOf = (allowedValues: unknown[]) => {
+export const OneOf = (allowedValues: unknown[], enumName: string = 'OneOf') => {
   const allowed = new Set<unknown>(allowedValues);
   return ValidateString((args) => {
     if (allowed.has(args.value)) {
@@ -305,7 +305,7 @@ export const OneOf = (allowedValues: unknown[]) => {
       return args.fail(args.value, {
         reason: ValidationErrorType.NOT_AN_ENUM,
         context: {
-          enumName: 'OneOf',
+          enumName,
           allowedValues,
         },
       });

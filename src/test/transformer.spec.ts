@@ -108,7 +108,7 @@ describe('Transformer', () => {
                   NodeValidationErrorMatcher.constraintError({
                     reason: ValidationErrorType.NOT_AN_ENUM,
                     context: {
-                      enumName: 'OneOf',
+                      enumName: 'BooleanString',
                       allowedValues: expect.any(Array),
                     },
                   }),

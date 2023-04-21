@@ -163,7 +163,7 @@ export class StringToBooleanValueTransformer extends AbstractValueTransformerFac
   }
 
   getDecorators(): PropertyDecorator[] {
-    return [OneOf([...this.trueList.values(), ...this.falseList.values()])];
+    return [OneOf([...this.trueList.values(), ...this.falseList.values()], 'BooleanString')];
   }
 
   getTransformer(): TransformerFunction<string> {
