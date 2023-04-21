@@ -38,6 +38,25 @@ describe('general', () => {
     expect(trees[1].name).toEqual('derivedAttribute');
   });
 
+  it('should not do anything for getters, methods and static variables', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      static foo = 'bar';
+
+      get foo() {
+        return 'bar';
+      }
+
+      test() {
+        return 'foo';
+      }
+    }
+
+    expect(v.getPropertyTypeTreesFromConstructor(Test).length).toEqual(0);
+  });
+
   it('should support computed properties from string literals', () => {
     const v = new ValidatorInstance({ project });
 
@@ -49,6 +68,33 @@ describe('general', () => {
     const { name } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
     expect(name).toEqual('🦙');
+  });
+
+  it('should capture comments', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.validatorDecorator()
+    class Test {
+      /**
+       * Test foo
+       *
+       * @description Some description
+       * @example "some example"
+       */
+      property!: string;
+
+      // Test
+      property2!: string;
+    }
+
+    const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+    expect(tree.annotations.comment).toEqual({
+      description: expect.stringMatching('Test foo'),
+      tags: [
+        { tagName: 'description', text: 'Some description' },
+        { tagName: 'example', text: '"some example"' },
+      ],
+    });
   });
 
   it('should throw for computed properties not from string literals', () => {

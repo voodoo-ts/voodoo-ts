@@ -585,14 +585,6 @@ export class TransformerParser extends Parser {
       return null; // REVIEW: really?
     }
 
-    if (!Node.isNode(property)) {
-      throw new Error(`Property ${property.getName()} isn't a valid node`);
-    }
-
-    if (!Node.isPropertySignature(property) && !Node.isPropertyDeclaration(property)) {
-      throw new Error(`Property ${property.getName()} does not have the correct type`);
-    }
-
     const propertyTypeNode = property.getTypeNode();
 
     if (!propertyTypeNode) {
@@ -685,14 +677,6 @@ export class TransformerParser extends Parser {
   }
 
   getComputedTypes(property: IMinimalProperty): [Type, Type, Record<string, unknown>] | null {
-    if (!Node.isNode(property)) {
-      throw new ParseError(`Property ${property.getName()} isn't a valid node`);
-    }
-
-    if (!Node.isPropertySignature(property) && !Node.isPropertyDeclaration(property)) {
-      throw new ParseError(`Property ${property.getName()} does not have the correct type`);
-    }
-
     const propertyTypeNode = property.getTypeNode();
 
     if (!propertyTypeNode) {

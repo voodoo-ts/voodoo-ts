@@ -14,9 +14,18 @@ export interface IPropertyValidatorCallbackArguments<ValueType = unknown> {
   fail: (value: unknown, extra?: Partial<INodeValidationError>) => IConstraintNodeValidationError;
 }
 
+export interface IPropertyComment {
+  description: string;
+  tags: Array<{
+    tagName: string;
+    text: string;
+  }>;
+}
+
 // Will be extended from elsewhere
 export interface IAnnotationMap {
   validationFunctions?: Array<(args: IPropertyValidatorCallbackArguments<unknown>) => INodeValidationResult>;
+  comment?: IPropertyComment;
 }
 
 export interface IValidationOptions {

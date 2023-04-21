@@ -2,9 +2,11 @@ import path from 'path';
 import process from 'process';
 import {
   ClassDeclaration,
+  ClassInstancePropertyTypes,
   InterfaceDeclaration,
   Node,
   PropertyDeclaration,
+  PropertySignature,
   SourceFile,
   SyntaxKind,
   Type,
@@ -46,15 +48,16 @@ interface IOmitParameters {
   propertyNames: Set<string>;
 }
 
-export interface IMinimalProperty {
-  getName(): string;
-  getType(): Type;
-  getStartLineNumber(...args: unknown[]): number;
-  getSourceFile(): SourceFile;
-  getParent(): Node;
-  hasQuestionToken?(): boolean;
-  getNameNode(): Node;
-}
+// export interface IMinimalProperty {
+//   getName(): string;
+//   getType(): Type;
+//   getStartLineNumber(...args: unknown[]): number;
+//   getSourceFile(): SourceFile;
+//   getParent(): Node;
+//   hasQuestionToken?(): boolean;
+//   getNameNode(): Node;
+// }
+export type IMinimalProperty = PropertyDeclaration | PropertySignature;
 
 export interface IPropertyListItem {
   declaration: ClassOrInterfaceOrLiteral | null;
@@ -315,7 +318,9 @@ export class PropertyDiscovery {
         }
       }
 
-      const props = currentDeclaration.getInstanceProperties();
+      const props = currentDeclaration.getInstanceProperties().filter((property): property is PropertyDeclaration => {
+        return Node.isPropertySignature(property) || Node.isPropertyDeclaration(property);
+      });
 
       properties.push({
         declaration: currentDeclaration,
@@ -340,6 +345,12 @@ export class PropertyDiscovery {
     }
 
     properties.reverse();
+
+    for (const propertyListEntry of properties) {
+      propertyListEntry.props = propertyListEntry.props.filter((property) => {
+        return Node.isPropertyDeclaration(property as unknown as Node);
+      });
+    }
 
     return properties;
   }
@@ -467,7 +478,26 @@ export class Parser {
   handleRootNode(property: IMinimalProperty, typeMap?: TypeMap): RootNode {
     let type = this.getPropertyType(property);
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
+    const structure = property.getStructure();
+
     const rootNode = new RootNode(hasQuestionToken);
+
+    if (structure.docs?.length) {
+      const [doc] = structure.docs;
+      if (typeof doc === 'string') {
+        rootNode.annotations.comment = {
+          description: doc,
+          tags: [],
+        };
+      } else {
+        rootNode.annotations.comment = {
+          description: doc.description?.toString() ?? '',
+          tags:
+            doc.tags?.map(({ tagName, text }) => ({ tagName: tagName.toString(), text: text?.toString() ?? '' })) ?? [],
+        };
+      }
+    }
+
     if (type.isUnion()) {
       const unionTypes = type.getUnionTypes();
       const hasUndefined = unionTypes.find((t) => t.isUndefined());
