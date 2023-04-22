@@ -43,6 +43,7 @@ import {
   Parser,
   PropertyDiscovery,
   TypeMap,
+  getPropertyName,
 } from './validator-parser';
 
 // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars
@@ -518,7 +519,7 @@ export class TransformerParser extends Parser {
   }
 
   applyDecorators(classDeclaration: ClassDeclaration, propertyKey: string, rootNode: RootNode): void {
-    const property = classDeclaration.getProperty(propertyKey);
+    const property = classDeclaration.getProperties().find((p) => getPropertyName(p) === propertyKey);
 
     /* istanbul ignore if */
     if (!property) {

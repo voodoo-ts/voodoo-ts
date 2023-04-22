@@ -187,7 +187,7 @@ function getOmitParameters(type: Type): IOmitParameters {
   return { referencedClassDeclaration, propertyNames, targetType };
 }
 
-function getPropertyName(property: PropertyDeclarationOrSignature): string {
+export function getPropertyName(property: PropertyDeclarationOrSignature): string {
   const nameNode = property.getNameNode();
   if (Node.isIdentifier(nameNode)) {
     return property.getName();
@@ -195,7 +195,7 @@ function getPropertyName(property: PropertyDeclarationOrSignature): string {
     const [opening, stringLiteral, closing] = nameNode.getChildren();
     /* istanbul ignore else */
     if (opening && Node.isStringLiteral(stringLiteral) && closing) {
-      return stringLiteral.getLiteralText();
+      return stringLiteral.getLiteralValue();
     } else {
       throw new ParseError(`Expected string literal for computed property`);
     }
