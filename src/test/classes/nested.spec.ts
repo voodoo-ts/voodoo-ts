@@ -10,12 +10,12 @@ describe('nested', () => {
   const v = new ValidatorInstance({ project });
 
   describe(`simple`, () => {
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class TestEmbed {
       embeddedProperty!: number;
     }
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       embeddedObject!: TestEmbed;
     }
@@ -72,12 +72,12 @@ describe('nested', () => {
   });
 
   describe(`Partial<T>`, () => {
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class TestEmbed {
       embeddedProperty!: number;
     }
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       embeddedObject!: Partial<TestEmbed>;
     }
@@ -105,7 +105,7 @@ describe('nested', () => {
   });
 
   describe(`cycle`, () => {
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       name!: string;
       children!: Test[];
@@ -212,14 +212,14 @@ describe('nested', () => {
 
       type SkippedKeys = 'embeddedProperty1' | 'embeddedProperty2';
 
-      @v.validatorDecorator()
+      @v.transformerDecorator()
       class TestEmbed {
         embeddedProperty1!: number;
         embeddedProperty2!: number;
         embeddedProperty3?: number;
       }
 
-      @v.validatorDecorator()
+      @v.transformerDecorator()
       class Test {
         embeddedObject!: Omit<TestEmbed, 'embeddedProperty2'>;
         embeddedObjectMultikey!: Omit<TestEmbed, 'embeddedProperty1' | 'embeddedProperty2'>;
@@ -340,7 +340,7 @@ describe('nested', () => {
     describe('with unsupported type', () => {
       const v = new ValidatorInstance({ project });
 
-      @v.validatorDecorator()
+      @v.transformerDecorator()
       class Test {
         embeddedObject!: Omit<Record<string, string>, 'embeddedProperty2'>;
       }
@@ -367,14 +367,14 @@ describe('nested', () => {
 
       type SkippedKeys = 'embeddedProperty1' | 'embeddedProperty2';
 
-      @v.validatorDecorator()
+      @v.transformerDecorator()
       class TestEmbed {
         embeddedProperty1!: number;
         embeddedProperty2!: number;
         embeddedProperty3?: number;
       }
 
-      @v.validatorDecorator()
+      @v.transformerDecorator()
       class Test {
         embeddedObject!: Pick<TestEmbed, 'embeddedProperty2'>;
         embeddedObjectMultikey!: Pick<TestEmbed, 'embeddedProperty1' | 'embeddedProperty2'>;

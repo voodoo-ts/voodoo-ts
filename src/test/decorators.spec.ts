@@ -37,7 +37,7 @@ describe('decorators', () => {
     };
     const callback = jest.fn(callbackFunc);
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       @Validate(callback)
       testProperty!: string;

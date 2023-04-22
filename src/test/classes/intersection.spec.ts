@@ -7,13 +7,13 @@ import { expectValidationError, project } from '../utils';
 describe('intersection', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     property!: { foo: number } & { bar: string } & Generic<number>; // & Pick<Generic<string>, 'property'>;
     // prop!: (Test & { addedProperty: boolean })[];
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Generic<T> {
     property!: T;
     anotherProperty!: number;

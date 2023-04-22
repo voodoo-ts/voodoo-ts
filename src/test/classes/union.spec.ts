@@ -17,7 +17,7 @@ describe('union', () => {
   describe('simple -> (string | number)', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       unionProperty!: string | number;
     }
@@ -77,7 +77,7 @@ describe('union', () => {
   describe('optional ->  (string | number)?', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       unionProperty?: string | number;
     }
@@ -140,12 +140,12 @@ describe('union', () => {
   describe('with nesting -> (string | number | TestEmbed)?', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class TestEmbed {
       embeddedNumber!: number;
     }
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       unionProperty?: string | number | TestEmbed;
     }
@@ -213,7 +213,7 @@ describe('union', () => {
   describe('null -> (string | null)', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       unionProperty!: string | null;
     }
@@ -276,7 +276,7 @@ describe('union', () => {
   describe('undefined -> (string | undefined)', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       unionProperty!: string | undefined;
     }
@@ -342,7 +342,7 @@ describe('union', () => {
   describe('optional boolean -> boolean | undefined', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       unionProperty?: boolean | undefined;
     }

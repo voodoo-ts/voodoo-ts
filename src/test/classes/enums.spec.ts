@@ -10,7 +10,7 @@ describe('enums', () => {
     YES = 'yes',
     NO = 'no',
   }
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     enumProperty!: TestEnum;
   }

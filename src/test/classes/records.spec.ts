@@ -8,7 +8,7 @@ import { expectValidationError, project } from '../utils';
 describe('records', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     recordProperty!: Record<string, number>;
   }

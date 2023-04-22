@@ -7,7 +7,7 @@ import { expectValidationError, project } from '../utils';
 describe('booleans', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     booleanProperty!: boolean;
   }

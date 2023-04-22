@@ -8,6 +8,7 @@ import { expectValidationError, project } from './utils';
 import { ParseError } from '../errors';
 import { ValidationErrorType } from '../nodes';
 import { TransformerInstance } from '../transformer';
+import { ValidationError } from '../transformer';
 import {
   AbstractValueTransformerFactory,
   registry,
@@ -16,7 +17,6 @@ import {
   TransformerFunction,
   From,
 } from '../transformer-parser';
-import { ValidationError } from '../validator';
 
 describe('Transformer', () => {
   describe('StringToNumber transformer', () => {

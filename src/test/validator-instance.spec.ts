@@ -19,17 +19,17 @@ describe('general', () => {
   it('should add inherited properties', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class TestBase {
       baseAttribute!: string;
     }
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class TestDervied extends TestBase {
       derivedAttribute!: string;
     }
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test extends TestDervied {}
     const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
@@ -41,7 +41,7 @@ describe('general', () => {
   it('should not do anything for getters, methods and static variables', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       static foo = 'bar';
 
@@ -60,20 +60,25 @@ describe('general', () => {
   it('should support computed properties from string literals', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       ['🦙']!: string;
+      ['""']!: string;
+      // prettier-ignore
+      ['\'']!: string;
+      ['A']!: string;
+      [' ']!: string;
     }
 
-    const { name } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+    const names = v.getPropertyTypeTreesFromConstructor(Test).map(({ name }) => name);
 
-    expect(name).toEqual('🦙');
+    expect(names).toEqual(['🦙', '""', "'", 'A', ' ']);
   });
 
   it('should capture comments', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       /**
        * Test foo
@@ -101,7 +106,7 @@ describe('general', () => {
     const v = new ValidatorInstance({ project });
 
     const propertyName = '🦙';
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       [propertyName]!: string;
     }
@@ -114,7 +119,7 @@ describe('general', () => {
   it('should throw for unsupported syntax nodes', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       derivedAttribute!: symbol;
     }
@@ -151,7 +156,7 @@ describe('general', () => {
   describe('@ValidateIf', () => {
     const v = new ValidatorInstance({ project });
     const validateIfFunction = (obj: Test) => obj.otherAttribute;
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       @ValidateIf(validateIfFunction)
       firstAttribute!: string;
@@ -220,7 +225,7 @@ describe('general', () => {
   describe('unknown attributes', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       attribute!: string;
     }
@@ -243,7 +248,7 @@ describe('validator', () => {
     it('should work for empty classes', () => {
       const v = new ValidatorInstance({ project });
 
-      @v.validatorDecorator()
+      @v.transformerDecorator()
       class Test {}
       const result = v.validate(Test, {});
 
@@ -253,7 +258,7 @@ describe('validator', () => {
     it('should cache class nodes', () => {
       const v = new ValidatorInstance({ project });
 
-      @v.validatorDecorator()
+      @v.transformerDecorator()
       class Test {}
 
       const validatorMeta = v.getClassMetadata(Test);
@@ -282,12 +287,12 @@ describe('validator', () => {
       NO = 'NO',
     }
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class TestEmbed {
       embeddedNumber!: number;
     }
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       property0!: string;
       property1!: TestEmbed;

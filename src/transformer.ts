@@ -1,8 +1,8 @@
-import { Project } from 'ts-morph';
+import { ClassDeclaration, Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { formatErrors } from './error-formatter';
-import { IValidationOptions, ITypeAndTree } from './nodes';
+import { FormattedErrors, formatErrors } from './error-formatter';
+import { IValidationOptions, ITypeAndTree, ClassNode, INodeValidationError } from './nodes';
 import { SourceCodeLocationDecorator, IClassMeta } from './source-code-location-decorator';
 import {
   AbstractValueTransformerFactory,
@@ -12,14 +12,7 @@ import {
   TransformerParser,
 } from './transformer-parser';
 import { Constructor } from './types';
-import {
-  IValidatorConstructorOptions,
-  ValidatorInstance,
-  MaybePartial,
-  IValidationResult,
-  IValidatorOptions,
-  ValidationError,
-} from './validator';
+import { ClassCache, Parser } from './validator-parser';
 
 interface ITransformerOptions extends IValidatorOptions {
   cls?: Constructor<unknown>;
@@ -33,12 +26,50 @@ export interface ITransformerConstructorOptions {
   eager?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface IValidatorOptions {}
+
+export interface IValidationSuccess<T> {
+  success: true;
+  object: T;
+}
+
+export interface IValidationError {
+  success: false;
+  object: null;
+  errors: FormattedErrors;
+  rawErrors: INodeValidationError;
+}
+
+export type IValidationResult<T> = IValidationSuccess<T> | IValidationError;
+
+export type MaybePartial<T> = Partial<T> & Record<any, any>;
+
+export interface IValidatorConstructorOptions {
+  project: Project;
+  defaultOptions?: IValidationOptions;
+  parser?: (classDeclarationMapping: ClassCache<Constructor<unknown>>) => Parser;
+  classDiscovery?: ClassDiscovery;
+  decorator?: SourceCodeLocationDecorator<IValidatorOptions>;
+}
+
+export class ValidationError extends Error {
+  errors: FormattedErrors;
+  rawErrors: INodeValidationError;
+
+  constructor(rawErros: INodeValidationError, formattedErrors: FormattedErrors) {
+    super('Validation failed');
+    this.errors = formattedErrors;
+    this.rawErrors = rawErros;
+  }
+}
+
 const NODE_MODULE_PATH = './node_modules/@vvalidator/vvalidator/src/*';
 
 export class TransformerInstance {
   project: Project;
 
-  validatorInstance: ValidatorInstance;
+  // validatorInstance: ValidatorInstance;
   parser: TransformerParser;
   classDiscovery: ClassDiscovery;
   transformerClassDecoratorFactory: SourceCodeLocationDecorator<ITransformerOptions>;
@@ -66,13 +97,13 @@ export class TransformerInstance {
       options.transformer ?? [],
     );
 
-    this.validatorInstance = new ValidatorInstance({
-      project: options.project,
-      classDiscovery: this.classDiscovery,
-      decorator: this.transformerClassDecoratorFactory,
-      parser: () => this.parser,
-      ...options.validator,
-    });
+    // this.validatorInstance = new ValidatorInstance({
+    //   project: options.project,
+    //   classDiscovery: this.classDiscovery,
+    //   decorator: this.transformerClassDecoratorFactory,
+    //   parser: () => this.parser,
+    //   ...options.validator,
+    // });
 
     this.defaultOptions = {};
   }
@@ -137,10 +168,6 @@ export class TransformerInstance {
     }
   }
 
-  validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
-    return this.validatorInstance.validate(cls, values, options);
-  }
-
   validateOrThrow<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): T {
     const result = this.validate(cls, values, options);
     if (result.success) {
@@ -148,6 +175,47 @@ export class TransformerInstance {
     } else {
       throw new ValidationError(result.rawErrors, formatErrors(result.rawErrors));
     }
+  }
+
+  validateClassDeclaration<T>(
+    validatorClass: ClassNode,
+    values: MaybePartial<T>,
+    options: IValidationOptions = {},
+  ): IValidationResult<T> {
+    const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;
+    const result = validatorClass.validate(values, {
+      options: { allowUnknownFields },
+      values,
+    });
+
+    if (result.success) {
+      return {
+        success: true,
+        object: values as T,
+      };
+    } else {
+      return {
+        success: false,
+        object: null,
+        errors: formatErrors(result),
+        rawErrors: result,
+      };
+    }
+  }
+
+  validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
+    // Get metadata + types
+    const validatorMeta = this.getClassMetadata(cls);
+    const classDeclaration = this.classDiscovery.getClass(
+      cls.name,
+      validatorMeta.filename,
+      validatorMeta.line,
+      validatorMeta.column,
+    );
+
+    const validatorClass = this.parser.getCachedClassNode(classDeclaration);
+
+    return this.validateClassDeclaration<T>(validatorClass, values, options);
   }
 
   getPropertyTypeTreesFromConstructor<T>(cls: Constructor<T>): ITypeAndTree[] {

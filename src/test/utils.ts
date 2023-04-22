@@ -7,7 +7,7 @@ import { Project } from 'ts-morph';
 
 import { INodeValidationError } from '../nodes';
 import { TransformerInstance } from '../transformer';
-import { IValidationError, IValidationResult, ValidatorInstance } from '../validator';
+import { IValidationError, IValidationResult, TransformerInstance as ValidatorInstance } from '../transformer';
 
 export const project = new Project({
   tsConfigFilePath: 'tsconfig.json',
@@ -50,9 +50,8 @@ export const PARSERS = [
 export function* iterParsers(): Generator<[string, TransformerInstance | ValidatorInstance, Function]> {
   for (const { parserName, parserClass } of PARSERS) {
     const instance = new parserClass({ project });
-    const decorator =
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      instance instanceof ValidatorInstance ? instance.validatorDecorator : instance.transformerDecorator;
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const decorator = instance.transformerDecorator;
     yield [parserName, instance, decorator.bind(instance)];
   }
 }

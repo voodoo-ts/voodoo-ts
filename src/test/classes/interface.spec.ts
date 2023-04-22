@@ -59,12 +59,12 @@ describe('interface', () => {
     test8property: string;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class CTestBase<T> {
     baseProperty!: T;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class CTest<T> extends CTestBase<number> {
     classProperty!: T;
   }
@@ -73,7 +73,7 @@ describe('interface', () => {
     test9property: string;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     embedded!: ITest;
     embedded1!: ITest;
