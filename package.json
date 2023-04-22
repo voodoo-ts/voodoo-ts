@@ -15,13 +15,11 @@
     "./*": "./lib/*.js"
   },
   "scripts": {
-    "prepare": "echo npm run build",
-    "test:ts": "jest -c jest.config.tsjest.js",
+    "test:ts": "jest",
     "test:ts:all": "npm run test:ts src/",
     "test:js": "npm run build && jest",
     "test:js:all": "npm run test:js dist/",
-    "test:build": "npm run build && jest --verbose",
-    "test:coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage --coverageReporters cobertura lcov text --reporters default jest-junit -- dist/test",
+    "test:coverage": "tsc --sourceMap false --inlineSourceMap && jest --coverage -- dist/test",
     "test": "npm run test:ts:all",
     "build": "tsc",
     "build:release": "tsc --project tsconfig.build.json",

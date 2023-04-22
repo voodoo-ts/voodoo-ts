@@ -1,4 +1,7 @@
 dist/
 node_modules/
-coverage/
-test-report.xml
+reports/coverage
+reports/junit.xml
+.npmrc
+*-v8.log
+*.scratch.ts
