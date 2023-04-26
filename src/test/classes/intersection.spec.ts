@@ -28,9 +28,9 @@ describe('intersection', () => {
           IntersectionNodeFixture.create('{ foo: number; } & { bar: string; } & Generic<number>', [], {
             meta: { references: expect.anything() },
             children: [
-              ClassNodeFixture.createForLiteral(),
-              ClassNodeFixture.createForLiteral(),
-              ClassNodeFixture.create('Generic', { from: 'class' }),
+              ClassNodeFixture.createForLiteral({ reference: expect.any(String) }),
+              ClassNodeFixture.createForLiteral({ reference: expect.any(String) }),
+              ClassNodeFixture.create('Generic', { from: 'class', reference: expect.any(String) }),
             ],
           }),
         ],

@@ -98,7 +98,7 @@ describe('interface', () => {
     expect(name).toEqual('embedded');
     expect(tree).toEqual(
       RootNodeFixture.createRequired({
-        children: [ClassNodeFixture.create('ITest', { from: 'interface' })],
+        children: [ClassNodeFixture.create('ITest', { from: 'interface', reference: expect.any(String) })],
       }),
     );
   });
@@ -110,7 +110,7 @@ describe('interface', () => {
     expect(name).toEqual('embedded2');
     expect(tree).toEqual(
       RootNodeFixture.createRequired({
-        children: [ClassNodeFixture.create('ITest2', { from: 'interface' })],
+        children: [ClassNodeFixture.create('ITest2', { from: 'interface', reference: expect.any(String) })],
       }),
     );
 
@@ -140,7 +140,7 @@ describe('interface', () => {
         children: [
           ClassNodeFixture.create(
             Test.name,
-            { from: 'object' },
+            { from: 'object', reference: expect.any(String) },
             { name: expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/) },
           ),
         ],

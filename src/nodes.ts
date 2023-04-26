@@ -641,7 +641,7 @@ export interface IClassOptions {
 
 export interface IClassMeta {
   from: 'class' | 'interface' | 'object' | 'unknown';
-  reference?: string;
+  reference: string;
   picked?: Set<string>;
   omitted?: Set<string>;
   partial?: boolean;

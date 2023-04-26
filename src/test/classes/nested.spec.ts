@@ -86,7 +86,7 @@ describe('nested', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
       expect(tree).toEqual(
         RootNodeFixture.createRequired({
-          children: [ClassNodeFixture.createForClass(TestEmbed, { partial: true })],
+          children: [ClassNodeFixture.createForClass(TestEmbed, { partial: true, reference: expect.any(String) })],
         }),
       );
     });
@@ -117,7 +117,7 @@ describe('nested', () => {
         RootNodeFixture.createRequired({
           children: [
             ArrayNodeFixture.create({
-              children: [ClassNodeFixture.createForClass(Test)],
+              children: [ClassNodeFixture.createForClass(Test, { reference: expect.any(String) })],
             }),
           ],
         }),
@@ -234,6 +234,7 @@ describe('nested', () => {
             children: [
               ClassNodeFixture.createForClass(TestEmbed, {
                 omitted: new Set(['embeddedProperty2']),
+                reference: expect.any(String),
               }),
             ],
           }),
@@ -253,6 +254,7 @@ describe('nested', () => {
             children: [
               ClassNodeFixture.createForClass(TestEmbed, {
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
+                reference: expect.any(String),
               }),
             ],
           }),
@@ -267,6 +269,7 @@ describe('nested', () => {
             children: [
               ClassNodeFixture.createForClass(TestEmbed, {
                 omitted: new Set(['embeddedProperty1', 'embeddedProperty2']),
+                reference: expect.any(String),
               }),
             ],
           }),
@@ -389,6 +392,7 @@ describe('nested', () => {
             children: [
               ClassNodeFixture.createForClass(TestEmbed, {
                 picked: new Set(['embeddedProperty2']),
+                reference: expect.any(String),
               }),
             ],
           }),
@@ -403,6 +407,7 @@ describe('nested', () => {
             children: [
               ClassNodeFixture.createForClass(TestEmbed, {
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
+                reference: expect.any(String),
               }),
             ],
           }),
@@ -422,6 +427,7 @@ describe('nested', () => {
             children: [
               ClassNodeFixture.createForClass(TestEmbed, {
                 picked: new Set(['embeddedProperty1', 'embeddedProperty2']),
+                reference: expect.any(String),
               }),
             ],
           }),

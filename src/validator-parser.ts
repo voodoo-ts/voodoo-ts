@@ -656,7 +656,7 @@ export class Parser {
       );
     }
 
-    const references = classNodes.map((c) => c.meta.reference as string);
+    const references = classNodes.map((c) => c.meta.reference);
 
     const intersectionNode = new IntersectionNode(type.getText(), references);
 
@@ -667,7 +667,7 @@ export class Parser {
   createClassNode(
     type: Type,
     filter: (t: ITypeAndTree) => boolean = () => true,
-    meta: Omit<IClassMeta, 'from'> = {},
+    meta: Omit<IClassMeta, 'from' | 'reference'> = {},
   ): ClassNode {
     const referencedDeclaration = getFirstSymbolDeclaration(type);
 
@@ -823,7 +823,7 @@ export class Parser {
     }
 
     const annotations = getAnnotations(cls.prototype, propertyKey);
-    const annotationDecoratorMap = groupDecorators<IAnnotationDecoratorMeta>(annotations);
+    const annotationDecoratorMap = groupDecorators<IDecoratorMeta>(annotations);
 
     walkPropertyTypeTree(tree, (node) => {
       const annotationsForNodeKind = annotationDecoratorMap.get(node.kind) ?? [];

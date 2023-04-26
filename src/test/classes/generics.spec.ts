@@ -55,7 +55,7 @@ describe('generics', () => {
 
     expect(tree).toEqual(
       RootNodeFixture.createRequired({
-        children: [ClassNodeFixture.create('Generic', { from: 'class' })],
+        children: [ClassNodeFixture.create('Generic', { from: 'class', reference: expect.any(String) })],
       }),
     );
   });
