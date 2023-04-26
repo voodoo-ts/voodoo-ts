@@ -2,12 +2,10 @@ import path from 'path';
 import process from 'process';
 import {
   ClassDeclaration,
-  ClassInstancePropertyTypes,
   InterfaceDeclaration,
   Node,
   PropertyDeclaration,
   PropertySignature,
-  SourceFile,
   SyntaxKind,
   Type,
   TypeLiteralNode,
@@ -48,15 +46,6 @@ interface IOmitParameters {
   propertyNames: Set<string>;
 }
 
-// export interface IMinimalProperty {
-//   getName(): string;
-//   getType(): Type;
-//   getStartLineNumber(...args: unknown[]): number;
-//   getSourceFile(): SourceFile;
-//   getParent(): Node;
-//   hasQuestionToken?(): boolean;
-//   getNameNode(): Node;
-// }
 export type PropertyDeclarationOrSignature = PropertyDeclaration | PropertySignature;
 
 export interface IPropertyListItem {

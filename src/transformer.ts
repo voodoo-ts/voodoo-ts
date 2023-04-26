@@ -1,4 +1,4 @@
-import { ClassDeclaration, Project } from 'ts-morph';
+import { Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
 import { FormattedErrors, formatErrors } from './error-formatter';
@@ -69,7 +69,6 @@ const NODE_MODULE_PATH = './node_modules/@vvalidator/vvalidator/src/*';
 export class TransformerInstance {
   project: Project;
 
-  // validatorInstance: ValidatorInstance;
   parser: TransformerParser;
   classDiscovery: ClassDiscovery;
   transformerClassDecoratorFactory: SourceCodeLocationDecorator<ITransformerOptions>;
@@ -96,14 +95,6 @@ export class TransformerInstance {
       (cls) => this.getFactory(cls),
       options.transformer ?? [],
     );
-
-    // this.validatorInstance = new ValidatorInstance({
-    //   project: options.project,
-    //   classDiscovery: this.classDiscovery,
-    //   decorator: this.transformerClassDecoratorFactory,
-    //   parser: () => this.parser,
-    //   ...options.validator,
-    // });
 
     this.defaultOptions = {};
   }
