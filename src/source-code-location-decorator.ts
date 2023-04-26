@@ -1,4 +1,5 @@
 import ErrorStackParser from 'error-stack-parser';
+import path from 'node:path';
 import { Constructor } from 'ts-morph';
 
 import { type ClassDiscovery } from './class-discovery';
@@ -32,7 +33,7 @@ export class BasicSourceCodeLocationDecorator<T> {
       throw new RuntimeError(`Can't find call-site information in stack`);
     }
 
-    const filename = stack[1].fileName;
+    const filename = path.relative(process.cwd(), stack[1].fileName);
     const line = stack[1].lineNumber;
     const column = stack[1].columnNumber;
 
