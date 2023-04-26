@@ -13,7 +13,7 @@ import {
   TypeLiteralNode,
 } from 'ts-morph';
 
-import { getAnnotations, groupDecorators, IAnnotationDecoratorMeta } from './decorators';
+import { getAnnotations, groupDecorators, IDecoratorMeta } from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
   AnyNode,

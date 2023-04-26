@@ -15,7 +15,7 @@ import {
   stackingTransform,
   PropertyDecorator,
   OneOf,
-  IAnnotationDecoratorOptions,
+  IDecoratorOptions,
 } from './decorators';
 import { ParseError } from './errors';
 import {
@@ -98,7 +98,7 @@ export const transformDecorator = createAnnotationDecorator<[transformer: Transf
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export function Transform<T, U = ReturnType<TransformerFunction<unknown>>>(
   transformer: TransformerFunction<T, U>,
-): PropertyDecorator & { meta: IAnnotationDecoratorOptions } {
+): PropertyDecorator & { meta: IDecoratorOptions } {
   return transformDecorator(transformer);
 }
 

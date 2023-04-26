@@ -48,7 +48,6 @@ describe('decorators', () => {
 
       expect(annotations).toEqual([
         {
-          decoratorType: 'annotation',
           type: 'root',
           name: 'validationFunctions',
           value: [callback],

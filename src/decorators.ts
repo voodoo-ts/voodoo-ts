@@ -10,18 +10,13 @@ import {
 } from './nodes';
 import { enumerate } from './utils';
 
-export const typeDecoratorMetadataKey = Symbol('typeDecoratorMetadataKey');
 export const annotationDecoratorMetadataKey = Symbol('annotationDecoratorMetadataKey');
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export type PropertyDecorator = ((target: object, propertyKey: string) => void) & { meta: IAnnotationDecoratorOptions };
+export type PropertyDecorator = ((target: object, propertyKey: string) => void) & { meta: IDecoratorOptions };
 
 export interface IDecoratorOptions {
-  decoratorType: 'validator' | 'annotation';
   type: TypeNode['kind'];
-}
-
-export interface IAnnotationDecoratorOptions extends IDecoratorOptions {
   name: keyof IAnnotationMap;
   transformParameters?: (args: unknown[], previous: unknown) => unknown;
 }
@@ -29,14 +24,8 @@ export interface IAnnotationDecoratorOptions extends IDecoratorOptions {
 export interface IDecoratorMeta {
   type: TypeNode['kind'];
   name: string;
-}
-
-export interface IAnnotationDecoratorMeta extends IDecoratorMeta {
-  decoratorType: 'annotation';
   value: unknown;
 }
-
-export type TDecoratorMeta = IAnnotationDecoratorMeta;
 
 declare module './nodes' {
   // Extends the IAnnoationMap from ./nodes.ts
@@ -77,11 +66,10 @@ export function stackingTransform(args: unknown[], previous: unknown): unknown[]
 }
 
 export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
-  decoratorOptions: Omit<IAnnotationDecoratorOptions, 'decoratorType'>,
-): (...options: U) => PropertyDecorator & { meta: IAnnotationDecoratorOptions } {
+  decoratorOptions: Omit<IDecoratorOptions, 'decoratorType'>,
+): (...options: U) => PropertyDecorator & { meta: IDecoratorOptions } {
   return (...args: U) => {
-    const meta: IAnnotationDecoratorOptions = {
-      decoratorType: 'annotation',
+    const meta: IDecoratorOptions = {
       name: decoratorOptions.name,
       type: decoratorOptions.type,
     };
@@ -91,7 +79,7 @@ export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
       const existingAnnotationValue = annotations.find((d) => d.type === type && d.name === name)?.value;
       const transformParameters = decoratorOptions.transformParameters ?? defaultTransform;
       const value = transformParameters(args, existingAnnotationValue);
-      annotations.push({ decoratorType: 'annotation', name, type, value });
+      annotations.push({ name, type, value });
 
       Reflect.defineMetadata(annotationDecoratorMetadataKey, annotations, target, propertyKey);
     };
@@ -100,8 +88,8 @@ export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
   };
 }
 
-export function getAnnotations(target: object, propertyKey: string): IAnnotationDecoratorMeta[] {
-  return (Reflect.getMetadata(annotationDecoratorMetadataKey, target, propertyKey) ?? []) as IAnnotationDecoratorMeta[];
+export function getAnnotations(target: object, propertyKey: string): IDecoratorMeta[] {
+  return (Reflect.getMetadata(annotationDecoratorMetadataKey, target, propertyKey) ?? []) as IDecoratorMeta[];
 }
 
 export type PropertyDecoratorMap<T extends IDecoratorMeta> = Map<TypeNode['kind'], T[]>;
@@ -236,7 +224,7 @@ export function validateIntegerString(
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const IsInteger = (radix: 10 | 16 = 10): PropertyDecorator & { meta: IAnnotationDecoratorOptions } =>
+export const IsInteger = (radix: 10 | 16 = 10): PropertyDecorator & { meta: IDecoratorOptions } =>
   ValidateString((args) => validateIntegerString(args, radix));
 
 export function validateRange(
