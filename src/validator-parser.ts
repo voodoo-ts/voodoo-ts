@@ -21,6 +21,7 @@ import {
   EnumNode,
   IClassMeta,
   IntersectionNode,
+  IPropertyComment,
   ITypeAndTree,
   LiteralNode,
   NumberNode,
@@ -192,6 +193,30 @@ export function getPropertyName(property: PropertyDeclarationOrSignature): strin
     /* istanbul ignore next */
     throw new ParseError(`Can't handle name node of type ${nameNode.getKindName()}`);
   }
+}
+
+export function getDocs(
+  node: PropertyDeclarationOrSignature | ClassDeclaration | InterfaceDeclaration,
+): IPropertyComment | undefined {
+  const structure = node.getStructure();
+
+  if (structure.docs?.length) {
+    const [doc] = structure.docs;
+    if (typeof doc === 'string') {
+      return {
+        description: doc,
+        tags: [],
+      };
+    } else {
+      return {
+        description: doc.description?.toString().trim() ?? '',
+        tags:
+          doc.tags?.map(({ tagName, text }) => ({ tagName: tagName.toString(), text: text?.toString() ?? '' })) ?? [],
+      };
+    }
+  }
+
+  return;
 }
 
 export class ClassCache<T> {
@@ -467,25 +492,27 @@ export class Parser {
   handleRootNode(property: PropertyDeclarationOrSignature, typeMap?: TypeMap): RootNode {
     let type = this.getPropertyType(property);
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
-    const structure = property.getStructure();
+    // const structure = property.getStructure();
 
     const rootNode = new RootNode(hasQuestionToken);
 
-    if (structure.docs?.length) {
-      const [doc] = structure.docs;
-      if (typeof doc === 'string') {
-        rootNode.annotations.comment = {
-          description: doc,
-          tags: [],
-        };
-      } else {
-        rootNode.annotations.comment = {
-          description: doc.description?.toString() ?? '',
-          tags:
-            doc.tags?.map(({ tagName, text }) => ({ tagName: tagName.toString(), text: text?.toString() ?? '' })) ?? [],
-        };
-      }
-    }
+    // if (structure.docs?.length) {
+    //   const [doc] = structure.docs;
+    //   if (typeof doc === 'string') {
+    //     rootNode.annotations.comment = {
+    //       description: doc,
+    //       tags: [],
+    //     };
+    //   } else {
+    //     rootNode.annotations.comment = {
+    //       description: doc.description?.toString() ?? '',
+    //       tags:
+    //         doc.tags?.map(({ tagName, text }) => ({ tagName: tagName.toString(), text: text?.toString() ?? '' })) ?? [],
+    //     };
+    //   }
+    // }
+
+    rootNode.annotations.comment = getDocs(property);
 
     if (type.isUnion()) {
       const unionTypes = type.getUnionTypes();
@@ -689,7 +716,7 @@ export class Parser {
         [SyntaxKind.TypeLiteral]: 'object' as const,
       }[referencedDeclaration.getKind() as number] ?? ('unknown' as const);
 
-    return new ClassNode(
+    const classNode = new ClassNode(
       {
         name: getName(referencedDeclaration),
         meta: {
@@ -700,6 +727,12 @@ export class Parser {
       },
       getClassTrees,
     );
+
+    if (isClass(referencedDeclaration) || isInterface(referencedDeclaration)) {
+      classNode.annotations.comment = getDocs(referencedDeclaration);
+    }
+
+    return classNode;
   }
 
   getTypeSignature(declaration: ClassOrInterfaceOrLiteral, type: Type): string {
@@ -788,6 +821,10 @@ export class Parser {
       },
       () => trees,
     );
+
+    if (isClass(classDeclaration) || isInterface(classDeclaration)) {
+      classNode.annotations.comment = getDocs(classDeclaration);
+    }
 
     return classNode;
   }

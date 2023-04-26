@@ -75,7 +75,7 @@ describe('general', () => {
     expect(names).toEqual(['🦙', '""', "'", 'A', ' ']);
   });
 
-  it('should capture comments', () => {
+  it('should capture property comments', () => {
     const v = new ValidatorInstance({ project });
 
     @v.transformerDecorator()
@@ -99,6 +99,29 @@ describe('general', () => {
         { tagName: 'description', text: 'Some description' },
         { tagName: 'example', text: '"some example"' },
       ],
+    });
+  });
+
+  it('should capture class comments', () => {
+    const v = new ValidatorInstance({ project });
+
+    /**
+     * Test foo
+     *
+     * Second paragraph
+     *
+     * @description Some description
+     */
+    @v.transformerDecorator()
+    class Test {
+      property!: string;
+    }
+
+    const cls = v.getClassNode(Test);
+
+    expect(cls.annotations.comment).toEqual({
+      description: 'Test foo\n\nSecond paragraph',
+      tags: [{ tagName: 'description', text: 'Some description' }],
     });
   });
 

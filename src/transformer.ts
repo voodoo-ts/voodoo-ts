@@ -130,6 +130,19 @@ export class TransformerInstance {
     }
   }
 
+  getClassNode<T>(cls: Constructor<T>): ClassNode {
+    // Get metadata + types
+    const validatorMeta = this.getClassMetadata(cls);
+    const classDeclaration = this.classDiscovery.getClass(
+      cls.name,
+      validatorMeta.filename,
+      validatorMeta.line,
+      validatorMeta.column,
+    );
+
+    return this.parser.getCachedClassNode(classDeclaration);
+  }
+
   async transform<T>(
     cls: Constructor<T>,
     values: MaybePartial<T>,
@@ -196,15 +209,7 @@ export class TransformerInstance {
 
   validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
     // Get metadata + types
-    const validatorMeta = this.getClassMetadata(cls);
-    const classDeclaration = this.classDiscovery.getClass(
-      cls.name,
-      validatorMeta.filename,
-      validatorMeta.line,
-      validatorMeta.column,
-    );
-
-    const validatorClass = this.parser.getCachedClassNode(classDeclaration);
+    const validatorClass = this.getClassNode(cls);
 
     return this.validateClassDeclaration<T>(validatorClass, values, options);
   }
