@@ -465,7 +465,11 @@ export class TransformerParser extends Parser {
     return this.recurse(validationResult, values, options);
   }
 
+  /**
+   * Gets the type arguments for the AbstractValuetransformerFactory object
+   */
   getValueTransformerData(valueTransformer: AbstractValueTransformerFactory): IValueTransformerTypes {
+    // Find valueTransformer position in source code and get the decorator's type argument (Transformed<From, To, Opts>)
     const cls = valueTransformer.constructor as Constructor<unknown>;
     const classMetadata = registry.decoratorFactory.getClassMetadata(cls);
     const classDeclaration = this.classDiscovery.getClass(
@@ -490,10 +494,11 @@ export class TransformerParser extends Parser {
       throw new ParseError('typename is not an identifier');
     }
 
+    // Get type arguments to the Transformed<> type used for the decorator
     const transformerTypeArguments = typeArgument.getTypeArguments();
 
     if (transformerTypeArguments.some((t) => t === undefined)) {
-      throw new ParseError('blorb');
+      throw new ParseError(`Invalid type arguments for Transformed<From, To, Opts>`);
     }
 
     const [fromType, toType] = transformerTypeArguments.map((node) => node.getType());
