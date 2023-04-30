@@ -9,7 +9,7 @@ describe('numbers', () => {
   it('should validate valid numbers', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       numberProperty!: number;
     }
@@ -21,7 +21,7 @@ describe('numbers', () => {
   describe('should fail for invalid numbers', () => {
     const v = new ValidatorInstance({ project });
 
-    @v.validatorDecorator()
+    @v.transformerDecorator()
     class Test {
       numberProperty!: number;
     }

@@ -50,13 +50,13 @@ export class ClassNodeFixture extends ClassNode {
 
   static createForClass(
     cls: Constructor<unknown>,
-    meta: Omit<IClassMeta, 'from'> = {},
-    r: Partial<ClassNode> = {},
+    meta: Omit<IClassMeta, 'from'>,
+    extra: Partial<ClassNode> = {},
   ): ClassNode {
-    return this.create(cls.name, { from: 'class', ...meta }, r);
+    return this.create(cls.name, { from: 'class', ...meta }, extra);
   }
 
-  static createForLiteral(meta: Omit<IClassMeta, 'from'> = {}, r: Partial<ClassNode> = {}): ClassNode {
+  static createForLiteral(meta: Omit<IClassMeta, 'from'>, r: Partial<ClassNode> = {}): ClassNode {
     return this.create(
       '',
       {

@@ -10,7 +10,7 @@ import { expectValidationError, project } from '../utils';
 describe('arrays', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     arrayProperty!: number[];
   }

@@ -8,7 +8,7 @@ import { expectValidationError, project } from '../utils';
 describe('optional', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     stringProperty?: string;
   }

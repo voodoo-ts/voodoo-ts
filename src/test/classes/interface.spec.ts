@@ -59,12 +59,12 @@ describe('interface', () => {
     test8property: string;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class CTestBase<T> {
     baseProperty!: T;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class CTest<T> extends CTestBase<number> {
     classProperty!: T;
   }
@@ -73,7 +73,7 @@ describe('interface', () => {
     test9property: string;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     embedded!: ITest;
     embedded1!: ITest;
@@ -98,7 +98,7 @@ describe('interface', () => {
     expect(name).toEqual('embedded');
     expect(tree).toEqual(
       RootNodeFixture.createRequired({
-        children: [ClassNodeFixture.create('ITest', { from: 'interface' })],
+        children: [ClassNodeFixture.create('ITest', { from: 'interface', reference: expect.any(String) })],
       }),
     );
   });
@@ -110,7 +110,7 @@ describe('interface', () => {
     expect(name).toEqual('embedded2');
     expect(tree).toEqual(
       RootNodeFixture.createRequired({
-        children: [ClassNodeFixture.create('ITest2', { from: 'interface' })],
+        children: [ClassNodeFixture.create('ITest2', { from: 'interface', reference: expect.any(String) })],
       }),
     );
 
@@ -140,7 +140,7 @@ describe('interface', () => {
         children: [
           ClassNodeFixture.create(
             Test.name,
-            { from: 'object' },
+            { from: 'object', reference: expect.any(String) },
             { name: expect.stringMatching(/.*\/.+?\.spec\.(ts|js):\d+$/) },
           ),
         ],

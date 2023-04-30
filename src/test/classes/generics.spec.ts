@@ -12,7 +12,7 @@ import { getLineNumber, project } from '../utils';
 describe('generics', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     genericProperty!: Generic<string, number, boolean>;
     genericProperty2!: Generic<string, Embedded, boolean>;
@@ -20,13 +20,13 @@ describe('generics', () => {
     genericProperty4!: Generic<Generic<string, string, string>, string, string>;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Embedded {
     embeddedProperty!: string;
   }
 
   const LINE_NUMBER_GENERIC_CLASS = getLineNumber();
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Generic<T, U, V = unknown> {
     property1!: T;
     property2!: U;
@@ -37,13 +37,13 @@ describe('generics', () => {
     property1: string;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class TestExtending extends Generic<string, number, boolean> implements ITest {}
 
   it('should have cached all variants of `Generic`', () => {
     v.validate(Test, {});
 
-    const trees = Array.from(v.parser.classTreeCache.map.entries()).filter(([k, v]) =>
+    const trees = Array.from(v.parser.classTreeCache.map.entries()).filter(([k]) =>
       JSON.parse(k).reference.startsWith(`${LINE_NUMBER_GENERIC_CLASS}:`),
     );
 
@@ -55,7 +55,7 @@ describe('generics', () => {
 
     expect(tree).toEqual(
       RootNodeFixture.createRequired({
-        children: [ClassNodeFixture.create('Generic', { from: 'class' })],
+        children: [ClassNodeFixture.create('Generic', { from: 'class', reference: expect.any(String) })],
       }),
     );
   });

@@ -6,9 +6,11 @@ import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, iterParsers, project } from '../utils';
 
-describe.each(Array.from(iterParsers()))('strings - tree', (parserName, v, decorator) => {
-  it(`should construct the correct tree (${parserName})`, () => {
-    @decorator()
+describe('strings - tree', () => {
+  const v = new ValidatorInstance({ project });
+
+  it(`should construct the correct tree`, () => {
+    @v.transformerDecorator()
     class Test {
       stringProperty!: string;
     }
@@ -26,7 +28,7 @@ describe.each(Array.from(iterParsers()))('strings - tree', (parserName, v, decor
 describe('strings', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     stringProperty!: string;
   }

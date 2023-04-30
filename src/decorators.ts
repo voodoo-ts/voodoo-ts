@@ -4,24 +4,22 @@ import {
   IAnnotationMap,
   IConstraintNodeValidationError,
   INodeValidationResult,
+  IPropertyValidator,
   IPropertyValidatorCallbackArguments,
+  RootNode,
   TypeNode,
   ValidationErrorType,
+  walkPropertyTypeTree,
 } from './nodes';
+import { Constructor } from './types';
 import { enumerate } from './utils';
 
-export const typeDecoratorMetadataKey = Symbol('typeDecoratorMetadataKey');
 export const annotationDecoratorMetadataKey = Symbol('annotationDecoratorMetadataKey');
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export type PropertyDecorator = ((target: object, propertyKey: string) => void) & { meta: IAnnotationDecoratorOptions };
+export type PropertyDecorator = ((target: object, propertyKey: string) => void) & { meta: IDecoratorOptions };
 
 export interface IDecoratorOptions {
-  decoratorType: 'validator' | 'annotation';
   type: TypeNode['kind'];
-}
-
-export interface IAnnotationDecoratorOptions extends IDecoratorOptions {
   name: keyof IAnnotationMap;
   transformParameters?: (args: unknown[], previous: unknown) => unknown;
 }
@@ -29,14 +27,8 @@ export interface IAnnotationDecoratorOptions extends IDecoratorOptions {
 export interface IDecoratorMeta {
   type: TypeNode['kind'];
   name: string;
-}
-
-export interface IAnnotationDecoratorMeta extends IDecoratorMeta {
-  decoratorType: 'annotation';
   value: unknown;
 }
-
-export type TDecoratorMeta = IAnnotationDecoratorMeta;
 
 declare module './nodes' {
   // Extends the IAnnoationMap from ./nodes.ts
@@ -76,22 +68,39 @@ export function stackingTransform(args: unknown[], previous: unknown): unknown[]
   }
 }
 
+export function validatorTransform(args: unknown[], previous: unknown): IPropertyValidator[] {
+  const [callback, meta] = args;
+  const validator = {
+    callback,
+    meta,
+  } as IPropertyValidator;
+  if (!Array.isArray(previous)) {
+    return [validator];
+  } else {
+    return [...(previous as Array<typeof validator>), validator];
+  }
+}
+
 export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
-  decoratorOptions: Omit<IAnnotationDecoratorOptions, 'decoratorType'>,
-): (...options: U) => PropertyDecorator & { meta: IAnnotationDecoratorOptions } {
+  decoratorOptions: IDecoratorOptions,
+): (...options: U) => PropertyDecorator & { meta: IDecoratorOptions } {
   return (...args: U) => {
-    const meta: IAnnotationDecoratorOptions = {
-      decoratorType: 'annotation',
+    const meta: IDecoratorOptions = {
       name: decoratorOptions.name,
       type: decoratorOptions.type,
     };
     const fn = (target: object, propertyKey: string): void => {
       const { name, type } = decoratorOptions;
       const annotations = getAnnotations(target, propertyKey) ?? [];
-      const existingAnnotationValue = annotations.find((d) => d.type === type && d.name === name)?.value;
+      const existingAnnotation = annotations.find((d) => d.type === type && d.name === name);
+      const existingAnnotationValue = existingAnnotation?.value;
       const transformParameters = decoratorOptions.transformParameters ?? defaultTransform;
       const value = transformParameters(args, existingAnnotationValue);
-      annotations.push({ decoratorType: 'annotation', name, type, value });
+      if (!existingAnnotation) {
+        annotations.push({ name, type, value });
+      } else {
+        existingAnnotation.value = value;
+      }
 
       Reflect.defineMetadata(annotationDecoratorMetadataKey, annotations, target, propertyKey);
     };
@@ -100,8 +109,8 @@ export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
   };
 }
 
-export function getAnnotations(target: object, propertyKey: string): IAnnotationDecoratorMeta[] {
-  return (Reflect.getMetadata(annotationDecoratorMetadataKey, target, propertyKey) ?? []) as IAnnotationDecoratorMeta[];
+export function getAnnotations(target: object, propertyKey: string): IDecoratorMeta[] {
+  return (Reflect.getMetadata(annotationDecoratorMetadataKey, target, propertyKey) ?? []) as IDecoratorMeta[];
 }
 
 export type PropertyDecoratorMap<T extends IDecoratorMeta> = Map<TypeNode['kind'], T[]>;
@@ -116,40 +125,59 @@ export function groupDecorators<T extends IDecoratorMeta>(decorators: T[]): Prop
   return map;
 }
 
+export function applyDecorators(cls: Constructor<unknown>, propertyKey: string, tree: RootNode): void {
+  const annotations = getAnnotations(cls.prototype, propertyKey);
+  const annotationDecoratorMap = groupDecorators<IDecoratorMeta>(annotations);
+
+  walkPropertyTypeTree(tree, (node) => {
+    const annotationsForNodeKind = annotationDecoratorMap.get(node.kind) ?? [];
+    // Treat note.annotations as a record from here to allow assignment
+    // Invalid fields should not be possible due to typechecking
+    const nodeAnnotations = node.annotations as Record<string, unknown>;
+
+    for (const annotation of annotationsForNodeKind) {
+      nodeAnnotations[annotation.name] = annotation.value;
+    }
+  });
+}
+
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const Validate = createAnnotationDecorator<
-  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult]
+  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult, meta?: IPropertyValidator['meta']]
 >({
   name: 'validationFunctions',
   type: 'root',
-  transformParameters: stackingTransform,
+  transformParameters: validatorTransform,
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateString = createAnnotationDecorator<
-  [func: (args: IPropertyValidatorCallbackArguments<string>) => INodeValidationResult]
+  [
+    func: (args: IPropertyValidatorCallbackArguments<string>) => INodeValidationResult,
+    meta?: IPropertyValidator['meta'],
+  ]
 >({
   name: 'validationFunctions',
   type: 'string',
-  transformParameters: stackingTransform,
+  transformParameters: validatorTransform,
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateNumber = createAnnotationDecorator<
-  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult]
+  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult, meta?: IPropertyValidator['meta']]
 >({
   name: 'validationFunctions',
   type: 'number',
-  transformParameters: stackingTransform,
+  transformParameters: validatorTransform,
 });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateArray = createAnnotationDecorator<
-  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult]
+  [func: (args: IPropertyValidatorCallbackArguments) => INodeValidationResult, meta?: IPropertyValidator['meta']]
 >({
   name: 'validationFunctions',
   type: 'array',
-  transformParameters: stackingTransform,
+  transformParameters: validatorTransform,
 });
 
 export function validateLength(
@@ -179,11 +207,23 @@ export const Length = (min: number, max?: number) =>
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const StringLength = (min: number, max?: number) =>
-  ValidateString((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max));
+  ValidateString((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max), {
+    name: '@StringLength',
+    context: {
+      min,
+      max,
+    },
+  });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const ArrayLength = (min: number, max?: number) =>
-  Validate((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max));
+  ValidateArray((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max), {
+    name: '@ArrayLength',
+    context: {
+      min,
+      max,
+    },
+  });
 
 // // eslint-disable-next-line @typescript-eslint/naming-convention
 // export const StringLength = LengthFactory('string');
@@ -211,7 +251,11 @@ export function validateNumberString({
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const IsNumber = () => ValidateString(validateNumberString);
+export const IsNumber = () =>
+  ValidateString(validateNumberString, {
+    name: '@IsNumber',
+    context: {},
+  });
 
 export function validateIntegerString(
   { value, success, fail }: IPropertyValidatorCallbackArguments<string>,
@@ -236,8 +280,11 @@ export function validateIntegerString(
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const IsInteger = (radix: 10 | 16 = 10): PropertyDecorator & { meta: IAnnotationDecoratorOptions } =>
-  ValidateString((args) => validateIntegerString(args, radix));
+export const IsInteger = (radix: 10 | 16 = 10): PropertyDecorator & { meta: IDecoratorOptions } =>
+  ValidateString((args) => validateIntegerString(args, radix), {
+    name: '@IsInteger',
+    context: { radix },
+  });
 
 export function validateRange(
   { value, success, fail }: IPropertyValidatorCallbackArguments<number>,
@@ -261,7 +308,13 @@ export function validateRange(
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const Range = (min: number, max?: number) =>
-  ValidateNumber((args) => validateRange(args as IPropertyValidatorCallbackArguments<number>, min, max));
+  ValidateNumber((args) => validateRange(args as IPropertyValidatorCallbackArguments<number>, min, max), {
+    name: '@Range',
+    context: {
+      min,
+      max,
+    },
+  });
 
 export function validateNumberList(
   { value, values, success, fail }: IPropertyValidatorCallbackArguments<string>,
@@ -293,24 +346,31 @@ export function validateNumberList(
   }
 }
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const IsNumberList = () => ValidateString((args) => validateNumberList(args));
+export const IsNumberList = () =>
+  ValidateString((args) => validateNumberList(args), {
+    name: '@IsNumberList',
+    context: {},
+  });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const OneOf = (allowedValues: unknown[], enumName: string = 'OneOf') => {
   const allowed = new Set<unknown>(allowedValues);
-  return ValidateString((args) => {
-    if (allowed.has(args.value)) {
-      return args.success();
-    } else {
-      return args.fail(args.value, {
-        reason: ValidationErrorType.NOT_AN_ENUM,
-        context: {
-          enumName,
-          allowedValues,
-        },
-      });
-    }
-  });
+  return ValidateString(
+    (args) => {
+      if (allowed.has(args.value)) {
+        return args.success();
+      } else {
+        return args.fail(args.value, {
+          reason: ValidationErrorType.NOT_AN_ENUM,
+          context: {
+            enumName,
+            allowedValues,
+          },
+        });
+      }
+    },
+    { name: '@OneOf', context: { allowedValues: Array.from(allowed) } },
+  );
 };
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

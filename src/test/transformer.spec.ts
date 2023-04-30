@@ -8,6 +8,7 @@ import { expectValidationError, project } from './utils';
 import { ParseError } from '../errors';
 import { ValidationErrorType } from '../nodes';
 import { TransformerInstance } from '../transformer';
+import { ValidationError } from '../transformer';
 import {
   AbstractValueTransformerFactory,
   registry,
@@ -16,7 +17,6 @@ import {
   TransformerFunction,
   From,
 } from '../transformer-parser';
-import { ValidationError } from '../validator';
 
 describe('Transformer', () => {
   describe('StringToNumber transformer', () => {
@@ -39,7 +39,7 @@ describe('Transformer', () => {
           children: [
             StringNodeFixture.create({
               annotations: {
-                validationFunctions: [expect.any(Function)],
+                validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
               },
             }),
           ],
@@ -77,7 +77,7 @@ describe('Transformer', () => {
           children: [
             StringNodeFixture.create({
               annotations: {
-                validationFunctions: [expect.any(Function)],
+                validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
               },
             }),
           ],
@@ -102,7 +102,7 @@ describe('Transformer', () => {
             previousErrors: [
               NodeValidationErrorMatcher.stringError({
                 annotations: {
-                  validationFunctions: [expect.any(Function)],
+                  validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
                 },
                 previousErrors: [
                   NodeValidationErrorMatcher.constraintError({

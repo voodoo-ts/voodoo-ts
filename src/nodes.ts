@@ -22,9 +22,14 @@ export interface IPropertyComment {
   }>;
 }
 
+export interface IPropertyValidator {
+  callback: (args: IPropertyValidatorCallbackArguments<unknown>) => INodeValidationResult;
+  meta?: { name: string; context: Record<string, unknown> };
+}
+
 // Will be extended from elsewhere
 export interface IAnnotationMap {
-  validationFunctions?: Array<(args: IPropertyValidatorCallbackArguments<unknown>) => INodeValidationResult>;
+  validationFunctions?: IPropertyValidator[];
   comment?: IPropertyComment;
 }
 
@@ -285,10 +290,10 @@ export abstract class TypeNodeBase {
 
   validateDecorators(value: unknown, context: IValidationContext): INodeValidationError[] {
     const errors: INodeValidationError[] = [];
-    for (const constraintValidator of this.annotations.validationFunctions ?? []) {
+    for (const propertyValidator of this.annotations.validationFunctions ?? []) {
       const fail = (v: unknown, extra?: Partial<INodeValidationError>): IConstraintNodeValidationError =>
         this.createNodeValidationError(v, 'constraint', { ...(extra ?? {}), annotations: {} });
-      const result = constraintValidator({
+      const result = propertyValidator.callback({
         value,
         values: context.values,
         success: this.success.bind(this),
@@ -641,7 +646,7 @@ export interface IClassOptions {
 
 export interface IClassMeta {
   from: 'class' | 'interface' | 'object' | 'unknown';
-  reference?: string;
+  reference: string;
   picked?: Set<string>;
   omitted?: Set<string>;
   partial?: boolean;

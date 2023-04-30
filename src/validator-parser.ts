@@ -2,18 +2,16 @@ import path from 'path';
 import process from 'process';
 import {
   ClassDeclaration,
-  ClassInstancePropertyTypes,
   InterfaceDeclaration,
   Node,
   PropertyDeclaration,
   PropertySignature,
-  SourceFile,
   SyntaxKind,
   Type,
   TypeLiteralNode,
 } from 'ts-morph';
 
-import { getAnnotations, groupDecorators, IAnnotationDecoratorMeta } from './decorators';
+import { applyDecorators } from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
   AnyNode,
@@ -23,6 +21,7 @@ import {
   EnumNode,
   IClassMeta,
   IntersectionNode,
+  IPropertyComment,
   ITypeAndTree,
   LiteralNode,
   NumberNode,
@@ -33,7 +32,6 @@ import {
   TypeNode,
   UndefinedNode,
   UnionNode,
-  walkPropertyTypeTree,
 } from './nodes';
 import { Constructor } from './types';
 import { zip } from './utils';
@@ -48,15 +46,6 @@ interface IOmitParameters {
   propertyNames: Set<string>;
 }
 
-// export interface IMinimalProperty {
-//   getName(): string;
-//   getType(): Type;
-//   getStartLineNumber(...args: unknown[]): number;
-//   getSourceFile(): SourceFile;
-//   getParent(): Node;
-//   hasQuestionToken?(): boolean;
-//   getNameNode(): Node;
-// }
 export type PropertyDeclarationOrSignature = PropertyDeclaration | PropertySignature;
 
 export interface IPropertyListItem {
@@ -139,11 +128,16 @@ export function getName(obj: ClassOrInterfaceOrLiteral | null): string {
 }
 
 function getTypeId(type: Type): number {
-  // eslint-disable-next-line no-underscore-dangle
-  const compilerType = (type as any)._compilerType;
-  if (typeof compilerType?.id === 'number') {
-    return compilerType.id;
+  if (
+    '_compilerType' in type &&
+    typeof type._compilerType === 'object' &&
+    type._compilerType &&
+    'id' in type._compilerType &&
+    typeof type._compilerType.id === 'number'
+  ) {
+    return type._compilerType.id;
   }
+
   throw new ParseError(`Can't get type id for: ${type.getText()}`);
 }
 
@@ -187,7 +181,7 @@ function getOmitParameters(type: Type): IOmitParameters {
   return { referencedClassDeclaration, propertyNames, targetType };
 }
 
-function getPropertyName(property: PropertyDeclarationOrSignature): string {
+export function getPropertyName(property: PropertyDeclarationOrSignature): string {
   const nameNode = property.getNameNode();
   if (Node.isIdentifier(nameNode)) {
     return property.getName();
@@ -195,7 +189,7 @@ function getPropertyName(property: PropertyDeclarationOrSignature): string {
     const [opening, stringLiteral, closing] = nameNode.getChildren();
     /* istanbul ignore else */
     if (opening && Node.isStringLiteral(stringLiteral) && closing) {
-      return stringLiteral.getLiteralText();
+      return stringLiteral.getLiteralValue();
     } else {
       throw new ParseError(`Expected string literal for computed property`);
     }
@@ -205,39 +199,25 @@ function getPropertyName(property: PropertyDeclarationOrSignature): string {
   }
 }
 
-export class ClassCache<T> {
-  map = new Map<string, T>();
+export function getDocs(
+  node: PropertyDeclarationOrSignature | ClassDeclaration | InterfaceDeclaration,
+): IPropertyComment | undefined {
+  const structure = node.getStructure();
 
-  /**
-   * Computes a cache key for a class, interface or object literal. Since names
-   * can occur multiple times in a file, this uses the filename and line as key
-   * @param classDeclaration -
-   * @returns
-   */
-  static getKey(classDeclaration: ClassOrInterfaceOrLiteral): string {
-    const sourceFile = classDeclaration.getSourceFile();
-    const line = classDeclaration.getStartLineNumber();
-
-    const filename = path.relative(process.cwd(), sourceFile.getFilePath());
-    return `${line}:${filename}`;
-  }
-
-  getByKey(key: string): T | undefined {
-    return this.map.get(key);
-  }
-
-  getByTypeReference(typeReference: string): T | undefined {
-    const { reference } = JSON.parse(typeReference) as { reference: string };
-    const [line, , filename] = reference.split(':');
-    return this.map.get(`${line}:${filename}`);
-  }
-
-  get(classDeclaration: ClassOrInterfaceOrLiteral): T | undefined {
-    return this.map.get(ClassCache.getKey(classDeclaration)) as T;
-  }
-
-  set(classDeclaration: ClassOrInterfaceOrLiteral, value: T): void {
-    this.map.set(ClassCache.getKey(classDeclaration), value);
+  if (structure.docs?.length) {
+    const [doc] = structure.docs;
+    if (typeof doc === 'string') {
+      return {
+        description: doc,
+        tags: [],
+      };
+    } else {
+      return {
+        description: doc.description?.toString().trim() ?? '',
+        tags:
+          doc.tags?.map(({ tagName, text }) => ({ tagName: tagName.toString(), text: text?.toString() ?? '' })) ?? [],
+      };
+    }
   }
 }
 
@@ -263,6 +243,15 @@ export class TypeCache<T> {
 
   getByKey(key: string): T | undefined {
     return this.map.get(key);
+  }
+
+  getByKeyWithoutParameters(key: string): T | undefined {
+    const { reference } = JSON.parse(key) as { reference: string };
+    const keyWithoutParams = JSON.stringify({
+      reference,
+      parameters: [],
+    });
+    return this.getByKey(keyWithoutParams);
   }
 
   get(classDeclaration: ClassOrInterfaceOrLiteral, typeParameters: number[]): T | undefined {
@@ -464,13 +453,13 @@ export class PropertyDiscovery {
 }
 
 export class Parser {
-  classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
+  classDeclarationToClassReference = new TypeCache<Constructor<unknown>>();
   propertyDiscovery: PropertyDiscovery;
   classTreeCache = new TypeCache<ITypeAndTree[]>();
   declarationsDiscovered = new Set<string>();
   classNodeCache: Map<ClassDeclaration, ClassNode> = new Map();
 
-  constructor(classDeclarationToClassReference: ClassCache<Constructor<unknown>>) {
+  constructor(classDeclarationToClassReference: TypeCache<Constructor<unknown>>) {
     this.classDeclarationToClassReference = classDeclarationToClassReference;
     this.propertyDiscovery = new PropertyDiscovery();
   }
@@ -478,25 +467,10 @@ export class Parser {
   handleRootNode(property: PropertyDeclarationOrSignature, typeMap?: TypeMap): RootNode {
     let type = this.getPropertyType(property);
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
-    const structure = property.getStructure();
 
     const rootNode = new RootNode(hasQuestionToken);
 
-    if (structure.docs?.length) {
-      const [doc] = structure.docs;
-      if (typeof doc === 'string') {
-        rootNode.annotations.comment = {
-          description: doc,
-          tags: [],
-        };
-      } else {
-        rootNode.annotations.comment = {
-          description: doc.description?.toString() ?? '',
-          tags:
-            doc.tags?.map(({ tagName, text }) => ({ tagName: tagName.toString(), text: text?.toString() ?? '' })) ?? [],
-        };
-      }
-    }
+    rootNode.annotations.comment = getDocs(property);
 
     if (type.isUnion()) {
       const unionTypes = type.getUnionTypes();
@@ -656,7 +630,7 @@ export class Parser {
       );
     }
 
-    const references = classNodes.map((c) => c.meta.reference as string);
+    const references = classNodes.map((c) => c.meta.reference);
 
     const intersectionNode = new IntersectionNode(type.getText(), references);
 
@@ -667,7 +641,7 @@ export class Parser {
   createClassNode(
     type: Type,
     filter: (t: ITypeAndTree) => boolean = () => true,
-    meta: Omit<IClassMeta, 'from'> = {},
+    meta: Omit<IClassMeta, 'from' | 'reference'> = {},
   ): ClassNode {
     const referencedDeclaration = getFirstSymbolDeclaration(type);
 
@@ -700,7 +674,7 @@ export class Parser {
         [SyntaxKind.TypeLiteral]: 'object' as const,
       }[referencedDeclaration.getKind() as number] ?? ('unknown' as const);
 
-    return new ClassNode(
+    const classNode = new ClassNode(
       {
         name: getName(referencedDeclaration),
         meta: {
@@ -711,6 +685,12 @@ export class Parser {
       },
       getClassTrees,
     );
+
+    if (isClass(referencedDeclaration) || isInterface(referencedDeclaration)) {
+      classNode.annotations.comment = getDocs(referencedDeclaration);
+    }
+
+    return classNode;
   }
 
   getTypeSignature(declaration: ClassOrInterfaceOrLiteral, type: Type): string {
@@ -800,6 +780,10 @@ export class Parser {
       () => trees,
     );
 
+    if (isClass(classDeclaration) || isInterface(classDeclaration)) {
+      classNode.annotations.comment = getDocs(classDeclaration);
+    }
+
     return classNode;
   }
 
@@ -816,24 +800,12 @@ export class Parser {
   }
 
   applyDecorators(classDeclaration: ClassDeclaration, propertyKey: string, tree: RootNode): void {
-    const cls = this.classDeclarationToClassReference.get(classDeclaration);
+    const cls = this.classDeclarationToClassReference.get(classDeclaration, []);
 
     if (!cls) {
       throw new RuntimeError(`Referenced class '${getName(classDeclaration)}' is not decorated`);
     }
 
-    const annotations = getAnnotations(cls.prototype, propertyKey);
-    const annotationDecoratorMap = groupDecorators<IAnnotationDecoratorMeta>(annotations);
-
-    walkPropertyTypeTree(tree, (node) => {
-      const annotationsForNodeKind = annotationDecoratorMap.get(node.kind) ?? [];
-      // Treat note.annotations as a record from here to allow assignment
-      // Invalid fields should not be possible due to typechecking
-      const nodeAnnotations = node.annotations as Record<string, unknown>;
-
-      for (const annotation of annotationsForNodeKind) {
-        nodeAnnotations[annotation.name] = annotation.value;
-      }
-    });
+    applyDecorators(cls, propertyKey, tree);
   }
 }

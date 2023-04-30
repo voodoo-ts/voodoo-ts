@@ -15,22 +15,22 @@ interface ITests {
 describe('literals', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class TestString {
     stringLiteralProperty!: 'foo';
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class TestNumber {
     numberLiteralProperty!: 9001;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class TestBoolean {
     booleanLiteralProperty!: false;
   }
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class TestNull {
     nullLiteralProperty!: null;
   }

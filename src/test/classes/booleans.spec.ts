@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { ValidatorInstance } from '../../validator';
@@ -7,7 +8,7 @@ import { expectValidationError, project } from '../utils';
 describe('booleans', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     booleanProperty!: boolean;
   }

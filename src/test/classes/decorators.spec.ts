@@ -1,6 +1,6 @@
 import { IsInteger, IsNumber, IsNumberList, Length, Range } from '../../decorators';
 import { TransformerInstance } from '../../transformer';
-import { debug, expectValidationError, project } from '../utils';
+import { expectValidationError, project } from '../utils';
 
 describe('Decorators', () => {
   describe('@IsInteger()', () => {

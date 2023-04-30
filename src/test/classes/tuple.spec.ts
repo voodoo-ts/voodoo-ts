@@ -9,7 +9,7 @@ import { expectValidationError, project } from '../utils';
 describe('tuple', () => {
   const v = new ValidatorInstance({ project });
 
-  @v.validatorDecorator()
+  @v.transformerDecorator()
   class Test {
     tupleProperty!: [number, string, boolean];
   }
