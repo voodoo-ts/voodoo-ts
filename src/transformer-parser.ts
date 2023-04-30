@@ -293,7 +293,6 @@ async function recurse(
 
       /* istanbul ignore if */
       if (!cls && node.meta.from !== 'object' && node.meta.from !== 'interface') {
-        console.log(classDeclarationToClassReference);
         throw new ParseError(`Can't find class by reference: ${node.meta.reference}`);
       }
 

@@ -43,7 +43,7 @@ describe('generics', () => {
   it('should have cached all variants of `Generic`', () => {
     v.validate(Test, {});
 
-    const trees = Array.from(v.parser.classTreeCache.map.entries()).filter(([k, v]) =>
+    const trees = Array.from(v.parser.classTreeCache.map.entries()).filter(([k]) =>
       JSON.parse(k).reference.startsWith(`${LINE_NUMBER_GENERIC_CLASS}:`),
     );
 

@@ -128,11 +128,16 @@ export function getName(obj: ClassOrInterfaceOrLiteral | null): string {
 }
 
 function getTypeId(type: Type): number {
-  // eslint-disable-next-line no-underscore-dangle
-  const compilerType = (type as any)._compilerType;
-  if (typeof compilerType?.id === 'number') {
-    return compilerType.id;
+  if (
+    '_compilerType' in type &&
+    typeof type._compilerType === 'object' &&
+    type._compilerType &&
+    'id' in type._compilerType &&
+    typeof type._compilerType.id === 'number'
+  ) {
+    return type._compilerType.id;
   }
+
   throw new ParseError(`Can't get type id for: ${type.getText()}`);
 }
 
@@ -464,25 +469,8 @@ export class Parser {
   handleRootNode(property: PropertyDeclarationOrSignature, typeMap?: TypeMap): RootNode {
     let type = this.getPropertyType(property);
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
-    // const structure = property.getStructure();
 
     const rootNode = new RootNode(hasQuestionToken);
-
-    // if (structure.docs?.length) {
-    //   const [doc] = structure.docs;
-    //   if (typeof doc === 'string') {
-    //     rootNode.annotations.comment = {
-    //       description: doc,
-    //       tags: [],
-    //     };
-    //   } else {
-    //     rootNode.annotations.comment = {
-    //       description: doc.description?.toString() ?? '',
-    //       tags:
-    //         doc.tags?.map(({ tagName, text }) => ({ tagName: tagName.toString(), text: text?.toString() ?? '' })) ?? [],
-    //     };
-    //   }
-    // }
 
     rootNode.annotations.comment = getDocs(property);
 
