@@ -43,6 +43,8 @@ import {
   PropertyDiscovery,
   TypeMap,
   getPropertyName,
+  isClassOrInterfaceOrLiteral,
+  TypeCache,
 } from './validator-parser';
 
 // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars
@@ -177,11 +179,6 @@ interface IValueTransformerTypes {
   toType: Type;
 }
 
-export interface ITransformerOptions {
-  constructor?: Constructor<unknown>;
-  factory?: Factory<unknown>;
-}
-
 export function defaultFactory(cls: Constructor<unknown>): Factory<unknown> {
   return (values) => {
     const obj = new cls();
@@ -196,17 +193,276 @@ function isNodeValidationResult(obj: unknown): obj is INodeValidationResult & { 
 
 export type MapItemTuple<M> = M extends Map<infer K, infer V> ? [K, V] : [never, never];
 
+async function recurse(
+  nodeValidationResult: INodeValidationSuccess,
+  value: unknown,
+  classDeclarationToClassReference: TypeCache<Constructor<unknown>>,
+  getFactory: FactoryFunction,
+  options: ITransformationOptions = {},
+): Promise<INodeValidationResult & { value: unknown }> {
+  const node = nodeValidationResult.node as TypeNode;
+
+  switch (node.kind) {
+    case 'tuple':
+    case 'array': {
+      const arrayError = node.fail(value, {
+        reason: ValidationErrorType.ARRAY_FAILED,
+      }) as IArrayNodeValidationError;
+
+      const array = value as unknown[];
+      const newValues: unknown[] = [];
+      for (const [i, [elementValidationResult, arrayValue]] of enumerate(
+        zip(nodeValidationResult.previousMatches, array),
+      )) {
+        const transformResult = await recurse(
+          elementValidationResult,
+          arrayValue,
+          classDeclarationToClassReference,
+          getFactory,
+          options,
+        );
+        if (transformResult.success) {
+          newValues.push(transformResult.value);
+        } else {
+          const arrayItemError = node.fail(arrayValue, {
+            reason: ValidationErrorType.ARRAY_ITEM_FAILED,
+            context: { element: i },
+            previousErrors: [transformResult],
+          });
+          arrayError.previousErrors.push(arrayItemError);
+        }
+      }
+      if (!arrayError.previousErrors.length) {
+        return { ...node.success(), value: newValues };
+      } else {
+        return { ...arrayError, value: null };
+      }
+    }
+    case 'intersection': {
+      const newValues: Record<string | symbol | number, unknown> = {};
+      const intersectionError = node.fail(value, {
+        reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+        context: {
+          className: node.name,
+        },
+        previousErrors: [],
+      }) as IIntersectionNodeValidationError;
+      for (const previousMatch of nodeValidationResult.previousMatches) {
+        /* istanbul ignore if */
+        if (previousMatch.node.kind !== 'class') {
+          throw new ParseError('Expected class node');
+        }
+        const classNode = previousMatch.node as ClassNode;
+        const classNodeProperties = Object.fromEntries(
+          classNode
+            .getClassTrees()
+            .map(({ name, tree }) => [
+              tree.annotations.fromProperty ?? name,
+              (value as Record<string, unknown>)[tree.annotations.fromProperty ?? name],
+            ]),
+        );
+
+        const result = await recurse(
+          previousMatch,
+          classNodeProperties,
+          classDeclarationToClassReference,
+          getFactory,
+          options,
+        );
+        if (result.success) {
+          for (const [key, prop] of Object.entries(result.value as Record<string, unknown>)) {
+            newValues[key] = prop;
+          }
+        } else {
+          intersectionError.previousErrors.push(result);
+        }
+      }
+
+      if (!intersectionError.previousErrors.length) {
+        return { ...node.success(), value: newValues };
+      } else {
+        return { ...intersectionError, value: null };
+      }
+    }
+    case 'class': {
+      /* istanbul ignore if */
+      if (!node.meta.reference) {
+        throw new ParseError('No class reference');
+      }
+      const cls = classDeclarationToClassReference.getByKeyWithoutParameters(node.meta.reference);
+
+      /* istanbul ignore if */
+      if (!cls && node.meta.from !== 'object' && node.meta.from !== 'interface') {
+        console.log(classDeclarationToClassReference);
+        throw new ParseError(`Can't find class by reference: ${node.meta.reference}`);
+      }
+
+      const factory = cls ? getFactory(cls) : (v: Record<string, unknown>) => ({ ...v });
+      const newValues: Record<string | symbol | number, unknown> = {};
+      const classError = node.fail(value, {
+        reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
+        context: {
+          className: node.name,
+        },
+        previousErrors: [],
+      });
+      const propertyNodeValidationResult = new Map<string, INodeValidationSuccess>(
+        nodeValidationResult.previousMatches.map(
+          (nvs) => [nvs.context.resolvedPropertyName, nvs] as [string, INodeValidationSuccess],
+        ),
+      );
+
+      const objectValues = value as Record<string | symbol | number, unknown>;
+      for (const [propertyName, propertyValue] of Object.entries(objectValues)) {
+        const propertyValidationResult = propertyNodeValidationResult.get(propertyName);
+
+        if (!propertyValidationResult) {
+          /* istanbul ignore else */
+          if (options.allowUnknownFields) {
+            // This is to be expected since unknown fields were allowed, we just skip over it
+            continue;
+          } else {
+            throw new ParseError(`No propertyValidationResult found: ${propertyName}`);
+          }
+        }
+
+        const sourcePropertyName = propertyValidationResult.context.resolvedPropertyName as string;
+        const targetPropertyName = propertyValidationResult.context.propertyName as string;
+        const rootError: IRootNodeValidationError = {
+          type: 'root',
+          success: false,
+          value: propertyValue,
+          annotations: {},
+          reason: ValidationErrorType.PROPERTY_FAILED,
+          context: {
+            className: node.name,
+            propertyName,
+            resolvedPropertyName: sourcePropertyName,
+          },
+          previousErrors: [],
+        };
+
+        // Is a transformed type but there was no handler
+        if (
+          propertyValidationResult.node.annotations.isTransformedType &&
+          !propertyValidationResult.node.annotations.transformerFunction
+        ) {
+          throw new ParseError(`Can't resolve transformer`);
+        }
+
+        // Has a @Transform() decorator
+        if (propertyValidationResult.node.annotations.transformerFunction) {
+          const transformDecoratorResult = await Promise.resolve(
+            propertyValidationResult.node.annotations.transformerFunction[0]({
+              value: propertyValue,
+              values: value as IPropertyTransformerCallbackArguments['values'],
+              success: (callbackValue) => ({ ...node.success(), value: callbackValue }),
+              fail: node.fail.bind(node),
+            }),
+          );
+
+          // Simple value returned
+          if (!isNodeValidationResult(transformDecoratorResult)) {
+            newValues[targetPropertyName] = transformDecoratorResult;
+
+            // Stop default handling -- we don't need to recurse further, a @Transformed has to recurse if needed
+            continue;
+          } else {
+            if (transformDecoratorResult.success) {
+              newValues[targetPropertyName] = transformDecoratorResult.value;
+            } else {
+              rootError.previousErrors = [transformDecoratorResult];
+              classError.previousErrors.push(rootError);
+            }
+          }
+        } else {
+          const transformResult = await recurse(
+            propertyValidationResult.previousMatches[0],
+            propertyValue,
+            classDeclarationToClassReference,
+            getFactory,
+            options,
+          );
+          if (transformResult.success) {
+            newValues[targetPropertyName] = transformResult.value;
+          } else {
+            rootError.previousErrors = [transformResult];
+            classError.previousErrors.push(rootError);
+          }
+        }
+      }
+
+      if (!classError.previousErrors.length) {
+        const obj = factory(newValues);
+        return { ...node.success(), value: obj };
+      } else {
+        return { ...classError, value: null };
+      }
+    }
+    case 'string':
+    case 'number':
+    case 'boolean':
+    case 'enum':
+    case 'any':
+    case 'literal':
+    case 'record':
+    case 'undefined': {
+      return {
+        success: true,
+        value,
+        node,
+        context: nodeValidationResult.context,
+        previousMatches: nodeValidationResult.previousMatches,
+      };
+    }
+
+    /* istanbul ignore next */
+    default: {
+      throw new ParseError(`Nodes of type ${node.kind} should not appear`);
+    }
+  }
+}
+
+export async function transform(
+  classNode: ClassNode,
+  values: Record<string | number | symbol, unknown>,
+  classDeclarationToClassReference: TypeCache<Constructor<unknown>>,
+  getFactory: FactoryFunction,
+  options: ITransformationOptions = {},
+): Promise<INodeValidationResult & { value: unknown }> {
+  const validationResult = classNode.validate(values, {
+    values,
+    options: { allowUnknownFields: options.allowUnknownFields ?? false },
+  });
+
+  if (!validationResult.success) {
+    return validationResult;
+  }
+
+  return recurse(validationResult, values, classDeclarationToClassReference, getFactory, options);
+}
+
+//
+
+type FactoryFunction = (cls: Constructor<unknown>) => Factory<unknown>; // TODO: rename
+
+export interface IPropertyTransformerMeta {
+  classPosition: string;
+  options?: Record<string, unknown>;
+}
+
 export class TransformerParser extends Parser {
-  classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
+  classDeclarationToClassReference = new TypeCache<Constructor<unknown>>();
   propertyDiscovery: PropertyDiscovery;
   valueTransformers: AbstractValueTransformerFactory[];
   classDiscovery: ClassDiscovery;
-  getFactory: (cls: Constructor<unknown>) => Factory<unknown>;
+  propertyTransformers: TypeCache<Map<string, IPropertyTransformerMeta>> = new TypeCache(); // Maps classRef -> { propertyName, transformer Meta }
+  getFactory: FactoryFunction;
 
   constructor(
-    classDeclarationToClassReference: ClassCache<Constructor<unknown>>,
+    classDeclarationToClassReference: TypeCache<Constructor<unknown>>,
     classDiscovery: ClassDiscovery,
-    getFactory: (cls: Constructor<unknown>) => Factory<unknown> = defaultFactory,
+    getFactory: FactoryFunction = defaultFactory,
     valueTransformers: AbstractValueTransformerFactory[] = [],
   ) {
     super(classDeclarationToClassReference);
@@ -218,7 +474,7 @@ export class TransformerParser extends Parser {
   }
 
   static default(
-    classDeclarationToClassReference: ClassCache<Constructor<unknown>>,
+    classDeclarationToClassReference: TypeCache<Constructor<unknown>>,
     classDiscovery: ClassDiscovery,
     getFactory: (cls: Constructor<unknown>) => Factory<unknown>,
     extraValueTransformers: AbstractValueTransformerFactory[] = [],
@@ -230,234 +486,18 @@ export class TransformerParser extends Parser {
     ]);
   }
 
-  async recurse(
-    nodeValidationResult: INodeValidationSuccess,
-    value: unknown,
-    options: ITransformationOptions = {},
-  ): Promise<INodeValidationResult & { value: unknown }> {
-    const node = nodeValidationResult.node as TypeNode;
-
-    switch (node.kind) {
-      case 'tuple':
-      case 'array': {
-        const arrayError = node.fail(value, {
-          reason: ValidationErrorType.ARRAY_FAILED,
-        }) as IArrayNodeValidationError;
-
-        const array = value as unknown[];
-        const newValues: unknown[] = [];
-        for (const [i, [elementValidationResult, arrayValue]] of enumerate(
-          zip(nodeValidationResult.previousMatches, array),
-        )) {
-          const transformResult = await this.recurse(elementValidationResult, arrayValue, options);
-          if (transformResult.success) {
-            newValues.push(transformResult.value);
-          } else {
-            const arrayItemError = node.fail(arrayValue, {
-              reason: ValidationErrorType.ARRAY_ITEM_FAILED,
-              context: { element: i },
-              previousErrors: [transformResult],
-            });
-            arrayError.previousErrors.push(arrayItemError);
-          }
-        }
-        if (!arrayError.previousErrors.length) {
-          return { ...node.success(), value: newValues };
-        } else {
-          return { ...arrayError, value: null };
-        }
-      }
-      case 'intersection': {
-        const newValues: Record<string | symbol | number, unknown> = {};
-        const intersectionError = node.fail(value, {
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          context: {
-            className: node.name,
-          },
-          previousErrors: [],
-        }) as IIntersectionNodeValidationError;
-        for (const previousMatch of nodeValidationResult.previousMatches) {
-          /* istanbul ignore if */
-          if (previousMatch.node.kind !== 'class') {
-            throw new ParseError('Expected class node');
-          }
-          const classNode = previousMatch.node as ClassNode;
-          const classNodeProperties = Object.fromEntries(
-            classNode
-              .getClassTrees()
-              .map(({ name, tree }) => [
-                tree.annotations.fromProperty ?? name,
-                (value as Record<string, unknown>)[tree.annotations.fromProperty ?? name],
-              ]),
-          );
-
-          const result = await this.recurse(previousMatch, classNodeProperties, options);
-          if (result.success) {
-            for (const [key, prop] of Object.entries(result.value as Record<string, unknown>)) {
-              newValues[key] = prop;
-            }
-          } else {
-            intersectionError.previousErrors.push(result);
-          }
-        }
-
-        if (!intersectionError.previousErrors.length) {
-          return { ...node.success(), value: newValues };
-        } else {
-          return { ...intersectionError, value: null };
-        }
-      }
-      case 'class': {
-        /* istanbul ignore if */
-        if (!node.meta.reference) {
-          throw new ParseError('No class reference');
-        }
-        const cls = this.classDeclarationToClassReference.getByTypeReference(node.meta.reference);
-
-        /* istanbul ignore if */
-        if (!cls && node.meta.from !== 'object' && node.meta.from !== 'interface') {
-          throw new ParseError(`Can't find class by reference: ${node.meta.reference}`);
-        }
-
-        const factory = cls ? this.getFactory(cls) : (v: Record<string, unknown>) => ({ ...v });
-        const newValues: Record<string | symbol | number, unknown> = {};
-        const classError = node.fail(value, {
-          reason: ValidationErrorType.OBJECT_PROPERTY_FAILED,
-          context: {
-            className: node.name,
-          },
-          previousErrors: [],
-        });
-        const propertyNodeValidationResult = new Map<string, INodeValidationSuccess>(
-          nodeValidationResult.previousMatches.map(
-            (nvs) => [nvs.context.resolvedPropertyName, nvs] as [string, INodeValidationSuccess],
-          ),
-        );
-
-        const objectValues = value as Record<string | symbol | number, unknown>;
-        for (const [propertyName, propertyValue] of Object.entries(objectValues)) {
-          const propertyValidationResult = propertyNodeValidationResult.get(propertyName);
-
-          if (!propertyValidationResult) {
-            /* istanbul ignore else */
-            if (options.allowUnknownFields) {
-              // This is to be expected since unknown fields were allowed, we just skip over it
-              continue;
-            } else {
-              throw new ParseError(`No propertyValidationResult found: ${propertyName}`);
-            }
-          }
-
-          const sourcePropertyName = propertyValidationResult.context.resolvedPropertyName as string;
-          const targetPropertyName = propertyValidationResult.context.propertyName as string;
-          const rootError: IRootNodeValidationError = {
-            type: 'root',
-            success: false,
-            value: propertyValue,
-            annotations: {},
-            reason: ValidationErrorType.PROPERTY_FAILED,
-            context: {
-              className: node.name,
-              propertyName,
-              resolvedPropertyName: sourcePropertyName,
-            },
-            previousErrors: [],
-          };
-
-          // Is a transformed type but there was no handler
-          if (
-            propertyValidationResult.node.annotations.isTransformedType &&
-            !propertyValidationResult.node.annotations.transformerFunction
-          ) {
-            throw new ParseError(`Can't resolve transformer`);
-          }
-
-          // Has a @Transform() decorator
-          if (propertyValidationResult.node.annotations.transformerFunction) {
-            const transformDecoratorResult = await Promise.resolve(
-              propertyValidationResult.node.annotations.transformerFunction[0]({
-                value: propertyValue,
-                values: value as IPropertyTransformerCallbackArguments['values'],
-                success: (callbackValue) => ({ ...node.success(), value: callbackValue }),
-                fail: node.fail.bind(node),
-              }),
-            );
-
-            // Simple value returned
-            if (!isNodeValidationResult(transformDecoratorResult)) {
-              newValues[targetPropertyName] = transformDecoratorResult;
-
-              // Stop default handling -- we don't need to recurse further, a @Transformed has to recurse if needed
-              continue;
-            } else {
-              if (transformDecoratorResult.success) {
-                newValues[targetPropertyName] = transformDecoratorResult.value;
-              } else {
-                rootError.previousErrors = [transformDecoratorResult];
-                classError.previousErrors.push(rootError);
-              }
-            }
-          } else {
-            const transformResult = await this.recurse(
-              propertyValidationResult.previousMatches[0],
-              propertyValue,
-              options,
-            );
-            if (transformResult.success) {
-              newValues[targetPropertyName] = transformResult.value;
-            } else {
-              rootError.previousErrors = [transformResult];
-              classError.previousErrors.push(rootError);
-            }
-          }
-        }
-
-        if (!classError.previousErrors.length) {
-          const obj = factory(newValues);
-          return { ...node.success(), value: obj };
-        } else {
-          return { ...classError, value: null };
-        }
-      }
-      case 'string':
-      case 'number':
-      case 'boolean':
-      case 'enum':
-      case 'any':
-      case 'literal':
-      case 'record':
-      case 'undefined': {
-        return {
-          success: true,
-          value,
-          node,
-          context: nodeValidationResult.context,
-          previousMatches: nodeValidationResult.previousMatches,
-        };
-      }
-
-      /* istanbul ignore next */
-      default: {
-        throw new ParseError(`Nodes of type ${node.kind} should not appear`);
-      }
-    }
-  }
-
   async transform(
     classDeclaration: ClassDeclaration,
     values: Record<string | number | symbol, unknown>,
     options: ITransformationOptions = {},
   ): Promise<INodeValidationResult & { value: unknown }> {
-    const validationResult = this.getCachedClassNode(classDeclaration).validate(values, {
+    return transform(
+      this.getCachedClassNode(classDeclaration),
       values,
-      options: { allowUnknownFields: options.allowUnknownFields ?? false },
-    });
-
-    if (!validationResult.success) {
-      return validationResult;
-    }
-
-    return this.recurse(validationResult, values, options);
+      this.classDeclarationToClassReference,
+      this.getFactory,
+      options,
+    );
   }
 
   /**
@@ -550,6 +590,24 @@ export class TransformerParser extends Parser {
     if (transformerMeta) {
       if (!transformerMeta.fromType) {
         throw new ParseError('transformerMeta.fromType is not set');
+      }
+
+      const parent = property.getParent();
+      if (!isClassOrInterfaceOrLiteral(parent)) {
+        throw new ParseError('no parent match');
+      }
+
+      if (transformerMeta.transformerFactory) {
+        const properties = this.propertyTransformers.get(parent, []) ?? new Map<string, IPropertyTransformerMeta>();
+        const classPosition = registry.decoratorFactory.constructorToPosition.get(
+          transformerMeta.transformerFactory.constructor as Constructor<unknown>,
+        );
+        /* istanbul ignore next */
+        if (!classPosition) {
+          throw new ParseError(`Could not determine class position`);
+        }
+        properties.set(property.getName(), { classPosition, options: transformerMeta.options });
+        this.propertyTransformers.set(parent, [], properties);
       }
       return transformerMeta.fromType;
     } else {
