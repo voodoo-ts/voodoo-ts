@@ -4,7 +4,7 @@ import { Constructor } from 'ts-morph';
 
 import { type ClassDiscovery } from './class-discovery';
 import { ClassNotDecoratedError, RuntimeError } from './errors';
-import { ClassCache } from './validator-parser';
+import { TypeCache } from './validator-parser';
 
 export interface IClassMeta<Options = unknown> {
   filename: string;
@@ -72,7 +72,7 @@ export class SourceCodeLocationDecorator<T> extends BasicSourceCodeLocationDecor
   symbol: symbol;
   onDecorate?: (target: object, classMetadata: IClassMeta<T>) => void;
 
-  classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
+  classDeclarationToClassReference = new TypeCache<Constructor<unknown>>();
 
   constructor(classDiscovery: ClassDiscovery, onDecorate?: SourceCodeLocationDecorator<T>['onDecorate']) {
     super(onDecorate);
@@ -89,10 +89,10 @@ export class SourceCodeLocationDecorator<T> extends BasicSourceCodeLocationDecor
       classMetadata.line,
       classMetadata.column,
     );
-    this.classDeclarationToClassReference.set(classDeclaration, target as Constructor<unknown>);
+    this.classDeclarationToClassReference.set(classDeclaration, [], target as Constructor<unknown>);
   }
 
-  getClassDeclarationMapping(): ClassCache<Constructor<unknown>> {
+  getClassDeclarationMapping(): TypeCache<Constructor<unknown>> {
     return this.classDeclarationToClassReference;
   }
 }

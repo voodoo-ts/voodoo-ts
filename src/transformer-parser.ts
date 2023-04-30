@@ -35,7 +35,6 @@ import { BasicSourceCodeLocationDecorator } from './source-code-location-decorat
 import { Constructor } from './types';
 import { enumerate, zip } from './utils';
 import {
-  ClassCache,
   ClassOrInterfaceOrLiteral,
   getFirstSymbolDeclaration,
   getName,
@@ -563,7 +562,7 @@ export class TransformerParser extends Parser {
   }
 
   getClassFromDeclaration(classDeclaration: ClassOrInterfaceOrLiteral): Constructor<unknown> {
-    const cls = this.classDeclarationToClassReference.get(classDeclaration);
+    const cls = this.classDeclarationToClassReference.get(classDeclaration, []);
 
     if (!cls) {
       throw new ParseError(`Class ${getName(classDeclaration)} is not decorated`);
@@ -587,7 +586,7 @@ export class TransformerParser extends Parser {
       return null;
     }
 
-    if (!this.classDeclarationToClassReference.get(classDeclaration)) {
+    if (!this.classDeclarationToClassReference.get(classDeclaration, [])) {
       return null; // REVIEW: really?
     }
 
@@ -600,7 +599,7 @@ export class TransformerParser extends Parser {
       return null;
     }
 
-    // If property is not a type reference, it can't be a Transformed<>, so just copy value
+    // If property is not a type reference, it can't be a Transformed<>
     if (!Node.isTypeReference(propertyTypeNode)) {
       return null;
     }

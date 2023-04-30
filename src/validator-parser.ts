@@ -219,42 +219,6 @@ export function getDocs(
   return;
 }
 
-export class ClassCache<T> {
-  map = new Map<string, T>();
-
-  /**
-   * Computes a cache key for a class, interface or object literal. Since names
-   * can occur multiple times in a file, this uses the filename and line as key
-   * @param classDeclaration -
-   * @returns
-   */
-  static getKey(classDeclaration: ClassOrInterfaceOrLiteral): string {
-    const sourceFile = classDeclaration.getSourceFile();
-    const line = classDeclaration.getStartLineNumber();
-
-    const filename = path.relative(process.cwd(), sourceFile.getFilePath());
-    return `${line}:${filename}`;
-  }
-
-  getByKey(key: string): T | undefined {
-    return this.map.get(key);
-  }
-
-  getByTypeReference(typeReference: string): T | undefined {
-    const { reference } = JSON.parse(typeReference) as { reference: string };
-    const [line, , filename] = reference.split(':');
-    return this.map.get(`${line}:${filename}`);
-  }
-
-  get(classDeclaration: ClassOrInterfaceOrLiteral): T | undefined {
-    return this.map.get(ClassCache.getKey(classDeclaration)) as T;
-  }
-
-  set(classDeclaration: ClassOrInterfaceOrLiteral, value: T): void {
-    this.map.set(ClassCache.getKey(classDeclaration), value);
-  }
-}
-
 export class TypeCache<T> {
   map = new Map<string, T>();
 
@@ -478,13 +442,13 @@ export class PropertyDiscovery {
 }
 
 export class Parser {
-  classDeclarationToClassReference = new ClassCache<Constructor<unknown>>();
+  classDeclarationToClassReference = new TypeCache<Constructor<unknown>>();
   propertyDiscovery: PropertyDiscovery;
   classTreeCache = new TypeCache<ITypeAndTree[]>();
   declarationsDiscovered = new Set<string>();
   classNodeCache: Map<ClassDeclaration, ClassNode> = new Map();
 
-  constructor(classDeclarationToClassReference: ClassCache<Constructor<unknown>>) {
+  constructor(classDeclarationToClassReference: TypeCache<Constructor<unknown>>) {
     this.classDeclarationToClassReference = classDeclarationToClassReference;
     this.propertyDiscovery = new PropertyDiscovery();
   }
@@ -842,7 +806,7 @@ export class Parser {
   }
 
   applyDecorators(classDeclaration: ClassDeclaration, propertyKey: string, tree: RootNode): void {
-    const cls = this.classDeclarationToClassReference.get(classDeclaration);
+    const cls = this.classDeclarationToClassReference.get(classDeclaration, []);
 
     if (!cls) {
       throw new RuntimeError(`Referenced class '${getName(classDeclaration)}' is not decorated`);
