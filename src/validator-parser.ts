@@ -219,8 +219,6 @@ export function getDocs(
       };
     }
   }
-
-  return;
 }
 
 export class TypeCache<T> {
