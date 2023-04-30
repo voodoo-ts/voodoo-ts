@@ -41,6 +41,10 @@ describe('decorators', () => {
     class Test {
       @Validate(callback)
       testProperty!: string;
+
+      @Validate(callback, { name: '@Test', context: { hello: 'world' } })
+      @Validate(callback)
+      otherProperty!: string;
     }
 
     it('should store the metadata correctly', () => {
@@ -50,7 +54,19 @@ describe('decorators', () => {
         {
           type: 'root',
           name: 'validationFunctions',
-          value: [callback],
+          value: [{ callback }],
+        },
+      ]);
+    });
+
+    it('should store the metadata correctly', () => {
+      const annotations = getAnnotations(Test.prototype, 'otherProperty');
+
+      expect(annotations).toEqual([
+        {
+          type: 'root',
+          name: 'validationFunctions',
+          value: [{ callback }, { callback, meta: { name: '@Test', context: { hello: 'world' } } }],
         },
       ]);
     });
@@ -58,19 +74,27 @@ describe('decorators', () => {
     it('should construct the correct tree', () => {
       const trees = v.getPropertyTypeTreesFromConstructor(Test);
 
-      expect(trees.length).toEqual(1);
+      expect(trees.length).toEqual(2);
       expect(trees[0].tree).toEqual(
         RootNodeFixture.createRequired({
-          annotations: { validationFunctions: [callback] },
+          annotations: { validationFunctions: [{ callback }] },
+          children: [StringNodeFixture.create({})],
+        }),
+      );
+      expect(trees[1].tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            validationFunctions: [{ callback }, { callback, meta: { name: '@Test', context: { hello: 'world' } } }],
+          },
           children: [StringNodeFixture.create({})],
         }),
       );
     });
 
     it('should validate a valid string', () => {
-      const result = v.validate(Test, { testProperty: 'TEST' });
+      const result = v.validate(Test, { testProperty: 'TEST', otherProperty: 'TEST' });
       expect(result.success).toBeTrue();
-      expect(callback).toHaveBeenCalledOnce();
+      expect(callback).toHaveBeenCalledTimes(3);
     });
 
     it('should not call the validator if type is invalid', () => {
@@ -80,9 +104,9 @@ describe('decorators', () => {
     });
 
     it('should not validate a string that fails the constraint', () => {
-      const result = v.validate(Test, { testProperty: 'NOT_TEST' });
+      const result = v.validate(Test, { testProperty: 'NOT_TEST', otherProperty: 'NOT_TEST' });
       expect(result.success).toBeFalse();
-      expect(callback).toHaveBeenCalledOnce();
+      expect(callback).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -147,13 +171,13 @@ describe('decorators', () => {
     describe('validateNumberList()', () => {
       const node = StringNodeFixture.create({
         annotations: {
-          validationFunctions: [validateNumberList as any],
+          validationFunctions: [{ callback: validateNumberList as any }],
         },
       });
 
       const expectedError = NodeValidationErrorFixture.stringError({
         value: '1,a,3',
-        annotations: { validationFunctions: [validateNumberList as any] },
+        annotations: { validationFunctions: [{ callback: validateNumberList as any }] },
         previousErrors: [
           NodeValidationErrorFixture.constraintError({
             value: '1,a,3',

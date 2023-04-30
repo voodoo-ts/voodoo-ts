@@ -75,7 +75,7 @@ describe('ArrayNode', () => {
     const arrayNode = getArrayNodeFixture();
     const fn = jest.fn(() => NodeResultFixture.success());
 
-    arrayNode.annotations.validationFunctions = [fn];
+    arrayNode.annotations.validationFunctions = [{ callback: fn }];
 
     const result = arrayNode.validate([true], VALIDATION_OPTIONS);
 
@@ -97,7 +97,7 @@ describe('ArrayNode', () => {
     const arrayNode = getArrayNodeFixture();
     const fn = jest.fn(({ fail }) => fail());
 
-    arrayNode.annotations.validationFunctions = [fn];
+    arrayNode.annotations.validationFunctions = [{ callback: fn }];
 
     const result = arrayNode.validate([true], VALIDATION_OPTIONS);
 

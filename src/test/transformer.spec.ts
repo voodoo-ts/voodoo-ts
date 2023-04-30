@@ -39,7 +39,7 @@ describe('Transformer', () => {
           children: [
             StringNodeFixture.create({
               annotations: {
-                validationFunctions: [expect.any(Function)],
+                validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
               },
             }),
           ],
@@ -77,7 +77,7 @@ describe('Transformer', () => {
           children: [
             StringNodeFixture.create({
               annotations: {
-                validationFunctions: [expect.any(Function)],
+                validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
               },
             }),
           ],
@@ -102,7 +102,7 @@ describe('Transformer', () => {
             previousErrors: [
               NodeValidationErrorMatcher.stringError({
                 annotations: {
-                  validationFunctions: [expect.any(Function)],
+                  validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
                 },
                 previousErrors: [
                   NodeValidationErrorMatcher.constraintError({

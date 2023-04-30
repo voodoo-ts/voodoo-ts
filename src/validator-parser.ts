@@ -812,18 +812,6 @@ export class Parser {
       throw new RuntimeError(`Referenced class '${getName(classDeclaration)}' is not decorated`);
     }
 
-    const annotations = getAnnotations(cls.prototype, propertyKey);
-    const annotationDecoratorMap = groupDecorators<IDecoratorMeta>(annotations);
-
-    walkPropertyTypeTree(tree, (node) => {
-      const annotationsForNodeKind = annotationDecoratorMap.get(node.kind) ?? [];
-      // Treat note.annotations as a record from here to allow assignment
-      // Invalid fields should not be possible due to typechecking
-      const nodeAnnotations = node.annotations as Record<string, unknown>;
-
-      for (const annotation of annotationsForNodeKind) {
-        nodeAnnotations[annotation.name] = annotation.value;
-      }
-    });
+    applyDecorators(cls, propertyKey, tree);
   }
 }
