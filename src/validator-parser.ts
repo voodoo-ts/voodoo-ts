@@ -11,7 +11,7 @@ import {
   TypeLiteralNode,
 } from 'ts-morph';
 
-import { getAnnotations, groupDecorators, IDecoratorMeta } from './decorators';
+import { applyDecorators } from './decorators';
 import { ParseError, RuntimeError } from './errors';
 import {
   AnyNode,
@@ -32,7 +32,6 @@ import {
   TypeNode,
   UndefinedNode,
   UnionNode,
-  walkPropertyTypeTree,
 } from './nodes';
 import { Constructor } from './types';
 import { zip } from './utils';
@@ -241,6 +240,15 @@ export class TypeCache<T> {
 
   getByKey(key: string): T | undefined {
     return this.map.get(key);
+  }
+
+  getByKeyWithoutParameters(key: string): T | undefined {
+    const { reference } = JSON.parse(key) as { reference: string };
+    const keyWithoutParams = JSON.stringify({
+      reference,
+      parameters: [],
+    });
+    return this.getByKey(keyWithoutParams);
   }
 
   get(classDeclaration: ClassOrInterfaceOrLiteral, typeParameters: number[]): T | undefined {
