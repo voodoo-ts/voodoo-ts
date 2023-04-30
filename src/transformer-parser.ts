@@ -108,11 +108,7 @@ export const From = createAnnotationDecorator<[propertyName: string]>({
 });
 
 class TransformerRegistry {
-  decoratorFactory: BasicSourceCodeLocationDecorator<unknown>;
-
-  constructor() {
-    this.decoratorFactory = new BasicSourceCodeLocationDecorator();
-  }
+  decoratorFactory: BasicSourceCodeLocationDecorator<unknown> = new BasicSourceCodeLocationDecorator();
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- unused at compile time, used in analyze time
   decorate<T>(options: unknown = {}): ReturnType<BasicSourceCodeLocationDecorator<unknown>['decorator']> {
