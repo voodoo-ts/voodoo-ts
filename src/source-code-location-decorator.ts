@@ -43,7 +43,7 @@ export class BasicSourceCodeLocationDecorator<T> {
       column,
       options,
     };
-    const position = `${filename}:${line}:${column}`;
+    const position = `${line}:${column}:${filename}`;
 
     return (target: object) => {
       this.setClassMetadata(target as Constructor<T>, classMetadata, position);
