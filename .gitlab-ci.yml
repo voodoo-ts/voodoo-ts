@@ -41,7 +41,6 @@ jest:
     - npm config set update-notifier false
     - npm clean-install --no-audit --no-fund --no-update-notifier
     - npm run test:coverage
-    - find reports
 
 commitlint:
   stage: test
