@@ -1,4 +1,4 @@
-import { parser } from '@conventional-commits/parser';
+import { parser, Node } from '@conventional-commits/parser';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import * as readlineModule from 'node:readline';
@@ -30,6 +30,7 @@ function getCommitTypes(from: string, to: string): Map<string, number> {
       console.log('  ', commit);
     }
     const message = parser(commit);
+
     const summary = message.children[0];
     if (summary.type !== 'summary') {
       throw new Error('Commit parse error (summary not found)');
@@ -39,6 +40,11 @@ function getCommitTypes(from: string, to: string): Map<string, number> {
 
     if (type?.type !== 'type') {
       throw new Error('Commit parse error (type not found)');
+    }
+
+    const hasBreakingChange = summary.children.find((m) => (m as Node).type === 'breaking-change');
+    if (hasBreakingChange) {
+      types.set('breaking', (types.get('breaking') ?? 0) + 1);
     }
 
     const value = type.value.toLocaleLowerCase();
@@ -56,11 +62,13 @@ function main(): void {
     microrelease?: Settings;
   };
 
-  const settings = Object.assign(
+  const [currentMajorVersion] = currentVersion.split('.').map((p) => Number.parseInt(p, 10));
+
+  const settings: Settings = Object.assign(
     {
       message: 'chore(package): bump version to %s',
     },
-    packageSettings,
+    packageSettings ?? {},
   );
 
   console.log(`🎫 package.json loaded, config:`);
@@ -93,13 +101,14 @@ function main(): void {
     process.exit(3);
   }
 
+  const bumpMajorVersion = types.has('breaking') && currentMajorVersion > 0;
   const bumpMinorVersion = types.has('feat') || types.has('refactor');
-  const versionCommandParam = bumpMinorVersion ? 'minor' : 'patch';
+  const versionCommandParam = bumpMajorVersion ? 'major' : bumpMinorVersion ? 'minor' : 'patch';
   const versionCommand = `npm version ${versionCommandParam} -m "${settings.message}"`;
 
   readline.question(`❔ Will run "${versionCommand}"`, () => {
     console.log(`🍀 Running npm version. Good luck!`);
-    const result = execSync(versionCommand).toString().trim();
+    const result = execSync(versionCommand).toString().trim().split('\n').at(-1);
     console.log(`🚀 New version: ${result}`);
 
     readline.close();

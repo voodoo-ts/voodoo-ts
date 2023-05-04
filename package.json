@@ -54,6 +54,6 @@
     "ts-jest": "^29.1.0"
   },
   "microrelease": {
-    "allowedBranch": "development"
+    "allowedBranch": "main"
   }
 }
