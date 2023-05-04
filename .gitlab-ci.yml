@@ -7,7 +7,8 @@ stages:
 
 publish:
   stage: publish
-  only: ['main']
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+.\d+.\d+/
   image: node:18
   script:
     - echo "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}" >> .npmrc
@@ -24,8 +25,8 @@ jest:
   image: node:18
   only:
     - merge_requests
-    - development
     - main
+    - tags
   artifacts:
     paths:
       - reports
