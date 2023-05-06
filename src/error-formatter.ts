@@ -79,8 +79,11 @@ interface TranslationCallback {
   [ValidationErrorType.LITERAL_NOT_MATCHING]: (error: ILiteralNodeValidationError) => string;
   [ValidationErrorType.CUSTOM]: (error: INodeValidationError) => string;
   [LengthValidationError.LENGTH_FAILED]: (error: IConstraintNodeValidationError) => string;
-  [StringValidationError.NOT_A_NUMBER_STRING]: (error: IConstraintNodeValidationError) => string;
-  [StringValidationError.NOT_A_INTEGER_STRING]: (error: IConstraintNodeValidationError) => string;
+  [StringValidationError.INVALID_NUMBER_STRING]: (error: IConstraintNodeValidationError) => string;
+  [StringValidationError.INVALID_INTEGER_STRING]: (error: IConstraintNodeValidationError) => string;
+  [StringValidationError.INVALID_ISO_8601_STRING]: (error: IConstraintNodeValidationError) => string;
+  [StringValidationError.INVALID_EMAIL]: (error: IConstraintNodeValidationError) => string;
+  [StringValidationError.INVALID_FQDN]: (e: IConstraintNodeValidationError) => string;
   [NumberListValidationError.INVALID_NUMBER_LIST_ITEM]: (error: IConstraintNodeValidationError) => string;
   [NumberValidationError.OUT_OF_RANGE]: (error: IConstraintNodeValidationError) => string;
 }
@@ -111,10 +114,16 @@ const translations: {
     [ValidationErrorType.CUSTOM]: () => `Unknown error`,
     [LengthValidationError.LENGTH_FAILED]: (e) =>
       `Length of '${e.value}' must be at least ${e.context.min} and at most ${e.context.max ?? 'MAX_SAFE_INTEGER'}`,
-    [StringValidationError.NOT_A_NUMBER_STRING]: (e: IConstraintNodeValidationError) =>
+    [StringValidationError.INVALID_NUMBER_STRING]: (e: IConstraintNodeValidationError) =>
       `Value "${e.value}" can't be parsed as float`,
-    [StringValidationError.NOT_A_INTEGER_STRING]: (e: IConstraintNodeValidationError) =>
+    [StringValidationError.INVALID_INTEGER_STRING]: (e: IConstraintNodeValidationError) =>
       `Value "${e.value}" can't be parsed as integer`,
+    [StringValidationError.INVALID_ISO_8601_STRING]: (e: IConstraintNodeValidationError) =>
+      `Value "${e.value}" is not an ISO 8601 string`,
+    [StringValidationError.INVALID_EMAIL]: (e: IConstraintNodeValidationError) =>
+      `Value "${e.value}" is not an ISO 8601 string`,
+    [StringValidationError.INVALID_FQDN]: (e: IConstraintNodeValidationError) =>
+      `Value "${e.value}" is not a valid FQDN`,
     [NumberListValidationError.INVALID_NUMBER_LIST_ITEM]: (e: IConstraintNodeValidationError) =>
       `Item at index ${e.context.i} in number list is not a valid integer`,
     [NumberValidationError.OUT_OF_RANGE]: (e: IConstraintNodeValidationError) =>

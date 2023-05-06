@@ -15,6 +15,7 @@ import {
   validateNumberList,
   validateNumberString,
   validateRange,
+  validateUrl,
 } from '../decorators';
 import { formatErrors } from '../error-formatter';
 import { INodeValidationResult, IPropertyValidatorCallbackArguments } from '../nodes';
@@ -298,5 +299,59 @@ describe('decorators', () => {
         });
       });
     });
+
+    describe('validateUrl()', () => {
+      describe('validateUrl(allowedProtocols=[https])', () => {
+        it.each([['https://foo.bar/']])('should validate %s', (x) => {
+          const result = validateUrl(mockCallbackArgs(x), ['https']);
+          expect(result).toEqual(sentinel);
+          expect(mockSuccess).toHaveBeenCalled();
+        });
+        it.each([['ftp://foo.bar/'], ['9001']])('should not validate %s', (x) => {
+          const result = validateUrl(mockCallbackArgs(x), ['https']);
+          expect(result).toEqual(sentinel);
+          expect(mockFail).toHaveBeenCalled();
+        });
+      });
+      describe('validateUrl()', () => {
+        it.each([['https://foo.bar/'], ['ftp://foo.bar/']])('should validate %s', (x) => {
+          const result = validateUrl(mockCallbackArgs(x));
+          expect(result).toEqual(sentinel);
+          expect(mockSuccess).toHaveBeenCalled();
+        });
+        it.each([['9001']])('should not validate %s', (x) => {
+          const result = validateUrl(mockCallbackArgs(x));
+          expect(result).toEqual(sentinel);
+          expect(mockFail).toHaveBeenCalled();
+        });
+      });
+    });
+
+    // fdescribe('validateUrl()', () => {
+    //   describe('validateUrl(allowedProtocols=[https])', () => {
+    //     it.each([['https://foo.bar/']])('should validate %s', (x) => {
+    //       const result = validateUrl(mockCallbackArgs(x), ['https']);
+    //       expect(result).toEqual(sentinel);
+    //       expect(mockSuccess).toHaveBeenCalled();
+    //     });
+    //     it.each([['ftp://foo.bar/'], ['9001']])('should not validate %s', (x) => {
+    //       const result = validateUrl(mockCallbackArgs(x), ['https']);
+    //       expect(result).toEqual(sentinel);
+    //       expect(mockFail).toHaveBeenCalled();
+    //     });
+    //   });
+    //   describe('validateUrl()', () => {
+    //     it.each([['https://foo.bar/'], ['ftp://foo.bar/']])('should validate %s', (x) => {
+    //       const result = validateUrl(mockCallbackArgs(x));
+    //       expect(result).toEqual(sentinel);
+    //       expect(mockSuccess).toHaveBeenCalled();
+    //     });
+    //     it.each([['9001']])('should not validate %s', (x) => {
+    //       const result = validateUrl(mockCallbackArgs(x));
+    //       expect(result).toEqual(sentinel);
+    //       expect(mockFail).toHaveBeenCalled();
+    //     });
+    //   });
+    // });
   });
 });

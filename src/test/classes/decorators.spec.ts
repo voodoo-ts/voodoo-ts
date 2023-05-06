@@ -1,4 +1,18 @@
-import { IsInteger, IsNumber, IsNumberList, Length, Range } from '../../decorators';
+import {
+  IsEmail,
+  IsFQDN,
+  IsISO8601,
+  IsInteger,
+  IsNumber,
+  IsNumberList,
+  Length,
+  LengthValidationError,
+  NumberListValidationError,
+  NumberValidationError,
+  Range,
+  StringValidationError,
+} from '../../decorators';
+import { ValidationErrorType } from '../../nodes';
 import { TransformerInstance } from '../../transformer';
 import { expectValidationError, project } from '../utils';
 
@@ -26,7 +40,11 @@ describe('Decorators', () => {
       const result = await t.transform(Test, { test: 'test' });
       expectValidationError(result, ({ errors }) => {
         expect(errors).toEqual({
-          ['$.test']: { message: `Value "test" can't be parsed as integer`, context: {} },
+          ['$.test']: {
+            message: `Value "test" can't be parsed as integer`,
+            code: StringValidationError.INVALID_INTEGER_STRING,
+            context: {},
+          },
         });
       });
     });
@@ -55,7 +73,11 @@ describe('Decorators', () => {
       const result = await t.transform(Test, { test: 'test' });
       expectValidationError(result, ({ errors }) => {
         expect(errors).toEqual({
-          ['$.test']: { message: `Value "test" can't be parsed as float`, context: {} },
+          ['$.test']: {
+            message: `Value "test" can't be parsed as float`,
+            code: StringValidationError.INVALID_NUMBER_STRING,
+            context: {},
+          },
         });
       });
     });
@@ -91,7 +113,11 @@ describe('Decorators', () => {
         const result = await t.transform(TestWithMinMax, { test: 9001 });
         expectValidationError(result, ({ errors }) => {
           expect(errors).toEqual({
-            ['$.test']: { message: `Value 9001 is out of range (2, 5)`, context: { min: 2, max: 5 } },
+            ['$.test']: {
+              message: `Value 9001 is out of range (2, 5)`,
+              code: NumberValidationError.OUT_OF_RANGE,
+              context: { min: 2, max: 5 },
+            },
           });
         });
       });
@@ -105,6 +131,7 @@ describe('Decorators', () => {
           expect(errors).toEqual({
             ['$.test']: {
               message: `Value 1 is out of range (10, MAX_SAFE_INTEGER)`,
+              code: NumberValidationError.OUT_OF_RANGE,
               context: { min: 10, max: undefined },
             },
           });
@@ -137,7 +164,11 @@ describe('@IsNumberList()', () => {
     const result = await t.transform(Test, { test: 'test' });
     expectValidationError(result, ({ errors }) => {
       expect(errors).toEqual({
-        ['$.test']: { message: `Item at index 0 in number list is not a valid integer`, context: { i: 0 } },
+        ['$.test']: {
+          message: `Item at index 0 in number list is not a valid integer`,
+          code: NumberListValidationError.INVALID_NUMBER_LIST_ITEM,
+          context: { i: 0 },
+        },
       });
     });
   });
@@ -175,6 +206,7 @@ describe('@Length()', () => {
         expect(errors).toEqual({
           ['$.test']: {
             message: `Length of '123456' must be at least 2 and at most 5`,
+            code: LengthValidationError.LENGTH_FAILED,
             context: { min: 2, max: 5, length: 6 },
           },
         });
@@ -189,9 +221,109 @@ describe('@Length()', () => {
         expect(errors).toEqual({
           ['$.test']: {
             message: `Length of '1' must be at least 2 and at most MAX_SAFE_INTEGER`,
+            code: LengthValidationError.LENGTH_FAILED,
             context: { min: 2, length: 1 },
           },
         });
+      });
+    });
+  });
+});
+
+describe('@IsEmail()', () => {
+  const t = new TransformerInstance({ project });
+
+  @t.transformerDecorator()
+  class Test {
+    @IsEmail()
+    test!: string;
+  }
+
+  it('should validate "mail@example.com"', async () => {
+    const result = await t.transform(Test, { test: 'mail@example.com' });
+    expect(result.success).toBeTrue();
+  });
+
+  it('should not validate "mail@"', async () => {
+    const result = await t.transform(Test, { test: 'mail@' });
+    expect(result.success).toBeFalse();
+  });
+
+  it('should format errors correctly', async () => {
+    const result = await t.transform(Test, { test: 'mail@' });
+    expectValidationError(result, ({ errors }) => {
+      expect(errors).toEqual({
+        ['$.test']: {
+          message: `Value "mail@" is not an ISO 8601 string`,
+          code: StringValidationError.INVALID_EMAIL,
+          context: {},
+        },
+      });
+    });
+  });
+});
+
+describe('@IsISO8601()', () => {
+  const t = new TransformerInstance({ project });
+
+  @t.transformerDecorator()
+  class Test {
+    @IsISO8601()
+    test!: string;
+  }
+
+  it('should validate "2023-05-05T22:46:37.142Z"', async () => {
+    const result = await t.transform(Test, { test: '2023-05-05T22:46:37.142Z' });
+    expect(result.success).toBeTrue();
+  });
+
+  it('should not validate "mail@"', async () => {
+    const result = await t.transform(Test, { test: 'mail@' });
+    expect(result.success).toBeFalse();
+  });
+
+  it('should format errors correctly', async () => {
+    const result = await t.transform(Test, { test: 'mail@' });
+    expectValidationError(result, ({ errors }) => {
+      expect(errors).toEqual({
+        ['$.test']: {
+          message: `Value "mail@" is not an ISO 8601 string`,
+          code: StringValidationError.INVALID_ISO_8601_STRING,
+          context: {},
+        },
+      });
+    });
+  });
+});
+
+describe('@IsFQDN()', () => {
+  const t = new TransformerInstance({ project });
+
+  @t.transformerDecorator()
+  class Test {
+    @IsFQDN()
+    test!: string;
+  }
+
+  it('should validate "www.example.com"', async () => {
+    const result = await t.transform(Test, { test: 'www.example.com' });
+    expect(result.success).toBeTrue();
+  });
+
+  it('should not validate "mail@"', async () => {
+    const result = await t.transform(Test, { test: 'mail@' });
+    expect(result.success).toBeFalse();
+  });
+
+  it('should format errors correctly', async () => {
+    const result = await t.transform(Test, { test: 'mail@' });
+    expectValidationError(result, ({ errors }) => {
+      expect(errors).toEqual({
+        ['$.test']: {
+          message: `Value "mail@" is not a valid FQDN`,
+          code: StringValidationError.INVALID_FQDN,
+          context: {},
+        },
       });
     });
   });

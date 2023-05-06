@@ -1,4 +1,8 @@
 import 'reflect-metadata';
+import isEmail from 'validator/lib/isEmail';
+import isFQDN from 'validator/lib/isFQDN';
+import isISO8601 from 'validator/lib/isISO8601';
+import isURL from 'validator/lib/isURL';
 
 import {
   IAnnotationMap,
@@ -43,8 +47,13 @@ export enum LengthValidationError {
 }
 
 export enum StringValidationError {
-  NOT_A_NUMBER_STRING = 'NOT_A_NUMBER_STRING',
-  NOT_A_INTEGER_STRING = 'NOT_A_INTEGER_STRING',
+  INVALID_NUMBER_STRING = 'INVALID_NUMBER_STRING',
+  INVALID_INTEGER_STRING = 'INVALID_INTEGER_STRING',
+  INVALID_ISO_8601_STRING = 'INVALID_ISO_8601_STRING',
+  INVALID_FQDN = 'INVALID_FQDN',
+  INVALID_IP = 'INVALID_IP',
+  INVALID_EMAIL = 'INVALID_EMAIL',
+  INVALID_URL = 'INVALID_URL',
 }
 
 export enum NumberValidationError {
@@ -237,14 +246,14 @@ export function validateNumberString({
 }: IPropertyValidatorCallbackArguments<string>): INodeValidationResult {
   if (value.toLowerCase().match(/[^.+0-9e-]/)) {
     return fail(value, {
-      reason: StringValidationError.NOT_A_NUMBER_STRING,
+      reason: StringValidationError.INVALID_NUMBER_STRING,
     });
   }
 
   const n = parseFloat(value);
   if (Number.isNaN(n)) {
     return fail(value, {
-      reason: StringValidationError.NOT_A_NUMBER_STRING,
+      reason: StringValidationError.INVALID_NUMBER_STRING,
     });
   }
   return success();
@@ -273,7 +282,7 @@ export function validateIntegerString(
   const match = value.match(regex);
   if (!match) {
     return fail(value, {
-      reason: StringValidationError.NOT_A_INTEGER_STRING,
+      reason: StringValidationError.INVALID_INTEGER_STRING,
     });
   }
   return success();
@@ -372,6 +381,90 @@ export const OneOf = (allowedValues: unknown[], enumName: string = 'OneOf') => {
     { name: '@OneOf', context: { allowedValues: Array.from(allowed) } },
   );
 };
+
+export function validateHostname({
+  value,
+  success,
+  fail,
+}: IPropertyValidatorCallbackArguments<string>): INodeValidationResult {
+  if (isFQDN(value)) {
+    return success();
+  } else {
+    return fail(value, {
+      reason: StringValidationError.INVALID_FQDN,
+    });
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const IsFQDN = () =>
+  ValidateString((args) => validateHostname(args), {
+    name: '@IsFQDN',
+    context: {},
+  });
+
+export function validateUrl(
+  { value, success, fail }: IPropertyValidatorCallbackArguments<string>,
+  allowedProtocols: string[] = [],
+): INodeValidationResult {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  if (isURL(value, { protocols: allowedProtocols, require_valid_protocol: Boolean(allowedProtocols.length) })) {
+    return success();
+  } else {
+    return fail(value, {
+      reason: StringValidationError.INVALID_URL,
+    });
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const IsUrl = (allowedProtocols: string[] = []) =>
+  ValidateString((args) => validateUrl(args, allowedProtocols), {
+    name: '@IsUrl',
+    context: { allowedProtocols },
+  });
+
+export function validateISO8601String({
+  value,
+  success,
+  fail,
+}: IPropertyValidatorCallbackArguments<string>): INodeValidationResult {
+  if (isISO8601(value, { strict: true })) {
+    return success();
+  } else {
+    return fail(value, {
+      reason: StringValidationError.INVALID_ISO_8601_STRING,
+    });
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const IsISO8601 = () =>
+  ValidateString((args) => validateISO8601String(args), {
+    name: '@IsIsoDateTime',
+    context: {},
+  });
+
+export function validateEmail({
+  value,
+  success,
+  fail,
+}: IPropertyValidatorCallbackArguments<string>): INodeValidationResult {
+  if (isEmail(value)) {
+    return success();
+  } else {
+    return fail(value, {
+      reason: StringValidationError.INVALID_EMAIL,
+    });
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const IsEmail = () =>
+  ValidateString((args) => validateEmail(args), {
+    name: '@IsIsoDateTime',
+    context: {},
+  });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const ValidateIf = createAnnotationDecorator<
