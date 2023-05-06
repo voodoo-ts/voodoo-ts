@@ -57,6 +57,16 @@ export interface IValidatorConstructorOptions {
   decorator?: SourceCodeLocationDecorator<IValidatorOptions>;
 }
 
+interface IUnwrapped<T> {
+  transformer: T;
+  validate: BaseTransformerInstance['validate'];
+  validateOrThrow: BaseTransformerInstance['validateOrThrow'];
+  transform: BaseTransformerInstance['transform'];
+  transformOrThrow: BaseTransformerInstance['transformOrThrow'];
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  Dto: BaseTransformerInstance['transformerDecorator'];
+}
+
 export class ValidationError extends Error {
   errors: FormattedErrors;
   rawErrors: INodeValidationError;
@@ -144,15 +154,7 @@ export abstract class BaseTransformerInstance {
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  unwrap(): {
-    transformer: BaseTransformerInstance;
-    validate: BaseTransformerInstance['validate'];
-    validateOrThrow: BaseTransformerInstance['validateOrThrow'];
-    transform: BaseTransformerInstance['transform'];
-    transformOrThrow: BaseTransformerInstance['transformOrThrow'];
-    // eslint-disable-next-line @typescript-eslint/naming-convention
-    Dto: BaseTransformerInstance['transformerDecorator'];
-  } {
+  unwrap(): IUnwrapped<this> {
     return {
       transformer: this,
       validate: this.validate.bind(this),
