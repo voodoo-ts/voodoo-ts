@@ -5,12 +5,13 @@ export interface IPropertyTransformerCallbackArguments<ValueType = unknown> {
   values: Record<string, unknown>;
   success: TypeNodeBase['success'];
   fail: TypeNodeBase['fail'];
+  propertyValidationResult: INodeValidationSuccess;
 }
 
 export interface IPropertyValidatorCallbackArguments<ValueType = unknown> {
   value: ValueType;
   values: Record<string, unknown>;
-  success: () => INodeValidationSuccess;
+  success: (context?: Record<string, unknown>) => INodeValidationSuccess;
   fail: (value: unknown, extra?: Partial<INodeValidationError>) => IConstraintNodeValidationError;
 }
 
@@ -288,23 +289,32 @@ export abstract class TypeNodeBase {
     return this.createNodeValidationError(value, this.kind as TypeNode['kind'], extra);
   }
 
-  validateDecorators(value: unknown, context: IValidationContext): INodeValidationError[] {
+  validateDecorators(
+    value: unknown,
+    context: IValidationContext,
+  ): { context: Record<string, unknown>; errors: INodeValidationError[] } {
     const errors: INodeValidationError[] = [];
+    const combinedDecoratorContext: Record<string, unknown> = {};
     for (const propertyValidator of this.annotations.validationFunctions ?? []) {
       const fail = (v: unknown, extra?: Partial<INodeValidationError>): IConstraintNodeValidationError =>
         this.createNodeValidationError(v, 'constraint', { ...(extra ?? {}), annotations: {} });
       const result = propertyValidator.callback({
         value,
         values: context.values,
-        success: this.success.bind(this),
+        success: (decoratorContext?) => this.success([], decoratorContext),
         fail,
       });
 
       if (!result.success) {
         errors.push(result);
+      } else {
+        const propertyName = propertyValidator.meta?.name;
+        if (propertyName) {
+          combinedDecoratorContext[propertyName] = result.context;
+        }
       }
     }
-    return errors;
+    return { context: combinedDecoratorContext, errors };
   }
 }
 
@@ -341,7 +351,7 @@ export class RootNode extends TypeNodeBase {
       }
     }
 
-    const errors = this.validateDecorators(value, context);
+    const { errors } = this.validateDecorators(value, context);
 
     if (errors.length) {
       return this.fail(value, {
@@ -371,10 +381,10 @@ export class StringNode extends LeafNode {
       return this.fail(value);
     }
 
-    const errors = this.validateDecorators(value, context);
+    const { errors, context: decoratorContext } = this.validateDecorators(value, context);
 
     if (!errors.length) {
-      return this.success();
+      return this.success([], decoratorContext);
     } else {
       return this.fail(value, {
         previousErrors: errors,
@@ -392,7 +402,7 @@ export class NumberNode extends LeafNode {
       return this.fail(value);
     }
 
-    const errors = this.validateDecorators(value, context);
+    const { errors } = this.validateDecorators(value, context);
 
     if (!errors.length) {
       return this.success();
@@ -448,7 +458,7 @@ export class AnyNode extends LeafNode {
   reason = ValidationErrorType.TYPE_CONSTRAINT_FAILED;
 
   validate(value: unknown, context: IValidationContext): INodeValidationResult {
-    const errors = this.validateDecorators(value, context);
+    const { errors } = this.validateDecorators(value, context);
 
     if (!errors.length) {
       return this.success();
@@ -618,7 +628,7 @@ export class ArrayNode extends TypeNodeBase {
       }
 
       if (!previousErrors.length) {
-        const decoratorErrors = this.validateDecorators(value, context);
+        const { errors: decoratorErrors } = this.validateDecorators(value, context);
         if (decoratorErrors.length) {
           previousErrors.push(...decoratorErrors);
         }
@@ -705,7 +715,7 @@ export class ClassNode extends TypeNodeBase {
           previousMatches.push(result);
         }
 
-        const decoratorErrors = this.validateDecorators(value, context);
+        const { errors: decoratorErrors } = this.validateDecorators(value, context);
         if (decoratorErrors.length) {
           errors.push(...decoratorErrors);
         }
