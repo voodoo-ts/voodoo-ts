@@ -88,6 +88,7 @@ describe('records', () => {
         expect(errors).toEqual({
           ['$.recordProperty.one']: {
             message: "Value 'one' (type: string) is not a valid number",
+            code: ValidationErrorType.NOT_A_NUMBER,
             context: {},
           },
         });

@@ -21,7 +21,7 @@ export interface IErrorMessage {
   path: string[];
   nodeValidationError: INodeValidationError;
 }
-export type FormattedErrors = Record<string, { message: string; context: Record<string, unknown> }>;
+export type FormattedErrors = Record<string, { message: string; code: string; context: Record<string, unknown> }>;
 
 export function getTypeName(obj: unknown): string {
   if (typeof obj === 'object') {
@@ -241,6 +241,7 @@ export function groupErrors(errors: IErrorMessage[]): FormattedErrors {
     }
     groupedErrors[jsonPath] = {
       message: translator(error.nodeValidationError),
+      code: error.nodeValidationError.reason,
       context: 'context' in error.nodeValidationError ? error.nodeValidationError.context : {},
     };
   }

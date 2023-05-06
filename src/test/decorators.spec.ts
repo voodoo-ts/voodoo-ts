@@ -136,7 +136,7 @@ describe('decorators', () => {
         it.each([['f'], ['12f'], ['f12'], ['+-100'], ['-+100'], ['']])('should not validate "%s"', (str) => {
           const result = validateIntegerString(mockCallbackArgs(str), 10);
           expect(result).toEqual(sentinel);
-          expect(mockFail).toHaveBeenCalledWith(str, { reason: StringValidationError.NOT_A_INTEGER_STRING });
+          expect(mockFail).toHaveBeenCalledWith(str, { reason: StringValidationError.INVALID_INTEGER_STRING });
         });
       });
 
@@ -150,7 +150,7 @@ describe('decorators', () => {
         it.each([['0xx'], ['xx'], ['-100'], ['+-100'], ['-+100'], ['']])('should not validate "%s"', (str) => {
           const result = validateIntegerString(mockCallbackArgs(str), 16);
           expect(result).toEqual(sentinel);
-          expect(mockFail).toHaveBeenCalledWith(str, { reason: StringValidationError.NOT_A_INTEGER_STRING });
+          expect(mockFail).toHaveBeenCalledWith(str, { reason: StringValidationError.INVALID_INTEGER_STRING });
         });
       });
     });
@@ -164,7 +164,7 @@ describe('decorators', () => {
       it.each([[''], ['+-1'], ['a'], ['1a2b3c']])('should not validate %s', (str) => {
         const result = validateNumberString(mockCallbackArgs(str));
         expect(result).toEqual(sentinel);
-        expect(mockFail).toHaveBeenCalledWith(str, { reason: StringValidationError.NOT_A_NUMBER_STRING });
+        expect(mockFail).toHaveBeenCalledWith(str, { reason: StringValidationError.INVALID_NUMBER_STRING });
       });
     });
 
@@ -190,7 +190,7 @@ describe('decorators', () => {
                 previousErrors: [
                   NodeValidationErrorFixture.constraintError({
                     value: 'a',
-                    reason: StringValidationError.NOT_A_INTEGER_STRING,
+                    reason: StringValidationError.INVALID_INTEGER_STRING,
                   }),
                 ],
               }),
@@ -229,6 +229,7 @@ describe('decorators', () => {
         expect(errors).toEqual({
           ['$.test']: {
             message: 'Item at index 1 in number list is not a valid integer',
+            code: NumberListValidationError.INVALID_NUMBER_LIST_ITEM,
             context: { i: 1 },
           },
         });

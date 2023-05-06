@@ -73,6 +73,7 @@ describe('arrays', () => {
         expect(errors).toEqual({
           ['$.arrayProperty.[1]']: {
             message: "Value 'Two' (type: string) is not a valid number",
+            code: ValidationErrorType.NOT_A_NUMBER,
             context: {},
           },
         });
@@ -107,6 +108,7 @@ describe('arrays', () => {
         expect(errors).toEqual({
           ['$.arrayProperty']: {
             message: "Value '123' (type: number) is not a valid array",
+            code: ValidationErrorType.NOT_AN_ARRAY,
             context: {},
           },
         });

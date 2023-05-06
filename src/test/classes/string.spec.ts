@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { formatErrors } from '../../error-formatter';
-import { StringNode } from '../../nodes';
+import { StringNode, ValidationErrorType } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import { NodeValidationErrorMatcher, RootNodeFixture } from '../fixtures';
 import { expectValidationError, iterParsers, project } from '../utils';
@@ -68,6 +68,7 @@ describe('strings', () => {
         expect(errors).toEqual({
           ['$.stringProperty']: {
             message: expect.any(String),
+            code: ValidationErrorType.NOT_A_STRING,
             context: {},
           },
         });

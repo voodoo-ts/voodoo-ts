@@ -202,6 +202,7 @@ describe('union', () => {
           expect(errors).toEqual({
             ['$.unionProperty']: {
               message: "'Value false' (type: boolean) did not match any of these types string | number | TestEmbed",
+              code: ValidationErrorType.NO_UNION_MATCH,
               context: {},
             },
           });
