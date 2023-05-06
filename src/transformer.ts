@@ -25,8 +25,7 @@ export interface ITransformerOptions extends IValidatorOptions {
 
 export interface ITransformerConstructorOptions {
   project: Project;
-  validator?: Omit<IValidatorConstructorOptions, 'project'>;
-  transformer?: AbstractValueTransformerFactory[];
+  additionalValueTransformerFactories?: AbstractValueTransformerFactory[];
   eager?: boolean;
 }
 
@@ -196,7 +195,7 @@ export class TransformerInstance extends BaseTransformerInstance {
       this.transformerClassDecoratorFactory.getClassDeclarationMapping(),
       this.classDiscovery,
       (cls) => this.getFactory(cls),
-      options.transformer ?? [],
+      options.additionalValueTransformerFactories ?? [],
     );
 
     this.defaultOptions = {};

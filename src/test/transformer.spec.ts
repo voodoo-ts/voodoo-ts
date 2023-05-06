@@ -3,6 +3,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { DateTime } from 'luxon';
+
 import { NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
 import { expectValidationError, project } from './utils';
 import { ParseError } from '../errors';
@@ -16,11 +18,18 @@ import {
   Transformed,
   TransformerFunction,
   From,
+  ISOStringToLuxonTransformer,
+  StringToNumberValueTransformer,
+  StringToBooleanValueTransformer,
 } from '../transformer-parser';
+import { StringValidationError } from '../decorators';
 
 describe('Transformer', () => {
   describe('StringToNumber transformer', () => {
-    const v = new TransformerInstance({ project });
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringToNumberValueTransformer()],
+    });
 
     @v.transformerDecorator()
     class Test {
@@ -58,7 +67,10 @@ describe('Transformer', () => {
   });
 
   describe('StringToBoolean transformer', () => {
-    const v = new TransformerInstance({ project });
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringToBooleanValueTransformer()],
+    });
 
     @v.transformerDecorator()
     class Test {
@@ -121,8 +133,84 @@ describe('Transformer', () => {
     });
   });
 
+  describe('ISOStringToLuxonTransformer transformer', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new ISOStringToLuxonTransformer()],
+    });
+
+    @v.transformerDecorator()
+    class Test {
+      test!: Transformed<string, DateTime>;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            isTransformedType: true,
+            transformerFunction: [expect.any(Function)],
+          },
+          children: [
+            StringNodeFixture.create({
+              annotations: {
+                validationFunctions: [
+                  {
+                    callback: expect.any(Function),
+                    meta: {
+                      context: {},
+                      name: '@IsIsoDateTime',
+                    },
+                  },
+                ],
+              },
+            }),
+          ],
+        }),
+      );
+    });
+
+    it('should transform correctly', async () => {
+      const result = await v.transformOrThrow(Test, { test: '2023-05-04T12:34:56.789Z' } as any);
+      expect(result).toEqual({ test: expect.any(DateTime) });
+    });
+
+    it('should construct the correct error', async () => {
+      const result = await v.transform(Test, { test: 'invalid' } as any);
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'test', {
+            annotations: {
+              isTransformedType: true,
+              transformerFunction: [expect.any(Function)],
+            },
+            previousErrors: [
+              NodeValidationErrorMatcher.stringError({
+                annotations: {
+                  validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
+                },
+                previousErrors: [
+                  NodeValidationErrorMatcher.constraintError({
+                    reason: StringValidationError.INVALID_ISO_8601_STRING,
+                  }),
+                ],
+              }),
+            ],
+          }),
+        );
+      });
+    });
+  });
   describe('Self referencing / embed', () => {
-    const v = new TransformerInstance({ project });
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [
+        new StringToNumberValueTransformer(),
+        new StringToBooleanValueTransformer(),
+      ],
+    });
 
     interface IEmbed {
       interfaceProperty: string;
@@ -224,7 +312,10 @@ describe('Transformer', () => {
   });
 
   describe('Intersection types', () => {
-    const v = new TransformerInstance({ project });
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringToNumberValueTransformer()],
+    });
 
     @v.transformerDecorator()
     class TestEmbed {
@@ -635,6 +726,7 @@ describe('Transformer', () => {
         values: { test: '0xff' },
         success: expect.any(Function),
         fail: expect.any(Function),
+        propertyValidationResult: expect.any(Object),
       });
     });
   });
@@ -664,7 +756,10 @@ describe('Transformer', () => {
   });
 
   describe('End to end', () => {
-    const t = new TransformerInstance({ project });
+    const t = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringToNumberValueTransformer()],
+    });
 
     @t.transformerDecorator()
     class TestEmbed {

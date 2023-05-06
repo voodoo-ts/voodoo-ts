@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import {
   ClassDeclaration,
   DefinitionInfo,
@@ -16,6 +17,7 @@ import {
   PropertyDecorator,
   OneOf,
   IDecoratorOptions,
+  IsISO8601,
 } from './decorators';
 import { ParseError } from './errors';
 import {
@@ -121,6 +123,7 @@ class TransformerRegistry {
 export const registry = new TransformerRegistry();
 
 export abstract class AbstractValueTransformerFactory {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   abstract getTransformer(ctx: IGetTransformerContext): TransformerFunction<any>; // TransformationNodeBase<unknown, unknown, unknown>;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getDecorators(ctx: IGetTransformerContext): PropertyDecorator[] {
@@ -167,6 +170,27 @@ export class StringToBooleanValueTransformer extends AbstractValueTransformerFac
   getTransformer(): TransformerFunction<string> {
     return ({ value }): boolean => {
       return this.trueList.has(value);
+    };
+  }
+}
+
+@registry.decorate<Transformed<string, DateTime, never>>()
+export class ISOStringToLuxonTransformer extends AbstractValueTransformerFactory {
+  luxon: typeof import('luxon');
+
+  constructor() {
+    super();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+    this.luxon = require('luxon') as typeof import('luxon');
+  }
+
+  getDecorators(): PropertyDecorator[] {
+    return [IsISO8601()];
+  }
+  getTransformer(): TransformerFunction<string> {
+    return ({ value }) => {
+      const dt = this.luxon.DateTime.fromISO(value);
+      return dt;
     };
   }
 }
@@ -314,7 +338,6 @@ async function recurse(
       const objectValues = value as Record<string | symbol | number, unknown>;
       for (const [propertyName, propertyValue] of Object.entries(objectValues)) {
         const propertyValidationResult = propertyNodeValidationResult.get(propertyName);
-
         if (!propertyValidationResult) {
           /* istanbul ignore else */
           if (options.allowUnknownFields) {
@@ -357,6 +380,7 @@ async function recurse(
               values: value as IPropertyTransformerCallbackArguments['values'],
               success: (callbackValue) => ({ ...node.success(), value: callbackValue }),
               fail: node.fail.bind(node),
+              propertyValidationResult,
             }),
           );
 
@@ -478,11 +502,7 @@ export class TransformerParser extends Parser {
     getFactory: (cls: Constructor<unknown>) => Factory<unknown>,
     extraValueTransformers: AbstractValueTransformerFactory[] = [],
   ): TransformerParser {
-    return new this(classDeclarationToClassReference, classDiscovery, getFactory, [
-      ...extraValueTransformers,
-      new StringToNumberValueTransformer(),
-      new StringToBooleanValueTransformer(),
-    ]);
+    return new this(classDeclarationToClassReference, classDiscovery, getFactory, [...extraValueTransformers]);
   }
 
   async transform(
