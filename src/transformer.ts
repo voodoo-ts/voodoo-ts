@@ -93,7 +93,9 @@ export abstract class BaseTransformerInstance {
     values: MaybePartial<T>,
     options?: IValidationOptions,
   ): IValidationResult<T>;
+
   abstract getClassNode<T>(cls: Constructor<T>): ClassNode;
+  abstract getClassByReference(ref: string): Constructor<unknown> | undefined;
 
   transformerDecorator(options: ITransformerOptions = {}): ReturnType<(typeof Reflect)['metadata']> {
     return this.transformerClassDecoratorFactory.decorator(new Error(), options);
@@ -167,6 +169,9 @@ export abstract class BaseTransformerInstance {
 }
 
 export class TransformerInstance extends BaseTransformerInstance {
+  getClassByReference(ref: string): Constructor<unknown> | undefined {
+    return this.parser.classDeclarationToClassReference.getByKey(ref);
+  }
   project: Project;
 
   parser: TransformerParser;
