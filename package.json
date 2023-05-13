@@ -23,7 +23,8 @@
     "test": "npm run test:ts:all",
     "build": "tsc",
     "build:release": "tsc --project tsconfig.build.json",
-    "linter": "npx eslint src/",
+    "lint": "npx eslint src/",
+    "lint:notests": "eslint --ignore-pattern 'src/test/**' src/",
     "postversion": "git push --tags",
     "prepack": "npm run build:release"
   },
