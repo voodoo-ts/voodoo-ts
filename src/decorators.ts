@@ -489,7 +489,7 @@ export const Regexp = (pattern: string | RegExp) =>
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const IsEmail = () =>
   ValidateString((args) => validateEmail(args), {
-    name: '@IsIsoDateTime',
+    name: '@IsEmail',
     context: {},
   });
 
