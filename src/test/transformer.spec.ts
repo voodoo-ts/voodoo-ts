@@ -7,6 +7,7 @@ import { DateTime } from 'luxon';
 
 import { NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
 import { expectValidationError, project } from './utils';
+import { StringValidationError } from '../decorators';
 import { ParseError } from '../errors';
 import { ValidationErrorType } from '../nodes';
 import { TransformerInstance } from '../transformer';
@@ -22,7 +23,6 @@ import {
   StringToNumberValueTransformer,
   StringToBooleanValueTransformer,
 } from '../transformer-parser';
-import { StringValidationError } from '../decorators';
 
 describe('Transformer', () => {
   describe('StringToNumber transformer', () => {
@@ -684,7 +684,10 @@ describe('Transformer', () => {
   });
 
   describe('Aliased ValueTransformers', () => {
-    const v = new TransformerInstance({ project });
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringToNumberValueTransformer()],
+    });
 
     const transformer = jest.fn(() => 123);
 
