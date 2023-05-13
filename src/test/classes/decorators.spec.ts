@@ -10,9 +10,9 @@ import {
   NumberListValidationError,
   NumberValidationError,
   Range,
+  Regexp,
   StringValidationError,
 } from '../../decorators';
-import { ValidationErrorType } from '../../nodes';
 import { TransformerInstance } from '../../transformer';
 import { expectValidationError, project } from '../utils';
 
@@ -323,6 +323,41 @@ describe('@IsFQDN()', () => {
           message: `Value "mail@" is not a valid FQDN`,
           code: StringValidationError.INVALID_FQDN,
           context: {},
+        },
+      });
+    });
+  });
+});
+
+describe('@Regexp()', () => {
+  const t = new TransformerInstance({ project });
+
+  @t.transformerDecorator()
+  class Test {
+    @Regexp(/^[a-z][0-9]$/)
+    test!: string;
+  }
+
+  it('should validate "a1"', async () => {
+    const result = await t.transform(Test, { test: 'a1' });
+    expect(result.success).toBeTrue();
+  });
+
+  it('should not validate "aa"', async () => {
+    const result = await t.transform(Test, { test: 'aa' });
+    expect(result.success).toBeFalse();
+  });
+
+  it('should format errors correctly', async () => {
+    const result = await t.transform(Test, { test: 'aa' });
+    expectValidationError(result, ({ errors }) => {
+      expect(errors).toEqual({
+        ['$.test']: {
+          code: StringValidationError.NO_REGEX_MATCH,
+          context: {
+            pattern: /^[a-z][0-9]$/,
+          },
+          message: 'Value "aa" does not match regex /^[a-z][0-9]$/',
         },
       });
     });

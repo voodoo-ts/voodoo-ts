@@ -65,7 +65,7 @@ export function getNodeTypeName(e: INodeValidationError): string {
   }
 }
 
-interface TranslationCallback {
+export interface TranslationCallback {
   [ValidationErrorType.VALUE_REQUIRED]: (error: INodeValidationError) => string;
   [ValidationErrorType.UNKNOWN_FIELD]: (error: INodeValidationError) => string;
   [ValidationErrorType.NOT_A_STRING]: (error: INodeValidationError) => string;
@@ -84,11 +84,12 @@ interface TranslationCallback {
   [StringValidationError.INVALID_ISO_8601_STRING]: (error: IConstraintNodeValidationError) => string;
   [StringValidationError.INVALID_EMAIL]: (error: IConstraintNodeValidationError) => string;
   [StringValidationError.INVALID_FQDN]: (e: IConstraintNodeValidationError) => string;
+  [StringValidationError.NO_REGEX_MATCH]: (e: IConstraintNodeValidationError) => string;
   [NumberListValidationError.INVALID_NUMBER_LIST_ITEM]: (error: IConstraintNodeValidationError) => string;
   [NumberValidationError.OUT_OF_RANGE]: (error: IConstraintNodeValidationError) => string;
 }
 
-const translations: {
+export const translations: {
   EN: Partial<TranslationCallback>;
 } = {
   EN: {
@@ -124,6 +125,8 @@ const translations: {
       `Value "${e.value}" is not an ISO 8601 string`,
     [StringValidationError.INVALID_FQDN]: (e: IConstraintNodeValidationError) =>
       `Value "${e.value}" is not a valid FQDN`,
+    [StringValidationError.NO_REGEX_MATCH]: (e: IConstraintNodeValidationError) =>
+      `Value "${e.value}" does not match regex ${e.context.pattern}`,
     [NumberListValidationError.INVALID_NUMBER_LIST_ITEM]: (e: IConstraintNodeValidationError) =>
       `Item at index ${e.context.i} in number list is not a valid integer`,
     [NumberValidationError.OUT_OF_RANGE]: (e: IConstraintNodeValidationError) =>

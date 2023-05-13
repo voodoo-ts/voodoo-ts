@@ -54,6 +54,7 @@ export enum StringValidationError {
   INVALID_IP = 'INVALID_IP',
   INVALID_EMAIL = 'INVALID_EMAIL',
   INVALID_URL = 'INVALID_URL',
+  NO_REGEX_MATCH = 'NO_REGEX_MATCH',
 }
 
 export enum NumberValidationError {
@@ -458,6 +459,32 @@ export function validateEmail({
     });
   }
 }
+
+export function validateRegex(
+  { value, success, fail }: IPropertyValidatorCallbackArguments<string>,
+  pattern: string | RegExp,
+): INodeValidationResult {
+  const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
+  if (value.match(regex)) {
+    return success();
+  } else {
+    return fail(value, {
+      reason: StringValidationError.NO_REGEX_MATCH,
+      context: {
+        pattern,
+      },
+    });
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const Regexp = (pattern: string | RegExp) =>
+  ValidateString((args) => validateRegex(args, pattern), {
+    name: '@Regexp',
+    context: {
+      pattern: pattern.toString(),
+    },
+  });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const IsEmail = () =>
