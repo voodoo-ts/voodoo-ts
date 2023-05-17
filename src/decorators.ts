@@ -213,7 +213,13 @@ export function validateLength(
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const Length = (min: number, max?: number) =>
-  Validate((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max));
+  Validate((args) => validateLength(args as IPropertyValidatorCallbackArguments<string | unknown[]>, min, max), {
+    name: '@Length',
+    context: {
+      min,
+      max,
+    },
+  });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const StringLength = (min: number, max?: number) =>
@@ -460,6 +466,13 @@ export function validateEmail({
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
+export const IsEmail = () =>
+  ValidateString((args) => validateEmail(args), {
+    name: '@IsEmail',
+    context: {},
+  });
+
 export function validateRegex(
   { value, success, fail }: IPropertyValidatorCallbackArguments<string>,
   pattern: string | RegExp,
@@ -484,13 +497,6 @@ export const Regexp = (pattern: string | RegExp) =>
     context: {
       pattern: pattern.toString(),
     },
-  });
-
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const IsEmail = () =>
-  ValidateString((args) => validateEmail(args), {
-    name: '@IsEmail',
-    context: {},
   });
 
 // eslint-disable-next-line @typescript-eslint/naming-convention

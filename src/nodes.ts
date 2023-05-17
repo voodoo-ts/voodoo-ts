@@ -23,6 +23,44 @@ export interface IPropertyComment {
   }>;
 }
 
+export interface IRangePropertyValidatorMeta {
+  min: number;
+  max: number | undefined;
+}
+
+export interface IIntegerPropertyValidatorMeta {
+  radix: number;
+}
+
+export interface IUrlPropertyValidatorMeta {
+  allowedProtocols: string[];
+}
+
+export interface IRegexPropertyValidatorMeta {
+  pattern: string;
+}
+
+export interface IPropertyValidatorMetaMapping {
+  ['@Url']?: IUrlPropertyValidatorMeta;
+  ['@IsEmail']?: Record<string, never>;
+  ['@IsFQDN']?: Record<string, never>;
+  ['@IsInteger']?: IIntegerPropertyValidatorMeta;
+  ['@IsNumber']?: Record<string, never>;
+  ['@IsNumberList']?: Record<string, never>;
+  ['@Length']?: IRangePropertyValidatorMeta;
+  ['@Range']?: IRangePropertyValidatorMeta;
+  ['@Regexp']?: IRegexPropertyValidatorMeta;
+}
+
+export function groupValidatorFunctions(ps: IPropertyValidator[]): IPropertyValidatorMetaMapping {
+  return Object.fromEntries(
+    ps
+      .map((p) => p.meta)
+      .filter((m): m is Exclude<IPropertyValidator['meta'], undefined> => Boolean(m))
+      .map((m) => [m.name, m.context]),
+  );
+}
+
 export interface IPropertyValidator {
   callback: (args: IPropertyValidatorCallbackArguments<unknown>) => INodeValidationResult;
   meta?: { name: string; context: Record<string, unknown> };

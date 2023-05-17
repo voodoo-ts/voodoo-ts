@@ -6,6 +6,7 @@ import { NodeValidationErrorFixture, RootNodeFixture, StringNodeFixture } from '
 import { project } from './utils';
 import {
   getAnnotations,
+  Length,
   LengthValidationError,
   NumberListValidationError,
   StringValidationError,
@@ -18,7 +19,7 @@ import {
   validateUrl,
 } from '../decorators';
 import { formatErrors } from '../error-formatter';
-import { INodeValidationResult, IPropertyValidatorCallbackArguments } from '../nodes';
+import { INodeValidationResult, IPropertyValidatorCallbackArguments, groupValidatorFunctions } from '../nodes';
 import { ValidatorInstance } from '../validator';
 
 describe('decorators', () => {
@@ -108,6 +109,26 @@ describe('decorators', () => {
       const result = v.validate(Test, { testProperty: 'NOT_TEST', otherProperty: 'NOT_TEST' });
       expect(result.success).toBeFalse();
       expect(callback).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('groupValidatorFunctions()', () => {
+    const v = new ValidatorInstance({ project });
+
+    @v.transformerDecorator()
+    class Test {
+      @Length(2, 5)
+      test!: string;
+    }
+
+    it('should return metadata correctly', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+      expect(tree.annotations.validationFunctions).not.toBeUndefined();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const validators = groupValidatorFunctions(tree.annotations.validationFunctions!);
+      expect(validators).toEqual({
+        ['@Length']: { min: 2, max: 5 },
+      });
     });
   });
 
@@ -326,32 +347,5 @@ describe('decorators', () => {
         });
       });
     });
-
-    // fdescribe('validateUrl()', () => {
-    //   describe('validateUrl(allowedProtocols=[https])', () => {
-    //     it.each([['https://foo.bar/']])('should validate %s', (x) => {
-    //       const result = validateUrl(mockCallbackArgs(x), ['https']);
-    //       expect(result).toEqual(sentinel);
-    //       expect(mockSuccess).toHaveBeenCalled();
-    //     });
-    //     it.each([['ftp://foo.bar/'], ['9001']])('should not validate %s', (x) => {
-    //       const result = validateUrl(mockCallbackArgs(x), ['https']);
-    //       expect(result).toEqual(sentinel);
-    //       expect(mockFail).toHaveBeenCalled();
-    //     });
-    //   });
-    //   describe('validateUrl()', () => {
-    //     it.each([['https://foo.bar/'], ['ftp://foo.bar/']])('should validate %s', (x) => {
-    //       const result = validateUrl(mockCallbackArgs(x));
-    //       expect(result).toEqual(sentinel);
-    //       expect(mockSuccess).toHaveBeenCalled();
-    //     });
-    //     it.each([['9001']])('should not validate %s', (x) => {
-    //       const result = validateUrl(mockCallbackArgs(x));
-    //       expect(result).toEqual(sentinel);
-    //       expect(mockFail).toHaveBeenCalled();
-    //     });
-    //   });
-    // });
   });
 });
