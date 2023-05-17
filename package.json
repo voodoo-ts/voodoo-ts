@@ -10,10 +10,6 @@
     "lib/",
     "src/"
   ],
-  "exports": {
-    ".": "./lib/index.js",
-    "./*": "./lib/*.js"
-  },
   "scripts": {
     "test:ts": "jest",
     "test:ts:all": "npm run test:ts src/",
