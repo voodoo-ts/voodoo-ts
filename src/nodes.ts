@@ -46,13 +46,13 @@ export interface IOneOfPropertyValidatiorMeta {
 
 export interface IPropertyValidatorMetaMapping {
   ['@ArrayLength']?: IRangePropertyValidatorMeta;
-  ['@Url']?: IUrlPropertyValidatorMeta;
   ['@IsEmail']?: Record<string, never>;
   ['@IsISO8601']?: Record<string, never>;
   ['@IsFQDN']?: Record<string, never>;
   ['@IsInteger']?: IIntegerPropertyValidatorMeta;
   ['@IsNumber']?: Record<string, never>;
   ['@IsNumberList']?: Record<string, never>;
+  ['@IsUrl']?: IUrlPropertyValidatorMeta;
   ['@Length']?: IRangePropertyValidatorMeta;
   ['@OneOf']?: IOneOfPropertyValidatiorMeta;
   ['@Range']?: IRangePropertyValidatorMeta;
