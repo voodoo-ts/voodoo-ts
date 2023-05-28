@@ -161,7 +161,7 @@ describe('Transformer', () => {
                     callback: expect.any(Function),
                     meta: {
                       context: {},
-                      name: '@IsIsoDateTime',
+                      name: '@IsISO8601',
                     },
                   },
                 ],
