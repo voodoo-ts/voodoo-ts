@@ -448,7 +448,7 @@ export function validateISO8601String({
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
 export const IsISO8601 = () =>
   ValidateString((args) => validateISO8601String(args), {
-    name: '@IsIsoDateTime',
+    name: '@IsISO8601',
     context: {},
   });
 

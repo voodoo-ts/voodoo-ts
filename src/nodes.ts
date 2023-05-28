@@ -40,16 +40,24 @@ export interface IRegexPropertyValidatorMeta {
   pattern: string;
 }
 
+export interface IOneOfPropertyValidatiorMeta {
+  allowedValues: unknown[];
+}
+
 export interface IPropertyValidatorMetaMapping {
+  ['@ArrayLength']?: IRangePropertyValidatorMeta;
   ['@Url']?: IUrlPropertyValidatorMeta;
   ['@IsEmail']?: Record<string, never>;
+  ['@IsISO8601']?: Record<string, never>;
   ['@IsFQDN']?: Record<string, never>;
   ['@IsInteger']?: IIntegerPropertyValidatorMeta;
   ['@IsNumber']?: Record<string, never>;
   ['@IsNumberList']?: Record<string, never>;
   ['@Length']?: IRangePropertyValidatorMeta;
+  ['@OneOf']?: IOneOfPropertyValidatiorMeta;
   ['@Range']?: IRangePropertyValidatorMeta;
   ['@Regexp']?: IRegexPropertyValidatorMeta;
+  ['@StringLength']?: IRangePropertyValidatorMeta;
 }
 
 export function groupValidatorFunctions(ps: IPropertyValidator[]): IPropertyValidatorMetaMapping {
