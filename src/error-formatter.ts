@@ -104,7 +104,7 @@ export const translations: {
     [ValidationErrorType.NOT_A_BOOLEAN]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
     [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError) =>
-      `'Value ${e.value}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(e)}`,
+      `Value '${e.value}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(e)}`,
     [ValidationErrorType.NOT_AN_OBJECT]: () => `Not a valid object`,
     [ValidationErrorType.NOT_AN_ARRAY]: (e) =>
       `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid array`,
