@@ -111,7 +111,6 @@ export function createAnnotationDecorator<U extends unknown[] = unknown[]>(
       } else {
         existingAnnotation.value = value;
       }
-
       Reflect.defineMetadata(annotationDecoratorMetadataKey, annotations, target, propertyKey);
     };
 
