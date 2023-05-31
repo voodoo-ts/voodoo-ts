@@ -121,8 +121,7 @@ export const translations: {
       `Value "${e.value}" can't be parsed as integer`,
     [StringValidationError.INVALID_ISO_8601_STRING]: (e: IConstraintNodeValidationError) =>
       `Value "${e.value}" is not an ISO 8601 string`,
-    [StringValidationError.INVALID_EMAIL]: (e: IConstraintNodeValidationError) =>
-      `Value "${e.value}" is not an ISO 8601 string`,
+    [StringValidationError.INVALID_EMAIL]: (e: IConstraintNodeValidationError) => `Value "${e.value}" is not an email`,
     [StringValidationError.INVALID_FQDN]: (e: IConstraintNodeValidationError) =>
       `Value "${e.value}" is not a valid FQDN`,
     [StringValidationError.NO_REGEX_MATCH]: (e: IConstraintNodeValidationError) =>

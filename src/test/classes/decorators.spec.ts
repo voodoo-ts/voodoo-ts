@@ -254,7 +254,7 @@ describe('@IsEmail()', () => {
     expectValidationError(result, ({ errors }) => {
       expect(errors).toEqual({
         ['$.test']: {
-          message: `Value "mail@" is not an ISO 8601 string`,
+          message: `Value "mail@" is not an email`,
           code: StringValidationError.INVALID_EMAIL,
           context: {},
         },
