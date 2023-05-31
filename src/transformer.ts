@@ -56,7 +56,7 @@ export interface IValidatorConstructorOptions {
   decorator?: SourceCodeLocationDecorator<IValidatorOptions>;
 }
 
-interface IUnwrapped<T> {
+export interface IUnwrapped<T> {
   transformer: T;
   validate: BaseTransformerInstance['validate'];
   validateOrThrow: BaseTransformerInstance['validateOrThrow'];
