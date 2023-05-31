@@ -5,8 +5,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { DateTime } from 'luxon';
 
-import { NodeValidationErrorMatcher, RootNodeFixture, StringNodeFixture } from './fixtures';
-import { expectValidationError, project } from './utils';
+import {
+  LiteralNodeFixture,
+  NodeValidationErrorMatcher,
+  RootNodeFixture,
+  StringNodeFixture,
+  UnionNodeFixture,
+} from './fixtures';
+import { debug, expectValidationError, project } from './utils';
 import { StringValidationError } from '../decorators';
 import { ParseError } from '../errors';
 import { ValidationErrorType } from '../nodes';
@@ -44,6 +50,7 @@ describe('Transformer', () => {
           annotations: {
             isTransformedType: true,
             transformerFunction: [expect.any(Function)],
+            isNullableTransformer: false,
           },
           children: [
             StringNodeFixture.create({
@@ -62,6 +69,62 @@ describe('Transformer', () => {
       expect(result.success).toBeTrue();
       expect(result.object).toEqual({
         test: 255,
+      });
+    });
+  });
+
+  describe('StringToNumber | null transformer', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringToNumberValueTransformer()],
+    });
+
+    @v.transformerDecorator()
+    class Test {
+      test!: Transformed<string, number> | null;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+      debug(tree);
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            isTransformedType: true,
+            transformerFunction: [expect.any(Function)],
+            isNullableTransformer: true,
+          },
+          children: [
+            UnionNodeFixture.create({
+              children: [
+                LiteralNodeFixture.create(null),
+                StringNodeFixture.create({
+                  annotations: {
+                    validationFunctions: [{ callback: expect.any(Function), meta: expect.anything() }],
+                  },
+                }),
+              ],
+            }),
+          ],
+        }),
+      );
+    });
+
+    it('should transform correctly', async () => {
+      const result = await v.transform(Test, { test: '255' } as any);
+
+      expect(result.success).toBeTrue();
+      expect(result.object).toEqual({
+        test: 255,
+      });
+    });
+
+    it('should transform correctly', async () => {
+      const result = await v.transform(Test, { test: null } as any);
+
+      expect(result.success).toBeTrue();
+      expect(result.object).toEqual({
+        test: null,
       });
     });
   });
@@ -85,6 +148,7 @@ describe('Transformer', () => {
           annotations: {
             isTransformedType: true,
             transformerFunction: [expect.any(Function)],
+            isNullableTransformer: false,
           },
           children: [
             StringNodeFixture.create({
@@ -110,6 +174,7 @@ describe('Transformer', () => {
             annotations: {
               isTransformedType: true,
               transformerFunction: [expect.any(Function)],
+              isNullableTransformer: false,
             },
             previousErrors: [
               NodeValidationErrorMatcher.stringError({
@@ -152,6 +217,7 @@ describe('Transformer', () => {
           annotations: {
             isTransformedType: true,
             transformerFunction: [expect.any(Function)],
+            isNullableTransformer: false,
           },
           children: [
             StringNodeFixture.create({
@@ -185,6 +251,7 @@ describe('Transformer', () => {
             annotations: {
               isTransformedType: true,
               transformerFunction: [expect.any(Function)],
+              isNullableTransformer: false,
             },
             previousErrors: [
               NodeValidationErrorMatcher.stringError({
@@ -360,7 +427,11 @@ describe('Transformer', () => {
 
     it('should add the correct annotations', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test1)[0];
-      expect(tree.annotations).toEqual({ isTransformedType: true, transformerFunction: [callback] });
+      expect(tree.annotations).toEqual({
+        isTransformedType: true,
+        transformerFunction: [callback],
+        isNullableTransformer: false,
+      });
     });
 
     it('should transform correctly with scalar result', async () => {

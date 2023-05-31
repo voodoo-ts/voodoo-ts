@@ -4,9 +4,12 @@ import {
   DefinitionInfo,
   Identifier,
   Node,
+  NullLiteral,
+  SyntaxKind,
   Type,
   TypeAliasDeclaration,
   TypeLiteralNode,
+  TypeReferenceNode,
 } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
@@ -47,6 +50,7 @@ import {
   getPropertyName,
   isClassOrInterfaceOrLiteral,
   TypeCache,
+  IResolvedProperty as IResolvedPropertyType,
 } from './validator-parser';
 
 // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-unused-vars
@@ -82,6 +86,7 @@ declare module './nodes' {
     transformerFunction?: Array<TransformerFunction<unknown>>;
     fromProperty?: string;
     isTransformedType?: boolean;
+    isNullableTransformer?: boolean;
   }
 }
 
@@ -374,6 +379,11 @@ async function recurse(
 
         // Has a @Transform() decorator
         if (propertyValidationResult.node.annotations.transformerFunction) {
+          if (propertyValidationResult.node.annotations.isNullableTransformer && propertyValue === null) {
+            newValues[targetPropertyName] = null;
+            continue;
+          }
+
           const transformDecoratorResult = await Promise.resolve(
             propertyValidationResult.node.annotations.transformerFunction[0]({
               value: propertyValue,
@@ -572,6 +582,7 @@ export class TransformerParser extends Parser {
     }
     if (transformerMeta) {
       rootNode.annotations.isTransformedType = true;
+      rootNode.annotations.isNullableTransformer = transformerMeta.nullable;
     }
 
     return rootNode;
@@ -604,7 +615,7 @@ export class TransformerParser extends Parser {
   /**
    * Needed to extract type before transformation
    */
-  getPropertyType(property: PropertyDeclarationOrSignature): Type {
+  getPropertyType(property: PropertyDeclarationOrSignature): IResolvedPropertyType {
     const transformerMeta = this.getTransformerMeta(property);
     if (transformerMeta) {
       if (!transformerMeta.fromType) {
@@ -628,7 +639,7 @@ export class TransformerParser extends Parser {
         properties.set(property.getName(), { classPosition, options: transformerMeta.options });
         this.propertyTransformers.set(parent, [], properties);
       }
-      return transformerMeta.fromType;
+      return { type: transformerMeta.fromType, nullable: transformerMeta.nullable };
     } else {
       return super.getPropertyType(property);
     }
@@ -643,17 +654,44 @@ export class TransformerParser extends Parser {
     return cls;
   }
 
+  resolveNullableUnion(property: PropertyDeclarationOrSignature): {
+    propertyTypeNode: TypeReferenceNode | null;
+    nullable: boolean;
+  } {
+    const propertyTypeNode = property.getTypeNode();
+
+    if (!propertyTypeNode) {
+      throw new Error(`${property.getName()} does not have a type node`);
+    }
+
+    if (Node.isUnionTypeNode(propertyTypeNode)) {
+      const children = propertyTypeNode.getChildren().at(0)?.getChildren();
+      const hasNull = children?.find(
+        (n): n is NullLiteral => Node.isLiteralTypeNode(n) && n.getLiteral().getKind() === SyntaxKind.NullKeyword,
+      );
+      const potentialTypeNode = children?.find((n): n is TypeReferenceNode => Node.isTypeReference(n));
+      if (hasNull && potentialTypeNode) {
+        return { propertyTypeNode: potentialTypeNode, nullable: Boolean(hasNull) };
+      } else {
+        return { propertyTypeNode: null, nullable: false };
+      }
+    } else {
+      if (Node.isTypeReference(propertyTypeNode)) {
+        return { propertyTypeNode, nullable: false };
+      } else {
+        return { propertyTypeNode: null, nullable: false };
+      }
+    }
+  }
+
   getTransformerMeta(property: PropertyDeclarationOrSignature): {
     transformerFactory: AbstractValueTransformerFactory | null;
     fromType: Type;
     toType: Type;
     options: Record<string, unknown> | undefined;
+    nullable: boolean;
   } | null {
     const classDeclaration = property.getParent();
-
-    if (Node.isInterfaceDeclaration(classDeclaration) || Node.isTypeLiteral(classDeclaration)) {
-      return null;
-    }
 
     if (!Node.isClassDeclaration(classDeclaration)) {
       return null;
@@ -663,17 +701,9 @@ export class TransformerParser extends Parser {
       return null; // REVIEW: really?
     }
 
-    const propertyTypeNode = property.getTypeNode();
+    const { propertyTypeNode, nullable } = this.resolveNullableUnion(property);
 
     if (!propertyTypeNode) {
-      throw new Error(`${property.getName()} does not have a type node`);
-    }
-    if (!Node.isTypeReference(propertyTypeNode)) {
-      return null;
-    }
-
-    // If property is not a type reference, it can't be a Transformed<>
-    if (!Node.isTypeReference(propertyTypeNode)) {
       return null;
     }
 
@@ -726,13 +756,14 @@ export class TransformerParser extends Parser {
             fromType,
             toType,
             options,
+            nullable,
           };
         }
       }
     }
 
     if (fromType && toType && options) {
-      return { transformerFactory: null, fromType, toType, options };
+      return { transformerFactory: null, fromType, toType, options, nullable };
     }
 
     return null;
@@ -754,11 +785,15 @@ export class TransformerParser extends Parser {
     return false;
   }
 
+  /**
+   *
+   * @param property
+   * @returns
+   */
   getComputedTypes(property: PropertyDeclarationOrSignature): [Type, Type, Record<string, unknown>] | null {
-    const propertyTypeNode = property.getTypeNode();
-
+    const propertyTypeNode = this.resolveNullableUnion(property).propertyTypeNode;
     if (!propertyTypeNode) {
-      throw new ParseError(`${property.getName()} does not have a type node`);
+      return null;
     }
     if (!Node.isTypeReference(propertyTypeNode)) {
       return null;

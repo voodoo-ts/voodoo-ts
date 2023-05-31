@@ -54,6 +54,11 @@ export interface IPropertyListItem {
   typeMap?: TypeMap;
 }
 
+export interface IResolvedProperty {
+  type: Type;
+  nullable: boolean;
+}
+
 /**
  * Typeguard to ensure a thrown exception is a ParseError
  */
@@ -465,7 +470,9 @@ export class Parser {
   }
 
   handleRootNode(property: PropertyDeclarationOrSignature, typeMap?: TypeMap): RootNode {
-    let type = this.getPropertyType(property);
+    const resolvedPropertyType = this.getPropertyType(property);
+    let type = resolvedPropertyType.type;
+    const nullable = resolvedPropertyType.nullable;
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
 
     const rootNode = new RootNode(hasQuestionToken);
@@ -488,11 +495,22 @@ export class Parser {
       }
     }
 
-    rootNode.children.push(this.walkTypeNodes(type, { typeMap }));
+    const typeNode = this.walkTypeNodes(type, { typeMap });
 
-    const firstNode = rootNode.children[0];
-    if (firstNode.kind === 'union') {
-      firstNode.children = firstNode.children.filter((tn) => tn.kind !== 'undefined');
+    if (typeNode.kind === 'union') {
+      typeNode.children = typeNode.children.filter((tn) => tn.kind !== 'undefined');
+      if (nullable) {
+        typeNode.children.push(new LiteralNode(null));
+      }
+      rootNode.children = [typeNode];
+    } else {
+      if (nullable) {
+        const unionNode = new UnionNode();
+        unionNode.children = [new LiteralNode(null), typeNode];
+        rootNode.children = [unionNode];
+      } else {
+        rootNode.children = [typeNode];
+      }
     }
 
     return rootNode;
@@ -787,8 +805,8 @@ export class Parser {
     return classNode;
   }
 
-  getPropertyType(property: PropertyDeclarationOrSignature): Type {
-    return property.getType();
+  getPropertyType(property: PropertyDeclarationOrSignature): IResolvedProperty {
+    return { type: property.getType(), nullable: false };
   }
 
   buildTypeTree(
