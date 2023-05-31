@@ -6,6 +6,7 @@ import { NodeValidationErrorFixture, RootNodeFixture, StringNodeFixture } from '
 import { project } from './utils';
 import {
   getAnnotations,
+  IsEmail,
   Length,
   LengthValidationError,
   NumberListValidationError,
@@ -119,15 +120,28 @@ describe('decorators', () => {
     class Test {
       @Length(2, 5)
       test!: string;
+
+      @IsEmail()
+      email!: string;
     }
 
-    it('should return metadata correctly', () => {
+    it('should return metadata for @Length correctly', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
       expect(tree.annotations.validationFunctions).not.toBeUndefined();
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const validators = groupValidatorFunctions(tree.annotations.validationFunctions!);
       expect(validators).toEqual({
         ['@Length']: { min: 2, max: 5 },
+      });
+    });
+
+    it('should return metadata for @IsEmail correctly', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[1];
+      expect(tree.children[0].annotations.validationFunctions).not.toBeUndefined();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const validators = groupValidatorFunctions(tree.children[0].annotations.validationFunctions!);
+      expect(validators).toEqual({
+        ['@IsEmail']: {},
       });
     });
   });
