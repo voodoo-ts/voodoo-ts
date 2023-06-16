@@ -65,6 +65,18 @@ export function getNodeTypeName(e: INodeValidationError): string {
   }
 }
 
+export function formatValue(e: INodeValidationError): string {
+  if (typeof e.value === 'string') {
+    return e.value;
+  } else {
+    try {
+      return JSON.stringify(e.value);
+    } catch (error) {
+      return e.value && typeof e.value === 'object' && 'toString' in e.value ? e.value.toString() : 'unknown';
+    }
+  }
+}
+
 export interface TranslationCallback {
   [ValidationErrorType.VALUE_REQUIRED]: (error: INodeValidationError) => string;
   [ValidationErrorType.UNKNOWN_FIELD]: (error: INodeValidationError) => string;
@@ -96,40 +108,46 @@ export const translations: {
     [ValidationErrorType.VALUE_REQUIRED]: () => `Value is required`,
     [ValidationErrorType.UNKNOWN_FIELD]: () => `No unknown fields allowed`,
     [ValidationErrorType.NOT_A_STRING]: (e) =>
-      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid string`,
+      `Value '${formatValue(e)}' (type: ${getTypeName(e.value)}) is not a valid string`,
     [ValidationErrorType.NOT_A_NUMBER]: (e) =>
-      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid number`,
+      `Value '${formatValue(e)}' (type: ${getTypeName(e.value)}) is not a valid number`,
     [ValidationErrorType.NOT_AN_ENUM]: (e: IEnumNodeValidationError) =>
-      `Value '${e.value}' is not a valid ${e.context.enumName}. Allowed values: ${e.context.allowedValues.join(', ')}`,
+      `Value '${formatValue(e)}' is not a valid ${e.context.enumName}. Allowed values: ${e.context.allowedValues.join(
+        ', ',
+      )}`,
     [ValidationErrorType.NOT_A_BOOLEAN]: (e) =>
-      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
+      `Value '${formatValue(e)}' (type: ${getTypeName(e.value)}) is not a valid boolean`,
     [ValidationErrorType.NO_UNION_MATCH]: (e: IUnionNodeValidationError) =>
-      `Value '${e.value}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(e)}`,
+      `Value '${formatValue(e)}' (type: ${getTypeName(e.value)}) did not match any of these types ${getNodeTypeName(
+        e,
+      )}`,
     [ValidationErrorType.NOT_AN_OBJECT]: () => `Not a valid object`,
     [ValidationErrorType.NOT_AN_ARRAY]: (e) =>
-      `Value '${e.value}' (type: ${getTypeName(e.value)}) is not a valid array`,
+      `Value '${formatValue(e)}' (type: ${getTypeName(e.value)}) is not a valid array`,
     [ValidationErrorType.NO_LENGTH_MATCH]: (e) =>
       `Tuple with ${e.context.expected} elements expected, received ${e.context.length} elements`,
     [ValidationErrorType.LITERAL_NOT_MATCHING]: (e: ILiteralNodeValidationError) =>
-      `Value '${e.value}' is not '${e.context.expected}'`,
+      `Value '${formatValue(e)}' is not '${e.context.expected}'`,
     [ValidationErrorType.CUSTOM]: () => `Unknown error`,
     [LengthValidationError.LENGTH_FAILED]: (e) =>
-      `Length of '${e.value}' must be at least ${e.context.min} and at most ${e.context.max ?? 'MAX_SAFE_INTEGER'}`,
+      `Length of '${formatValue(e)}' must be at least ${e.context.min} and at most ${
+        e.context.max ?? 'MAX_SAFE_INTEGER'
+      }`,
     [StringValidationError.INVALID_NUMBER_STRING]: (e: IConstraintNodeValidationError) =>
-      `Value "${e.value}" can't be parsed as float`,
+      `Value "${formatValue(e)}" can't be parsed as float`,
     [StringValidationError.INVALID_INTEGER_STRING]: (e: IConstraintNodeValidationError) =>
-      `Value "${e.value}" can't be parsed as integer`,
+      `Value "${formatValue(e)}" can't be parsed as integer`,
     [StringValidationError.INVALID_ISO_8601_STRING]: (e: IConstraintNodeValidationError) =>
-      `Value "${e.value}" is not an ISO 8601 string`,
+      `Value "${formatValue(e)}" is not an ISO 8601 string`,
     [StringValidationError.INVALID_EMAIL]: (e: IConstraintNodeValidationError) => `Value "${e.value}" is not an email`,
     [StringValidationError.INVALID_FQDN]: (e: IConstraintNodeValidationError) =>
-      `Value "${e.value}" is not a valid FQDN`,
+      `Value "${formatValue(e)}" is not a valid FQDN`,
     [StringValidationError.NO_REGEX_MATCH]: (e: IConstraintNodeValidationError) =>
-      `Value "${e.value}" does not match regex ${e.context.pattern}`,
+      `Value "${formatValue(e)}" does not match regex ${e.context.pattern}`,
     [NumberListValidationError.INVALID_NUMBER_LIST_ITEM]: (e: IConstraintNodeValidationError) =>
       `Item at index ${e.context.i} in number list is not a valid integer`,
     [NumberValidationError.OUT_OF_RANGE]: (e: IConstraintNodeValidationError) =>
-      `Value ${e.value} is out of range (${e.context.min}, ${e.context.max ?? 'MAX_SAFE_INTEGER'})`,
+      `Value ${formatValue(e)} is out of range (${e.context.min}, ${e.context.max ?? 'MAX_SAFE_INTEGER'})`,
   },
 };
 
