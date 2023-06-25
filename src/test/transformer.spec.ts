@@ -12,7 +12,7 @@ import {
   StringNodeFixture,
   UnionNodeFixture,
 } from './fixtures';
-import { debug, expectValidationError, project } from './utils';
+import { expectValidationError, project } from './utils';
 import { StringValidationError } from '../decorators';
 import { ParseError } from '../errors';
 import { ValidationErrorType } from '../nodes';
@@ -86,7 +86,7 @@ describe('Transformer', () => {
 
     it('should construct the correct tree', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-      debug(tree);
+
       expect(tree).toEqual(
         RootNodeFixture.createRequired({
           annotations: {
@@ -610,7 +610,7 @@ describe('Transformer', () => {
       expect(result.success).toBeTrue();
       expect(result.object).toBeInstanceOf(Test); // Default is to use the class constructor
       expect(result.object?.test2).toEqual({ test: 'test', customFactory: true });
-      expect(factory).toHaveBeenCalledOnceWith({ test: 'test' });
+      expect(factory).toHaveBeenCalledExactlyOnceWith({ test: 'test' });
     });
 
     it('should use factories correctly if not default and toplevel', async () => {
@@ -740,9 +740,11 @@ describe('Transformer', () => {
       const { tree: tree2 } = trees[1];
 
       expect(tree1.annotations.transformerFunction).toEqual([expect.any(Function)]);
-      expect(stringArrayToSet.getDecorators).toHaveBeenCalledOnceWith(expect.objectContaining({ options: {} }));
+      expect(stringArrayToSet.getDecorators).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ options: {} }));
       expect(tree2.annotations.transformerFunction).toEqual([expect.any(Function)]);
-      expect(stringArrayToNumberSet.getDecorators).toHaveBeenCalledOnceWith(expect.objectContaining({ options: {} }));
+      expect(stringArrayToNumberSet.getDecorators).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ options: {} }),
+      );
     });
 
     it('should transform correctly', async () => {
@@ -750,7 +752,7 @@ describe('Transformer', () => {
 
       expect(result.success).toBeTrue();
       expect(result.object).toEqual({ test1: new Set(['a', 'b']), test2: new Set([1, 2]) });
-      expect(stringArrayToSet.getTransformer).toHaveBeenCalledOnceWith(expect.objectContaining({ options: {} }));
+      expect(stringArrayToSet.getTransformer).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ options: {} }));
     });
   });
 
@@ -783,7 +785,7 @@ describe('Transformer', () => {
     it('should add the correct annotations', () => {
       const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
       expect(tree.annotations.transformerFunction).toEqual([expect.any(Function)]);
-      expect(transformerInstance.getDecorators).toHaveBeenCalledOnceWith(
+      expect(transformerInstance.getDecorators).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ options: { radix: 16 } }),
       );
     });
@@ -792,10 +794,10 @@ describe('Transformer', () => {
       const result = await v.transform(Test, { test: '0xff' } as any);
       expect(result.success).toBeTrue();
       expect(result.object).toEqual({ test: 123 });
-      expect(transformerInstance.getTransformer).toHaveBeenCalledOnceWith(
+      expect(transformerInstance.getTransformer).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ options: { radix: 16 } }),
       );
-      expect(transformer).toHaveBeenCalledOnceWith({
+      expect(transformer).toHaveBeenCalledExactlyOnceWith({
         value: '0xff',
         values: { test: '0xff' },
         success: expect.any(Function),
