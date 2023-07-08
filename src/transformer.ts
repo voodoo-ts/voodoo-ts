@@ -104,6 +104,9 @@ export abstract class BaseTransformerInstance {
     return this.transformerClassDecoratorFactory.decorator(error ?? new Error(), options);
   }
 
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  Dto = this.transformerDecorator.bind(this);
+
   getClassMetadata(cls: Constructor<unknown>): IClassMeta<ITransformerOptions> {
     return this.transformerClassDecoratorFactory.getClassMetadata(cls);
   }
