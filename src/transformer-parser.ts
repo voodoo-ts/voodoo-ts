@@ -776,7 +776,7 @@ export class TransformerParser extends Parser {
     const path1 = a.getSourceFile().getFilePath();
     const path2 = b.getSourceFile().getFilePath();
 
-    const isMine = (p: string): boolean => !!p.match(new RegExp('node_modules/@vvalidator/vvalidator/(src|lib)/'));
+    const isMine = (p: string): boolean => !!p.match(new RegExp('node_modules/@voodoo-ts/voodoo-ts/(src|lib)/'));
 
     if (path1 === path2 || (isMine(path1) && isMine(path2))) {
       return true;
