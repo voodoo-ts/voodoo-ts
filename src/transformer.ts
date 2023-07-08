@@ -97,8 +97,11 @@ export abstract class BaseTransformerInstance {
   abstract getClassNode<T>(cls: Constructor<T>): ClassNode;
   abstract getClassByReference(ref: string): Constructor<unknown> | undefined;
 
-  transformerDecorator(options: ITransformerOptions = {}): ReturnType<(typeof Reflect)['metadata']> {
-    return this.transformerClassDecoratorFactory.decorator(new Error(), options);
+  transformerDecorator(
+    options: ITransformerOptions = {},
+    error: Error | null = null,
+  ): ReturnType<(typeof Reflect)['metadata']> {
+    return this.transformerClassDecoratorFactory.decorator(error ?? new Error(), options);
   }
 
   getClassMetadata(cls: Constructor<unknown>): IClassMeta<ITransformerOptions> {
