@@ -5,7 +5,7 @@ voodoo-ts aims to be a validation library with short syntax and a nice developer
 ## Example
 
 ```typescript
-voodoo.Dto()
+@Validator()
 class UserDto {
   username!: string;
   email!: string;
@@ -69,7 +69,7 @@ const user = await transformOrThrow(UserDto, { name: 'Mordecai', powerlevel: 5 }
 Objects are validated before transforming. There is also a `validate()` and `validateOrThrow()` method which only validates objects. These will return the
 incoming object _untouched_ in `result.object`.
 
-Most types are regcognized. Check [Supported Syntax](#supported-syntax) for reference.
+Many type constructs are regcognized. Check [Supported Syntax](#supported-syntax) for reference.
 
 ## Unknown fields
 
@@ -84,7 +84,7 @@ You either need to make sure this won't cause you problems or use `transform()`
 ### Basic types
 
 ```typescript
-voodoo.Dto()
+@voodoo.Dto()
 class UserDto {
   username!: string;
   alias?: string; // optional
@@ -97,13 +97,13 @@ class UserDto {
 ### Inheritance
 
 ```typescript
-voodoo.Dto()
+@voodoo.Dto()
 class UserDto {
   username!: string;
   email!: string;
 }
 
-voodoo.Dto()
+@voodoo.Dto()
 class AdminUserDto extends UserDto {
   permissions!: string[];
 }
@@ -117,7 +117,7 @@ enum TestEnum {
   NO = 'no',
 }
 
-voodoo.Dto()
+@voodoo.Dto()
 class Test {
   enumProperty!: TestEnum;
 }
@@ -126,7 +126,7 @@ class Test {
 ### Arrays
 
 ```typescript
-voodoo.Dto()
+@voodoo.Dto()
 class Gauntlet {
   infinityStones: string[];
   powerupForEachInfinityStone: number[];
@@ -138,7 +138,7 @@ Arrays support basic types, nested validators & enums.
 ### Unions
 
 ```typescript
-voodoo.Dto()
+@voodoo.Dto()
 class Test {
   basicProperty!: number | string | boolean;
   nullable!: number | null;
@@ -153,13 +153,13 @@ interface IAnimal {
   rating: number;
 }
 
-voodoo.Dto()
+@voodoo.Dto()
 class Food {
   name!: string;
   rating!: number;
 }
 
-voodoo.Dto()
+@voodoo.Dto()
 class User {
   favoriteFood!: Food;
   favoriteFoods!: Food[]; // Arrays are supported
@@ -179,7 +179,7 @@ class User {
 Self-referential structures are also possible
 
 ```typescript
-voodoo.Dto()
+@voodoo.Dto()
 class TreeNode {
   name!: string;
   children!: TreeNode[];
@@ -189,7 +189,7 @@ class TreeNode {
 ### Tuples
 
 ```typescript
-voodoo.Dto()
+@voodoo.Dto()
 class Test {
   tuple!: [number, string];
 }
@@ -198,7 +198,7 @@ class Test {
 ### Records
 
 ```typescript
-voodoo.Dto()
+@voodoo.Dto()
 class Test {
   record!: Record<string, number>;
 }
@@ -240,7 +240,7 @@ Validate a field only if the callback returned `true`.
 
 ### @From(propertyName: string)
 
-This allows you to get value for the field annoated with @From from a differnt field.
+This allows you to get value for the field annoated with @From from a different field.
 You can use this to translate property names. For example:
 
 ```typescript
@@ -280,5 +280,5 @@ won't work.
 
 ## Todo
 
-* Error formatting could be improved.
-* Serialize dtos to remove the dependency on sources.
+- Error formatting could be improved.
+- Serialize dtos to remove the dependency on sources.
