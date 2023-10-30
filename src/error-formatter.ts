@@ -202,7 +202,7 @@ export function flattenValidationError(nodeValidationError: INodeValidationError
       if (nodeValidationError.reason === ValidationErrorType.OBJECT_PROPERTY_FAILED) {
         const classErrors = nodeValidationError.previousErrors;
         for (const classError of classErrors) {
-          const propertyPath = [...path, classError.context.propertyName];
+          const propertyPath = [...path, classError.context.resolvedPropertyName ?? classError.context.propertyName];
           messages.push(...flattenValidationError(classError as INodeValidationError, propertyPath));
         }
       } else {
@@ -268,6 +268,7 @@ export function groupErrors(errors: IErrorMessage[]): FormattedErrors {
     if (!translator) {
       throw new RuntimeError(`Can't find translator for ${error.nodeValidationError.reason}`);
     }
+
     groupedErrors[jsonPath] = {
       message: translator(error.nodeValidationError),
       code: error.nodeValidationError.reason,

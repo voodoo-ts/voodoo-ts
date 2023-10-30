@@ -15,7 +15,7 @@ import {
 import { expectValidationError, project } from './utils';
 import { StringValidationError } from '../decorators';
 import { ParseError } from '../errors';
-import { ValidationErrorType } from '../nodes';
+import { IRootNodeValidationError, ValidationErrorType } from '../nodes';
 import { TransformerInstance } from '../transformer';
 import { ValidationError } from '../transformer';
 import {
@@ -369,6 +369,23 @@ describe('Transformer', () => {
 
       expect(result.success).toBeTrue();
       expect(result.object).toEqual({ test: 'string' });
+    });
+
+    it('should transform the property name in errors', async () => {
+      const result = await v.transform(Test, { TEST: 123 });
+
+      expect(result.success).toBeFalse();
+      expectValidationError(result, (result) => {
+        expect(
+          (result.rawErrors.previousErrors[0].context as IRootNodeValidationError['context']).propertyName,
+        ).toEqual('test');
+        expect(
+          (result.rawErrors.previousErrors[0].context as IRootNodeValidationError['context']).resolvedPropertyName,
+        ).toEqual('TEST');
+
+        expect(result.errors['$.TEST']).toBeTruthy();
+        expect(result.errors['$.test']).toBeFalsy();
+      });
     });
 
     it('should transform the property name when used in an intersection', async () => {
