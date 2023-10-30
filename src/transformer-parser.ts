@@ -359,7 +359,7 @@ async function recurse(
           type: 'root',
           success: false,
           value: propertyValue,
-          annotations: {},
+          annotations: propertyValidationResult.node.annotations,
           reason: ValidationErrorType.PROPERTY_FAILED,
           context: {
             className: node.name,
@@ -389,7 +389,7 @@ async function recurse(
               value: propertyValue,
               values: value as IPropertyTransformerCallbackArguments['values'],
               success: (callbackValue) => ({ ...node.success(), value: callbackValue }),
-              fail: node.fail.bind(node),
+              fail: propertyValidationResult.node.fail.bind(node),
               propertyValidationResult,
             }),
           );

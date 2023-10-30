@@ -78,6 +78,7 @@ export interface IPropertyValidator {
 export interface IAnnotationMap {
   validationFunctions?: IPropertyValidator[];
   comment?: IPropertyComment;
+  hasInitializer?: boolean;
 }
 
 export interface IValidationOptions {

@@ -142,7 +142,7 @@ export class UnionNodeFixture {
 export class RootNodeFixture extends RootNode {
   static create(optional: boolean, extra: Partial<RootNode>): RootNode {
     const fixture = new RootNode(optional);
-    return Object.assign(fixture, extra);
+    return Object.assign(fixture, { annotations: { hasInitializer: false } }, extra);
   }
 
   static createRequired(extra: Partial<RootNode> = {}): RootNode {
@@ -278,6 +278,7 @@ export class NodeValidationErrorFixture {
         propertyName,
         resolvedPropertyName: propertyName,
       },
+      annotations: { hasInitializer: false },
       ...values,
     });
   }
@@ -297,6 +298,7 @@ export class NodeValidationErrorFixture {
           type: 'root',
           reason: ValidationErrorType.PROPERTY_FAILED,
           context: { className, propertyName, resolvedPropertyName: propertyName },
+          annotations: { hasInitializer: false },
           ...values,
         }),
       ],

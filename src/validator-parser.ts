@@ -474,10 +474,12 @@ export class Parser {
     let type = resolvedPropertyType.type;
     const nullable = resolvedPropertyType.nullable;
     const hasQuestionToken = Boolean(property.hasQuestionToken?.());
+    const hasInitializer = Boolean(property.getStructure().initializer);
 
-    const rootNode = new RootNode(hasQuestionToken);
+    const rootNode = new RootNode(hasQuestionToken || hasInitializer);
 
     rootNode.annotations.comment = getDocs(property);
+    rootNode.annotations.hasInitializer = hasInitializer;
 
     if (type.isUnion()) {
       const unionTypes = type.getUnionTypes();

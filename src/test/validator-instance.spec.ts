@@ -193,6 +193,7 @@ describe('general', () => {
           children: [StringNodeFixture.create()],
           annotations: {
             validateIf: expectAnyFunction(),
+            hasInitializer: false,
           },
         }),
       );
@@ -225,6 +226,7 @@ describe('general', () => {
                 NodeValidationErrorMatcher.rootError(Test, 'firstAttribute', {
                   annotations: {
                     validateIf: validateIfFunction as IAnnotationMap['validateIf'],
+                    hasInitializer: false,
                   },
                   previousErrors: [NodeValidationErrorMatcher.stringError()],
                 }),

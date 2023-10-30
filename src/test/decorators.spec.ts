@@ -80,13 +80,14 @@ describe('decorators', () => {
       expect(trees.length).toEqual(2);
       expect(trees[0].tree).toEqual(
         RootNodeFixture.createRequired({
-          annotations: { validationFunctions: [{ callback }] },
+          annotations: { hasInitializer: false, validationFunctions: [{ callback }] },
           children: [StringNodeFixture.create({})],
         }),
       );
       expect(trees[1].tree).toEqual(
         RootNodeFixture.createRequired({
           annotations: {
+            hasInitializer: false,
             validationFunctions: [{ callback }, { callback, meta: { name: '@Test', context: { hello: 'world' } } }],
           },
           children: [StringNodeFixture.create({})],

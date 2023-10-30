@@ -51,6 +51,7 @@ describe('Transformer', () => {
             isTransformedType: true,
             transformerFunction: [expect.any(Function)],
             isNullableTransformer: false,
+            hasInitializer: false,
           },
           children: [
             StringNodeFixture.create({
@@ -93,6 +94,7 @@ describe('Transformer', () => {
             isTransformedType: true,
             transformerFunction: [expect.any(Function)],
             isNullableTransformer: true,
+            hasInitializer: false,
           },
           children: [
             UnionNodeFixture.create({
@@ -149,6 +151,7 @@ describe('Transformer', () => {
             isTransformedType: true,
             transformerFunction: [expect.any(Function)],
             isNullableTransformer: false,
+            hasInitializer: false,
           },
           children: [
             StringNodeFixture.create({
@@ -175,6 +178,7 @@ describe('Transformer', () => {
               isTransformedType: true,
               transformerFunction: [expect.any(Function)],
               isNullableTransformer: false,
+              hasInitializer: false,
             },
             previousErrors: [
               NodeValidationErrorMatcher.stringError({
@@ -218,6 +222,7 @@ describe('Transformer', () => {
             isTransformedType: true,
             transformerFunction: [expect.any(Function)],
             isNullableTransformer: false,
+            hasInitializer: false,
           },
           children: [
             StringNodeFixture.create({
@@ -252,6 +257,7 @@ describe('Transformer', () => {
               isTransformedType: true,
               transformerFunction: [expect.any(Function)],
               isNullableTransformer: false,
+              hasInitializer: false,
             },
             previousErrors: [
               NodeValidationErrorMatcher.stringError({
@@ -332,6 +338,21 @@ describe('Transformer', () => {
     });
   });
 
+  describe('Default values', () => {
+    const v = new TransformerInstance({ project });
+
+    @v.transformerDecorator()
+    class Test {
+      test: string = 'default';
+    }
+
+    it('should transform with default value', async () => {
+      const result = await v.transform(Test, {});
+      expect(result.success).toBeTrue();
+      expect(result.object?.test).toEqual('default');
+    });
+  });
+
   describe('@From', () => {
     const v = new TransformerInstance({ project });
 
@@ -358,6 +379,7 @@ describe('Transformer', () => {
         RootNodeFixture.createRequired({
           annotations: {
             fromProperty: 'TEST',
+            hasInitializer: false,
           },
           children: [StringNodeFixture.create({})],
         }),
@@ -448,6 +470,7 @@ describe('Transformer', () => {
         isTransformedType: true,
         transformerFunction: [callback],
         isNullableTransformer: false,
+        hasInitializer: false,
       });
     });
 
@@ -503,6 +526,12 @@ describe('Transformer', () => {
       expectValidationError(result, (result) => {
         expect(result.rawErrors).toEqual(
           NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'test', {
+            annotations: {
+              isNullableTransformer: false,
+              isTransformedType: true,
+              transformerFunction: [callback],
+              hasInitializer: false,
+            },
             previousErrors: [
               expect.objectContaining({
                 success: false,
@@ -528,6 +557,12 @@ describe('Transformer', () => {
               NodeValidationErrorMatcher.rootError(TestWithEmbed, 'simple', {
                 previousErrors: [
                   NodeValidationErrorMatcher.singleObjectPropertyFailed(TestEmbed, 'test', {
+                    annotations: {
+                      isNullableTransformer: false,
+                      isTransformedType: true,
+                      transformerFunction: [expect.any(Function)],
+                      hasInitializer: false,
+                    },
                     previousErrors: [
                       expect.objectContaining({
                         success: false,
@@ -548,6 +583,12 @@ describe('Transformer', () => {
                         },
                         previousErrors: [
                           NodeValidationErrorMatcher.singleObjectPropertyFailed(TestEmbed, 'test', {
+                            annotations: {
+                              isNullableTransformer: false,
+                              isTransformedType: true,
+                              transformerFunction: [expect.any(Function)],
+                              hasInitializer: false,
+                            },
                             previousErrors: [
                               expect.objectContaining({
                                 success: false,
@@ -580,6 +621,12 @@ describe('Transformer', () => {
                 context: { className: expect.any(String) },
                 previousErrors: [
                   NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'test', {
+                    annotations: {
+                      isNullableTransformer: false,
+                      isTransformedType: true,
+                      transformerFunction: [callback],
+                      hasInitializer: false,
+                    },
                     previousErrors: [
                       expect.objectContaining({
                         success: false,
@@ -822,6 +869,10 @@ describe('Transformer', () => {
         propertyValidationResult: expect.any(Object),
       });
     });
+  });
+
+  describe('Namespaced aliased ValueTransformers', () => {
+    it.todo('should allow namespaced aliases');
   });
 
   describe('Unknown fields', () => {
