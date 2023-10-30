@@ -865,7 +865,7 @@ export class TransformerParser extends Parser {
         ? typeNodeOptions
         : null;
       if (!optionNode) {
-        throw new Error('props null');
+        return [fromType, toType, {}];
       }
       const options = this.getOptions(optionNode);
 
