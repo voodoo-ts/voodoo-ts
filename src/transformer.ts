@@ -238,7 +238,7 @@ export class TransformerInstance extends BaseTransformerInstance {
 
   async transform<T>(
     cls: Constructor<T>,
-    values: MaybePartial<T>,
+    values: unknown,
     options: ITransformationOptions = {},
   ): Promise<IValidationResult<T> & { object: unknown }> {
     const validatorMeta = this.getClassMetadata(cls);
@@ -249,7 +249,7 @@ export class TransformerInstance extends BaseTransformerInstance {
       validatorMeta.column,
     );
 
-    const result = await this.parser.transform(classDeclaration, values, options);
+    const result = await this.parser.transform(classDeclaration, values as Record<string, unknown>, options);
     if (result.success) {
       return {
         success: true,
@@ -267,13 +267,13 @@ export class TransformerInstance extends BaseTransformerInstance {
 
   validateClassDeclaration<T>(
     validatorClass: ClassNode,
-    values: MaybePartial<T>,
+    values: unknown,
     options: IValidationOptions = {},
   ): IValidationResult<T> {
     const allowUnknownFields = options.allowUnknownFields ?? this.defaultOptions.allowUnknownFields;
     const result = validatorClass.validate(values, {
       options: { allowUnknownFields },
-      values,
+      values: values as Record<string, unknown>,
     });
 
     if (result.success) {
@@ -291,7 +291,7 @@ export class TransformerInstance extends BaseTransformerInstance {
     }
   }
 
-  validate<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): IValidationResult<T> {
+  validate<T>(cls: Constructor<T>, values: unknown, options: IValidationOptions = {}): IValidationResult<T> {
     // Get metadata + types
     const validatorClass = this.getClassNode(cls);
 
