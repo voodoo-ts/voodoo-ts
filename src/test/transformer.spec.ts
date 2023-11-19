@@ -6,6 +6,7 @@
 import { DateTime } from 'luxon';
 
 import {
+  ArrayNodeFixture,
   ClassNodeFixture,
   LiteralNodeFixture,
   NodeValidationErrorMatcher,
@@ -26,12 +27,15 @@ import {
   Transformed,
   TransformerFunction,
   From,
-  ISOStringToLuxonTransformer,
-  StringToNumberValueTransformer,
-  StringToBooleanValueTransformer,
-  LuxonToISOStringTransformer,
 } from '../transformer-parser';
 import { Constructor } from '../types';
+import {
+  StringToNumberValueTransformer,
+  StringToBooleanValueTransformer,
+  StringToStringArrayTransformer,
+  StringArrayToStringTransformer,
+} from '../value-transformers';
+import { IsoStringToDateTimeTransformer, DateTimeToIsoStringTransformer } from '../value-transformers/luxon';
 
 describe('Transformer', () => {
   describe('StringToNumber transformer', () => {
@@ -205,10 +209,10 @@ describe('Transformer', () => {
     });
   });
 
-  describe('ISOStringToLuxonTransformer transformer', () => {
+  describe('ISOStringToDateTimeTransformer transformer', () => {
     const v = new TransformerInstance({
       project,
-      additionalValueTransformerFactories: [new ISOStringToLuxonTransformer()],
+      additionalValueTransformerFactories: [new IsoStringToDateTimeTransformer()],
     });
 
     @v.transformerDecorator()
@@ -280,10 +284,138 @@ describe('Transformer', () => {
     });
   });
 
-  describe('LuxonToISOStringTransformer transformer', () => {
+  describe('StringToStringArrayTransformer transformer', () => {
     const v = new TransformerInstance({
       project,
-      additionalValueTransformerFactories: [new LuxonToISOStringTransformer()],
+      additionalValueTransformerFactories: [new StringToStringArrayTransformer()],
+    });
+
+    @v.transformerDecorator()
+    class Test {
+      testDefaultSplit!: Transformed<string, string[]>;
+      testCustomSplit!: Transformed<string, string[], { separator: ':' }>;
+      testCustomSplitRegex!: Transformed<string, string[], { separator: ',\\s+'; regex: true }>;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            isTransformedType: true,
+            transformerFunction: [expect.any(Function)],
+            isNullableTransformer: false,
+            hasInitializer: false,
+          },
+          children: [StringNodeFixture.create({})],
+        }),
+      );
+    });
+
+    it('should transform correctly', async () => {
+      const result = await v.transformOrThrow(Test, {
+        testDefaultSplit: '1,2,3',
+        testCustomSplit: '1:2:3',
+        testCustomSplitRegex: '1,  2,   3',
+      } as any);
+      expect(result).toEqual({
+        testDefaultSplit: ['1', '2', '3'],
+        testCustomSplit: ['1', '2', '3'],
+        testCustomSplitRegex: ['1', '2', '3'],
+      });
+    });
+
+    it('should construct the correct error', async () => {
+      const result = await v.transform(Test, {
+        testDefaultSplit: '1,2,3',
+        testCustomSplit: '1:2:3',
+        testCustomSplitRegex: 0,
+      } as any);
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'testCustomSplitRegex', {
+            annotations: {
+              isTransformedType: true,
+              transformerFunction: [expect.any(Function)],
+              isNullableTransformer: false,
+              hasInitializer: false,
+            },
+            previousErrors: [NodeValidationErrorMatcher.stringError({})],
+          }),
+        );
+      });
+    });
+  });
+
+  describe('StringArrayToStringTransformer transformer', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringArrayToStringTransformer()],
+    });
+
+    @v.transformerDecorator()
+    class Test {
+      testDefault!: Transformed<string[], string>;
+      testCustom!: Transformed<string[], string, { separator: ':' }>;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            isTransformedType: true,
+            transformerFunction: [expect.any(Function)],
+            isNullableTransformer: false,
+            hasInitializer: false,
+          },
+          children: [
+            ArrayNodeFixture.create({
+              children: [StringNodeFixture.create({})],
+            }),
+          ],
+        }),
+      );
+    });
+
+    it('should transform correctly', async () => {
+      const result = await v.transformOrThrow(Test, {
+        testDefault: ['1', '2', '3'],
+        testCustom: ['1', '2', '3'],
+      } as any);
+      expect(result).toEqual({
+        testDefault: '1,2,3',
+        testCustom: '1:2:3',
+      });
+    });
+
+    it('should construct the correct error', async () => {
+      const result = await v.transform(Test, {
+        testDefault: ['1', '2', '3'],
+        testCustom: '123',
+      } as any);
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'testCustom', {
+            annotations: {
+              isTransformedType: true,
+              transformerFunction: [expect.any(Function)],
+              isNullableTransformer: false,
+              hasInitializer: false,
+            },
+            previousErrors: [NodeValidationErrorMatcher.arrayError({ reason: ValidationErrorType.NOT_AN_ARRAY })],
+          }),
+        );
+      });
+    });
+  });
+
+  describe('DateTimeToISOStringTransformer transformer', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new DateTimeToIsoStringTransformer()],
     });
 
     @v.transformerDecorator()
