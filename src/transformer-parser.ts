@@ -852,7 +852,13 @@ export class TransformerParser extends Parser {
               .getText()}'`,
           );
         }
-        options[optionProperty.getName()] = optionProperty.getType().getLiteralValue();
+
+        const optionPropertyType = optionProperty.getType();
+        const literalValue = optionPropertyType.isBooleanLiteral()
+          ? optionPropertyType.getText() === 'true'
+          : optionPropertyType.getLiteralValue();
+
+        options[optionProperty.getName()] = literalValue;
       }
     }
     return options;
