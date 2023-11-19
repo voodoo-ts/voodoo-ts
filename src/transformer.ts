@@ -87,15 +87,11 @@ export abstract class BaseTransformerInstance {
 
   abstract transform<T>(
     cls: Constructor<T>,
-    values: MaybePartial<T>,
+    values: unknown,
     options?: ITransformationOptions,
   ): Promise<IValidationResult<T> & { object: unknown }>;
 
-  abstract validate<T>(
-    cls: Constructor<T>,
-    values: MaybePartial<T>,
-    options?: IValidationOptions,
-  ): IValidationResult<T>;
+  abstract validate<T>(cls: Constructor<T>, values: unknown, options?: IValidationOptions): IValidationResult<T>;
 
   abstract getClassNode<T>(cls: Constructor<T>): ClassNode;
   abstract getTransformationTargetClassNode<T>(cls: Constructor<T>): ClassNode;
@@ -142,7 +138,7 @@ export abstract class BaseTransformerInstance {
     }
   }
 
-  validateOrThrow<T>(cls: Constructor<T>, values: MaybePartial<T>, options: IValidationOptions = {}): T {
+  validateOrThrow<T>(cls: Constructor<T>, values: unknown, options: IValidationOptions = {}): T {
     const result = this.validate(cls, values, options);
     if (result.success) {
       return result.object;
@@ -151,11 +147,7 @@ export abstract class BaseTransformerInstance {
     }
   }
 
-  async transformOrThrow<T>(
-    cls: Constructor<T>,
-    values: MaybePartial<T>,
-    options: ITransformationOptions = {},
-  ): Promise<T> {
+  async transformOrThrow<T>(cls: Constructor<T>, values: unknown, options: ITransformationOptions = {}): Promise<T> {
     const result = await this.transform(cls, values, options);
     if (result.success) {
       return result.object;
