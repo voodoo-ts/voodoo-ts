@@ -17,6 +17,7 @@ import {
 } from './transformer-parser';
 import { Constructor } from './types';
 import { Parser, TypeCache } from './validator-parser';
+import { applyDecorators } from './decorators';
 
 export interface ITransformerOptions extends IValidatorOptions {
   cls?: Constructor<unknown>;
@@ -247,6 +248,9 @@ export class TransformerInstance extends BaseTransformerInstance {
       validatorMeta.line,
       validatorMeta.column,
     );
+
+    // // TODO: Needs to run to get the applied decorators -- needs to be refactored
+    this.parser.getCachedClassNode(classDeclaration);
 
     return this.targetTypeParser.getCachedClassNode(classDeclaration);
   }
