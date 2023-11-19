@@ -736,6 +736,13 @@ export class ClassNode extends TypeNodeBase {
         properties.delete(resolvedPropertyName);
         if (tree.annotations.validateIf) {
           if (!tree.annotations.validateIf(value, context.values)) {
+            previousMatches.push(
+              tree.success([], {
+                className: this.name,
+                propertyName: name,
+                resolvedPropertyName,
+              }),
+            );
             continue;
           }
         }
