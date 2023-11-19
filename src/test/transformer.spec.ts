@@ -284,6 +284,109 @@ describe('Transformer', () => {
     });
   });
 
+  describe('DateTimeToISOStringTransformer transformer - validation types', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new DateTimeToIsoStringTransformer()],
+    });
+
+    @v.transformerDecorator()
+    class Test {
+      test!: Transformed<DateTime, string>;
+    }
+
+    it('should construct the correct transformed tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            isTransformedType: true,
+            transformerFunction: [expect.any(Function)],
+            isNullableTransformer: false,
+            hasInitializer: false,
+            validateIf: expect.any(Function),
+          },
+          children: [
+            ClassNodeFixture.createForClass(
+              DateTime as unknown as Constructor<DateTime>,
+              {
+                reference: expect.any(String),
+              },
+              { annotations: { comment: expect.anything() } },
+            ),
+          ],
+        }),
+      );
+    });
+
+    it('should transform correctly', async () => {
+      const now = DateTime.now();
+      const result = await v.transformOrThrow(Test, { test: now } as any);
+      expect(result).toEqual({ test: now.toISO() });
+    });
+
+    it('should construct the correct error', async () => {
+      const result = await v.transform(Test, { test: 'invalid' } as any);
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'test', {
+            annotations: {
+              isTransformedType: true,
+              transformerFunction: [expect.any(Function)],
+              isNullableTransformer: false,
+              hasInitializer: false,
+              validateIf: expect.any(Function),
+            },
+            previousErrors: [
+              NodeValidationErrorMatcher.classNotAObjectError(DateTime as unknown as Constructor<DateTime>),
+            ],
+          }),
+        );
+      });
+    });
+  });
+
+  describe('DateTimeToISOStringTransformer transformer - target type', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new DateTimeToIsoStringTransformer()],
+    });
+
+    @v.transformerDecorator()
+    class Test {
+      test!: Transformed<DateTime, string>;
+    }
+
+    it('should construct the correct untransformed tree', () => {
+      const { tree } = v.getTransformationTargetClassNode(Test).getClassTrees()[0];
+
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            hasInitializer: false,
+            validateIf: expect.any(Function),
+          },
+          children: [
+            StringNodeFixture.create({
+              annotations: {
+                validationFunctions: [
+                  {
+                    callback: expect.any(Function),
+                    meta: {
+                      context: {},
+                      name: '@IsISO8601',
+                    },
+                  },
+                ],
+              },
+            }),
+          ],
+        }),
+      );
+    });
+  });
+
   describe('StringToStringArrayTransformer transformer', () => {
     const v = new TransformerInstance({
       project,
@@ -406,97 +509,6 @@ describe('Transformer', () => {
               hasInitializer: false,
             },
             previousErrors: [NodeValidationErrorMatcher.arrayError({ reason: ValidationErrorType.NOT_AN_ARRAY })],
-          }),
-        );
-      });
-    });
-  });
-
-  describe('DateTimeToISOStringTransformer transformer', () => {
-    const v = new TransformerInstance({
-      project,
-      additionalValueTransformerFactories: [new DateTimeToIsoStringTransformer()],
-    });
-
-    @v.transformerDecorator()
-    class Test {
-      test!: Transformed<DateTime, string>;
-    }
-
-    it('should construct the correct transformed tree', () => {
-      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
-
-      expect(tree).toEqual(
-        RootNodeFixture.createRequired({
-          annotations: {
-            isTransformedType: true,
-            transformerFunction: [expect.any(Function)],
-            isNullableTransformer: false,
-            hasInitializer: false,
-            validateIf: expect.any(Function),
-          },
-          children: [
-            ClassNodeFixture.createForClass(
-              DateTime as unknown as Constructor<DateTime>,
-              {
-                reference: expect.any(String),
-              },
-              { annotations: { comment: expect.anything() } },
-            ),
-          ],
-        }),
-      );
-    });
-
-    it('should construct the correct untransformed tree', () => {
-      const { tree } = v.getTransformationTargetClassNode(Test).getClassTrees()[0];
-
-      expect(tree).toEqual(
-        RootNodeFixture.createRequired({
-          annotations: {
-            hasInitializer: false,
-            validateIf: expect.any(Function),
-          },
-          children: [
-            StringNodeFixture.create({
-              annotations: {
-                validationFunctions: [
-                  {
-                    callback: expect.any(Function),
-                    meta: {
-                      context: {},
-                      name: '@IsISO8601',
-                    },
-                  },
-                ],
-              },
-            }),
-          ],
-        }),
-      );
-    });
-
-    it('should transform correctly', async () => {
-      const now = DateTime.now();
-      const result = await v.transformOrThrow(Test, { test: now } as any);
-      expect(result).toEqual({ test: now.toISO() });
-    });
-
-    it('should construct the correct error', async () => {
-      const result = await v.transform(Test, { test: 'invalid' } as any);
-      expectValidationError(result, (result) => {
-        expect(result.rawErrors).toEqual(
-          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'test', {
-            annotations: {
-              isTransformedType: true,
-              transformerFunction: [expect.any(Function)],
-              isNullableTransformer: false,
-              hasInitializer: false,
-              validateIf: expect.any(Function),
-            },
-            previousErrors: [
-              NodeValidationErrorMatcher.classNotAObjectError(DateTime as unknown as Constructor<DateTime>),
-            ],
           }),
         );
       });
