@@ -95,6 +95,7 @@ export abstract class BaseTransformerInstance {
   ): IValidationResult<T>;
 
   abstract getClassNode<T>(cls: Constructor<T>): ClassNode;
+  abstract getTransformationTargetClassNode<T>(cls: Constructor<T>): ClassNode;
   abstract getClassByReference(ref: string): Constructor<unknown> | undefined;
 
   transformerDecorator(
@@ -175,12 +176,11 @@ export abstract class BaseTransformerInstance {
 }
 
 export class TransformerInstance extends BaseTransformerInstance {
-  getClassByReference(ref: string): Constructor<unknown> | undefined {
-    return this.parser.classDeclarationToClassReference.getByKey(ref);
-  }
   project: Project;
 
   parser: TransformerParser;
+  targetTypeParser: Parser;
+
   classDiscovery: ClassDiscovery;
   transformerClassDecoratorFactory: SourceCodeLocationDecorator<ITransformerOptions>;
 
@@ -209,6 +209,9 @@ export class TransformerInstance extends BaseTransformerInstance {
       options.additionalValueTransformerFactories ?? [],
     );
 
+    this.targetTypeParser = new Parser(this.transformerClassDecoratorFactory.getClassDeclarationMapping());
+    this.targetTypeParser.propertyDiscovery = this.parser.propertyDiscovery;
+
     this.defaultOptions = {};
   }
 
@@ -223,6 +226,10 @@ export class TransformerInstance extends BaseTransformerInstance {
     return new TransformerInstance({ project, ...options });
   }
 
+  getClassByReference(ref: string): Constructor<unknown> | undefined {
+    return this.parser.classDeclarationToClassReference.getByKey(ref);
+  }
+
   getClassNode<T>(cls: Constructor<T>): ClassNode {
     // Get metadata + types
     const validatorMeta = this.getClassMetadata(cls);
@@ -234,6 +241,19 @@ export class TransformerInstance extends BaseTransformerInstance {
     );
 
     return this.parser.getCachedClassNode(classDeclaration);
+  }
+
+  getTransformationTargetClassNode<T>(cls: Constructor<T>): ClassNode {
+    // Get metadata + types
+    const validatorMeta = this.getClassMetadata(cls);
+    const classDeclaration = this.classDiscovery.getClass(
+      cls.name,
+      validatorMeta.filename,
+      validatorMeta.line,
+      validatorMeta.column,
+    );
+
+    return this.targetTypeParser.getCachedClassNode(classDeclaration);
   }
 
   async transform<T>(
