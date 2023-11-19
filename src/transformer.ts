@@ -77,7 +77,10 @@ export class ValidationError extends Error {
   }
 }
 
-const NODE_MODULE_PATH = './node_modules/@voodoo-ts/voodoo-ts/src/*';
+const NODE_MODULE_PATH = [
+  './node_modules/@voodoo-ts/voodoo-ts/src/*',
+  './node_modules/@voodoo-ts/voodoo-ts/src/value-transformers/*',
+];
 
 export abstract class BaseTransformerInstance {
   abstract transformerClassDecoratorFactory: BasicSourceCodeLocationDecorator<ITransformerOptions>;
