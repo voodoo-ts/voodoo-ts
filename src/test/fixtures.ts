@@ -8,6 +8,7 @@ import {
   IArrayNodeItemValidationError,
   IArrayNodeValidationError,
   IClassMeta,
+  IClassNodeValidationError,
   IConstraintNodeValidationError,
   IEnumNodeValidationError,
   IIntersectionNodeValidationError,
@@ -224,9 +225,12 @@ export class NodeValidationErrorFixture {
     return this.create({ type: 'enum', reason: ValidationErrorType.NOT_AN_ENUM, ...values });
   }
 
-  static classNotAObjectError(cls: string | Constructor<unknown>): INodeValidationError {
+  static classNotAObjectError(
+    cls: string | Constructor<unknown>,
+    values: Partial<IClassNodeValidationError> = {},
+  ): INodeValidationError {
     const className = typeof cls === 'string' ? cls : cls.name;
-    return this.create({ type: 'class', reason: ValidationErrorType.NOT_AN_OBJECT, context: { className } });
+    return this.create({ type: 'class', reason: ValidationErrorType.NOT_AN_OBJECT, context: { className }, ...values });
   }
 
   static objectPropertyUnknown<T>(
