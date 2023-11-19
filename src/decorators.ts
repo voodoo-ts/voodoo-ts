@@ -361,8 +361,8 @@ export function validateNumberList(
   }
 }
 // eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/explicit-function-return-type
-export const IsNumberList = () =>
-  ValidateString((args) => validateNumberList(args), {
+export const IsNumberList = (splitter: Parameters<string['split']>[0] = /,\s*/, radix: 10 | 16 = 10) =>
+  ValidateString((args) => validateNumberList(args, splitter, radix), {
     name: '@IsNumberList',
     context: {},
   });
