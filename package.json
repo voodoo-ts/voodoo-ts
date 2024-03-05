@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^19.0.3",
-    "@commitlint/config-conventional": "^18.4.2",
+    "@commitlint/config-conventional": "^19.0.3",
     "@conventional-commits/parser": "^0.4.1",
     "@types/jest": "^29.5.8",
     "@types/luxon": "^3.3.4",
