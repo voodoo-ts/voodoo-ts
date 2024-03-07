@@ -134,13 +134,13 @@ export function getName(obj: ClassOrInterfaceOrLiteral | null): string {
 
 function getTypeId(type: Type): number {
   if (
-    '_compilerType' in type &&
-    typeof type._compilerType === 'object' &&
-    type._compilerType &&
-    'id' in type._compilerType &&
-    typeof type._compilerType.id === 'number'
+    'compilerType' in type &&
+    typeof type.compilerType === 'object' &&
+    type.compilerType &&
+    'id' in type.compilerType &&
+    typeof type.compilerType.id === 'number'
   ) {
-    return type._compilerType.id;
+    return type.compilerType.id;
   }
 
   throw new ParseError(`Can't get type id for: ${type.getText()}`);
