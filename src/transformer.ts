@@ -17,7 +17,6 @@ import {
 } from './transformer-parser';
 import { Constructor } from './types';
 import { Parser, TypeCache } from './validator-parser';
-import { applyDecorators } from './decorators';
 
 export interface ITransformerOptions extends IValidatorOptions {
   cls?: Constructor<unknown>;
