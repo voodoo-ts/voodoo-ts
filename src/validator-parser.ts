@@ -679,7 +679,7 @@ export class Parser {
 
     const getClassTrees: GetClassTrees = () => this.getPropertyTypeTrees(referencedDeclaration, typeMap).filter(filter);
 
-    const typeSignature = this.getTypeSignature(referencedDeclaration, type);
+    const typeSignature = this.getTypeSignature(referencedDeclaration, typeMap);
 
     if (!this.declarationsDiscovered.has(typeSignature)) {
       this.declarationsDiscovered.add(typeSignature);
@@ -713,8 +713,8 @@ export class Parser {
     return classNode;
   }
 
-  getTypeSignature(declaration: ClassOrInterfaceOrLiteral, type: Type): string {
-    return TypeCache.getKey(declaration, type.getTypeArguments().map(getTypeId));
+  getTypeSignature(declaration: ClassOrInterfaceOrLiteral, typeMap?: TypeMap): string {
+    return TypeCache.getKey(declaration, Array.from(typeMap?.values() ?? []).map(getTypeId));
   }
 
   /**

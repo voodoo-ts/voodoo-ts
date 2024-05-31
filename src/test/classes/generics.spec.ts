@@ -1,4 +1,5 @@
 import { ParseError } from '../../errors';
+import { ClassNode, RootNode } from '../../nodes';
 import { ValidatorInstance } from '../../validator';
 import {
   BooleanNodeFixture,
@@ -14,10 +15,11 @@ describe('generics', () => {
 
   @v.transformerDecorator()
   class Test {
-    genericProperty!: Generic<string, number, boolean>;
+    genericProperty1!: Generic<string, number, boolean>;
     genericProperty2!: Generic<string, Embedded, boolean>;
     genericProperty3!: Pick<Generic<string, number>, 'property1'>;
     genericProperty4!: Generic<Generic<string, string, string>, string, string>;
+    genericProperty5!: Generic<string, number>;
   }
 
   @v.transformerDecorator()
@@ -43,21 +45,46 @@ describe('generics', () => {
   it('should have cached all variants of `Generic`', () => {
     v.validate(Test, {});
 
-    const trees = Array.from(v.parser.classTreeCache.map.entries()).filter(([k]) =>
-      JSON.parse(k).reference.startsWith(`${LINE_NUMBER_GENERIC_CLASS}:`),
-    );
+    const trees = Array.from(v.parser.classTreeCache.map.entries())
+      .map(([k]) => JSON.parse(k))
+      .filter((r) => r.reference.startsWith(`${LINE_NUMBER_GENERIC_CLASS}:`));
 
     expect(trees.length).toEqual(5);
+    expect(trees.map((t) => t.parameters.length)).toEqual([3, 3, 3, 3, 3]);
   });
 
-  it('should construct the correct tree', () => {
+  describe('should construct the correct tree for Test.genericProperty1', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
-    expect(tree).toEqual(
-      RootNodeFixture.createRequired({
-        children: [ClassNodeFixture.create('Generic', { from: 'class', reference: expect.any(String) })],
-      }),
-    );
+    it('root', () => {
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          children: [ClassNodeFixture.create('Generic', { from: 'class', reference: expect.any(String) })],
+        }),
+      );
+    });
+
+    it('subtrees', () => {
+      const [property1Tree, property2Tree, property3Tree] = ((tree as RootNode).children[0] as ClassNode)
+        .getClassTrees()
+        .map((tt) => tt.tree);
+
+      expect(property1Tree).toEqual(
+        RootNodeFixture.createRequired({
+          children: [StringNodeFixture.create()],
+        }),
+      );
+      expect(property2Tree).toEqual(
+        RootNodeFixture.createRequired({
+          children: [NumberNodeFixture.create()],
+        }),
+      );
+      expect(property3Tree).toEqual(
+        RootNodeFixture.createRequired({
+          children: [BooleanNodeFixture.create()],
+        }),
+      );
+    });
   });
 
   it('should construct the correct tree for extending classes', () => {
@@ -87,7 +114,7 @@ describe('generics', () => {
 
   it('should validate', () => {
     const result = v.validate(Test, {
-      genericProperty: {
+      genericProperty1: {
         property1: '',
         property2: 0,
         property3: true,
@@ -108,6 +135,11 @@ describe('generics', () => {
         },
         property2: '2',
         property3: '3',
+      },
+      genericProperty5: {
+        property1: '1',
+        property2: 1,
+        property3: null,
       },
     });
 
