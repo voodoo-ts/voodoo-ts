@@ -341,18 +341,26 @@ async function recurse(
             }
           }
         } else {
-          const transformResult = await recurse(
-            propertyValidationResult.previousMatches[0],
-            propertyValue,
-            classDeclarationToClassReference,
-            getFactory,
-            options,
-          );
-          if (transformResult.success) {
-            newValues[targetPropertyName] = transformResult.value;
+          if (
+            'optional' in propertyValidationResult.node &&
+            propertyValidationResult.node.optional &&
+            propertyValue === undefined
+          ) {
+            newValues[targetPropertyName] = undefined;
           } else {
-            rootError.previousErrors = [transformResult];
-            classError.previousErrors.push(rootError);
+            const transformResult = await recurse(
+              propertyValidationResult.previousMatches[0],
+              propertyValue,
+              classDeclarationToClassReference,
+              getFactory,
+              options,
+            );
+            if (transformResult.success) {
+              newValues[targetPropertyName] = transformResult.value;
+            } else {
+              rootError.previousErrors = [transformResult];
+              classError.previousErrors.push(rootError);
+            }
           }
         }
       }
@@ -794,8 +802,8 @@ export class TransformerParser extends Parser {
       const optionNode = Node.isTypeLiteral(transformedOptions)
         ? transformedOptions
         : Node.isTypeLiteral(typeNodeOptions)
-        ? typeNodeOptions
-        : null;
+          ? typeNodeOptions
+          : null;
       if (!optionNode) {
         return [fromType, toType, {}];
       }

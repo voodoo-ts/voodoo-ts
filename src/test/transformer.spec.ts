@@ -1138,6 +1138,30 @@ describe('Transformer', () => {
     });
   });
 
+  describe('Explicit undefined value for optionals', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [new StringToNumberValueTransformer()],
+    });
+
+    @v.transformerDecorator()
+    class TestEmbed {
+      test!: Transformed<string, number>;
+      optional?: string;
+    }
+
+    @v.transformerDecorator()
+    class Test {
+      test!: TestEmbed | null;
+      testArray!: TestEmbed[];
+    }
+
+    it('should transform correctly', async () => {
+      const result = await v.transform(Test, { test: { test: '1', optional: undefined }, testArray: [] });
+      expect(result.success).toBeTrue();
+    });
+  });
+
   describe('End to end', () => {
     const t = new TransformerInstance({
       project,
