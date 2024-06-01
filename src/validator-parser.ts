@@ -672,7 +672,7 @@ export class Parser {
       typeMap = new Map(
         zip(
           declarationTypeParameters.map((t) => t.getName()),
-          type.getTypeArguments(),
+          type.getTypeArguments().filter((t) => !t.isTypeParameter()),
         ),
       );
     }
