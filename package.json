@@ -39,6 +39,7 @@
     "@commitlint/cli": "^19.3.0",
     "@commitlint/config-conventional": "^19.2.2",
     "@conventional-commits/parser": "^0.4.1",
+    "@types/bignumber.js": "^5.0.0",
     "@types/jest": "^29.5.12",
     "@types/luxon": "^3.4.2",
     "@types/node": "^20.13.0",
