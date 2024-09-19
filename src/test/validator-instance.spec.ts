@@ -8,6 +8,7 @@ import { expectValidationError, project } from './utils';
 import { ValidateIf } from '../decorators';
 import { ClassNotDecoratedError, ParseError } from '../errors';
 import { ClassNode, IAnnotationMap } from '../nodes';
+import { TransformerInstance } from '../transformer';
 import { ValidatorInstance } from '../validator';
 
 describe('general', () => {
@@ -305,7 +306,7 @@ describe('validator', () => {
   });
 
   describe('complex', () => {
-    const v = new ValidatorInstance({ project });
+    const v = new TransformerInstance({ project });
 
     enum TestEnum {
       YES = 'YES',
@@ -337,28 +338,32 @@ describe('validator', () => {
       property15!: [number, string];
     }
 
-    it('should validate', () => {
-      const result = v.validate(Test, {
-        property0: 'property0',
-        property1: { embeddedNumber: 9001 },
-        property2: 123,
-        property3: true,
-        property4: TestEnum.YES,
-        property5: [TestEnum.YES],
-        property6: 'property6',
-        property7: 'property7',
-        property8: 'property8',
-        property9: 'property9',
-        property10: 'property10',
-        property11: 'property11',
-        property12: 'property12',
-        property13: 'property13',
-        property14: ['1', { embeddedNumber: 1 }, '2', { embeddedNumber: 2 }],
-        property15: [123, 'string'],
-      });
-      if (!result.success) {
-        throw new Error('');
+    it('should validate', async () => {
+      console.time();
+      for (let i = 0; i < 100_000; i++) {
+        const result = await v.transform(Test, {
+          property0: 'property0',
+          property1: { embeddedNumber: 9001 },
+          property2: 123,
+          property3: true,
+          property4: TestEnum.YES,
+          property5: [TestEnum.YES],
+          property6: 'property6',
+          property7: 'property7',
+          property8: 'property8',
+          property9: 'property9',
+          property10: 'property10',
+          property11: 'property11',
+          property12: 'property12',
+          property13: 'property13',
+          property14: ['1', { embeddedNumber: 1 }, '2', { embeddedNumber: 2 }],
+          property15: [123, 'string'],
+        });
+        if (!result.success) {
+          throw new Error('');
+        }
       }
+      console.timeEnd();
     });
   });
 });

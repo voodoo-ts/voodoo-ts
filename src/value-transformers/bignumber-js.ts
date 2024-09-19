@@ -1,9 +1,34 @@
-import { type BigNumber } from 'bignumber.js';
+import { BigNumber } from 'bignumber.js';
 
-import { IsNumber, ValidateIf ,PropertyDecorator} from '../decorators';
-import { ValidationErrorType } from '../nodes';
+import { IsNumber, PropertyDecorator } from '../decorators';
+import { IPropertyValidatorCallbackArguments, INodeValidationResult, INodeValidationError } from '../nodes';
 import { AbstractValueTransformerFactory, registry, Transformed, TransformerFunction } from '../transformer-parser';
+import { ICustomValidator, validatorRegistry } from '../validator-parser';
 
+export enum BigNumberErrorTypes {
+  NOT_A_BIGNUMBER_INSTANCE = 'NOT_A_BIGNUMBER_INSTANCE',
+}
+
+@validatorRegistry.decorate<BigNumber>()
+export class BigNumberValidator implements ICustomValidator {
+  translations?: Record<string, Record<string, (e: INodeValidationError) => string>> = {
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    EN: {
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      [BigNumberErrorTypes.NOT_A_BIGNUMBER_INSTANCE]: (e) =>
+        `Expected BigNumber instance, received: ${(e.context as Record<string, unknown>).received}`,
+    },
+  };
+
+  validate(args: IPropertyValidatorCallbackArguments<unknown>): INodeValidationResult {
+    return args.value instanceof BigNumber
+      ? args.success()
+      : args.fail(args.value, {
+          reason: 'NOT_A_BIGNUMBER_INSTANCE',
+          context: { received: (args.value as object).constructor?.name ?? typeof args.value },
+        });
+  }
+}
 
 @registry.decorate<Transformed<string, BigNumber, never>>()
 export class NumberStringToBigNumberTransformer extends AbstractValueTransformerFactory {
@@ -20,8 +45,7 @@ export class NumberStringToBigNumberTransformer extends AbstractValueTransformer
   }
   getTransformer(): TransformerFunction<string> {
     return ({ value }) => {
-      const dt = this.bigNumber.BigNumber(value);
-      return dt;
+      return this.bigNumber.BigNumber(value);
     };
   }
 }
@@ -37,14 +61,11 @@ export class BigNumberToNumberStringTransformer extends AbstractValueTransformer
   }
 
   getDecorators(): PropertyDecorator[] {
-    return [ValidateIf(() => false), IsNumber()];
+    return [];
   }
 
   getTransformer(): TransformerFunction<BigNumber> {
-    return ({ value, fail }) => {
-      if (!(value instanceof this.bigNumber.BigNumber)) {
-        return fail(value, { reason: ValidationErrorType.NOT_AN_OBJECT, context: { className: 'BigNumber' } });
-      }
+    return ({ value }) => {
       return value.toString();
     };
   }

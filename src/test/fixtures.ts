@@ -225,6 +225,10 @@ export class NodeValidationErrorFixture {
     return this.create({ type: 'enum', reason: ValidationErrorType.NOT_AN_ENUM, ...values });
   }
 
+  static anyError(reason: string, values: Partial<INodeValidationError> = {}): INodeValidationError {
+    return this.create({ type: 'any', reason, ...values });
+  }
+
   static classNotAObjectError(
     cls: string | Constructor<unknown>,
     values: Partial<IClassNodeValidationError> = {},
