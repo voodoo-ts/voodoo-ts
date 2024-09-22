@@ -228,7 +228,6 @@ export class TransformerInstance extends BaseTransformerInstance {
       (cls) => this.getFactory(cls),
       options.additionalValueTransformerFactories ?? [],
     );
-    this.parser.propertyDiscovery = this.parser.propertyDiscovery;
     this.parser.customValidators = customValidators;
     this.parser.processCustomValidators();
 
