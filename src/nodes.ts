@@ -750,7 +750,7 @@ export class ClassNode extends TypeNodeBase {
         const result = tree.validate(values[resolvedPropertyName], context);
         if (!result.success) {
           // Ignore undefined values if this is a Partial<T>
-          if (result.reason === ValidationErrorType.VALUE_REQUIRED && this.meta.partial) {
+          if (result.reason === ValidationErrorType.VALUE_REQUIRED.valueOf() && this.meta.partial) {
             continue;
           }
 

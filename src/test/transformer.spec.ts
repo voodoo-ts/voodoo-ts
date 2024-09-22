@@ -3,9 +3,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+import BigNumber from 'bignumber.js';
 import { DateTime } from 'luxon';
 
 import {
+  AnyNodeFixture,
   ArrayNodeFixture,
   ClassNodeFixture,
   LiteralNodeFixture,
@@ -35,6 +37,12 @@ import {
   StringToStringArrayTransformer,
   StringArrayToStringTransformer,
 } from '../value-transformers';
+import {
+  BigNumberErrorTypes,
+  BigNumberToNumberStringTransformer,
+  BigNumberValidator,
+  NumberStringToBigNumberTransformer,
+} from '../value-transformers/bignumber-js';
 import { IsoStringToDateTimeTransformer, DateTimeToIsoStringTransformer } from '../value-transformers/luxon';
 
 describe('Transformer', () => {
@@ -445,6 +453,95 @@ describe('Transformer', () => {
               hasInitializer: false,
             },
             previousErrors: [NodeValidationErrorMatcher.stringError({})],
+          }),
+        );
+      });
+    });
+  });
+
+  describe('BigNumber transformer', () => {
+    const v = new TransformerInstance({
+      project,
+      additionalValueTransformerFactories: [
+        new BigNumberToNumberStringTransformer(),
+        new NumberStringToBigNumberTransformer(),
+      ],
+      additionalValueValidators: [new BigNumberValidator()],
+    });
+
+    @v.transformerDecorator()
+    class Test {
+      testToString!: Transformed<BigNumber, string>;
+      testToBigNumber!: Transformed<string, BigNumber>;
+    }
+
+    it('should construct the correct tree', () => {
+      const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
+
+      expect(tree).toEqual(
+        RootNodeFixture.createRequired({
+          annotations: {
+            isTransformedType: true,
+            transformerFunction: [expect.any(Function)],
+            isNullableTransformer: false,
+            hasInitializer: false,
+          },
+          children: [
+            AnyNodeFixture.create({
+              annotations: {
+                validationFunctions: [
+                  {
+                    callback: expect.any(Function),
+                    meta: {
+                      name: 'BigNumberValidator',
+                      context: {},
+                    },
+                  },
+                ],
+              },
+              children: [],
+            }),
+          ],
+        }),
+      );
+    });
+
+    it('should transform correctly', async () => {
+      const result = await v.transformOrThrow(Test, {
+        testToString: BigNumber(0.42),
+        testToBigNumber: '0.420',
+      } as any);
+      expect(result).toEqual({
+        testToString: '0.42',
+        testToBigNumber: BigNumber(0.42),
+      });
+    });
+
+    it('should construct the correct error', async () => {
+      const result = await v.transform(Test, {
+        testToString: ['1', '2', '3'],
+        testToBigNumber: '123',
+      } as any);
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.singleObjectPropertyFailed(Test, 'testToString', {
+            annotations: {
+              isTransformedType: true,
+              isNullableTransformer: false,
+              transformerFunction: [expect.any(Function)],
+              hasInitializer: false,
+            },
+            previousErrors: [
+              NodeValidationErrorMatcher.anyError(ValidationErrorType.TYPE_CONSTRAINT_FAILED, {
+                annotations: expect.any(Object),
+                previousErrors: [
+                  NodeValidationErrorMatcher.constraintError({
+                    reason: BigNumberErrorTypes.NOT_A_BIGNUMBER_INSTANCE,
+                    context: { received: 'Array' },
+                  }),
+                ],
+              }),
+            ],
           }),
         );
       });

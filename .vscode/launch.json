@@ -3,26 +3,45 @@
     {
       "name": "Launch via NPM",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test"],
+      "runtimeArgs": [
+        "run-script",
+        "test"
+      ],
       "runtimeExecutable": "npm",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "type": "node"
     },
     {
       "name": "Launch via NPM 2",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test:ts", "src/test/classes/intersection.spec"],
+      "runtimeArgs": [
+        "run-script",
+        "test:ts",
+        "src/test/classes/intersection.spec"
+      ],
       "runtimeExecutable": "npm",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "type": "node"
     },
     {
       "name": "Run current file as test",
       "request": "launch",
-      "runtimeArgs": ["run-script", "test:ts", "${file}"],
+      "runtimeArgs": [
+        "run-script",
+        "test:ts",
+        "${file}"
+      ],
       "runtimeExecutable": "npm",
-      "skipFiles": ["<node_internals>/**"],
-      "type": "node"
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "rootPath": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}",
+      "type": "pwa-node"
     },
     {
       "type": "node",
@@ -30,10 +49,15 @@
       "request": "launch",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-
       "program": "/usr/bin/npx",
       "cwd": "${workspaceFolder}",
-      "args": ["jest", "-c", "jest.config.tsjest.js", "--runInBand", "--watchAll=false"]
+      "args": [
+        "jest",
+        "-c",
+        "jest.config.tsjest.js",
+        "--runInBand",
+        "--watchAll=false"
+      ]
     }
   ]
 }

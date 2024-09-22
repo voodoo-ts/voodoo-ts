@@ -20,8 +20,11 @@ import {
   ClassNode,
   EnumNode,
   IClassMeta,
+  INodeValidationError,
+  INodeValidationResult,
   IntersectionNode,
   IPropertyComment,
+  IPropertyValidatorCallbackArguments,
   ITypeAndTree,
   LiteralNode,
   NumberNode,
@@ -33,6 +36,7 @@ import {
   UndefinedNode,
   UnionNode,
 } from './nodes';
+import { BasicSourceCodeLocationDecorator } from './source-code-location-decorator';
 import { Constructor } from './types';
 import { zip } from './utils';
 
@@ -57,6 +61,22 @@ export interface IPropertyListItem {
 export interface IResolvedProperty {
   type: Type;
   nullable: boolean;
+}
+
+class ValidatorRegistry {
+  decoratorFactory: BasicSourceCodeLocationDecorator<unknown> = new BasicSourceCodeLocationDecorator();
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- unused at compile time, used in analyze time
+  decorate<T>(options: unknown = {}): ReturnType<BasicSourceCodeLocationDecorator<unknown>['decorator']> {
+    return this.decoratorFactory.decorator(new Error(), options);
+  }
+}
+
+export const validatorRegistry = new ValidatorRegistry();
+
+export interface ICustomValidator {
+  translations?: Record<string, Record<string, (e: INodeValidationError) => string>>;
+  validate(args: IPropertyValidatorCallbackArguments): INodeValidationResult;
 }
 
 /**
@@ -155,7 +175,7 @@ export function getFirstSymbolDeclaration(type: Type | Node): ClassOrInterfaceOr
   }
 
   if (!isClassOrInterfaceOrLiteral(declaration)) {
-    throw new ParseError('Symbol is not a class / interface / object literal', {
+    throw new ParseError(`Symbol is not a class / interface / object literal: ${type.getText()}`, {
       asText: type.getText(),
     });
   }
@@ -463,10 +483,44 @@ export class Parser {
   classTreeCache = new TypeCache<ITypeAndTree[]>();
   declarationsDiscovered = new Set<string>();
   classNodeCache: Map<ClassDeclaration, ClassNode> = new Map();
+  typeIdToCustomValidator: Map<number, ICustomValidator> = new Map();
+  customValidators: Array<{ validator: ICustomValidator; classDeclaration: ClassDeclaration }> = [];
+  customValidatorClassDeclarations: Map<Constructor<unknown>, ClassDeclaration> = new Map();
 
   constructor(classDeclarationToClassReference: TypeCache<Constructor<unknown>>) {
     this.classDeclarationToClassReference = classDeclarationToClassReference;
     this.propertyDiscovery = new PropertyDiscovery();
+  }
+
+  log(msg: string, context: object | undefined = undefined): void {
+    if (process.env.DEBUG?.match(/\*|voodoo:.+/)) {
+      console.log(msg, context);
+    }
+  }
+
+  processCustomValidators(): void {
+    for (const { validator, classDeclaration } of this.customValidators) {
+      const decorator = classDeclaration.getDecorators()[0];
+      const typeArgument = decorator.getTypeArguments()[0];
+
+      if (!Node.isTypeReference(typeArgument)) {
+        throw new ParseError('node no type ref');
+      }
+
+      if (!Node.isTypeNode(typeArgument)) {
+        throw new ParseError('type arg no type');
+      }
+
+      const typeId = getTypeId(typeArgument.getType());
+
+      this.typeIdToCustomValidator.set(typeId, validator);
+
+      this.log(
+        `Processed custom type validator for type ${typeArgument.getText()} (typeId: ${typeId}, class: ${
+          validator.constructor.name
+        })`,
+      );
+    }
   }
 
   handleRootNode(property: PropertyDeclarationOrSignature, typeMap?: TypeMap): RootNode {
@@ -540,6 +594,23 @@ export class Parser {
 
   walkTypeNodes(type: Type, { typeMap }: { typeMap?: TypeMap } = {}): TypeNode {
     type = this.handleTypeParameter(type, typeMap);
+
+    const typeId = getTypeId(type);
+    const customValidator = this.typeIdToCustomValidator.get(typeId);
+    if (customValidator) {
+      const node = new AnyNode();
+      if (!node.annotations.validationFunctions) {
+        node.annotations.validationFunctions = [];
+      }
+      node.annotations.validationFunctions.push({
+        callback: customValidator.validate.bind(customValidator),
+        meta: {
+          name: customValidator.constructor.name,
+          context: {},
+        },
+      });
+      return node;
+    }
 
     if (type.isNumber()) {
       return new NumberNode();

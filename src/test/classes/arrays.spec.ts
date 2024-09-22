@@ -15,6 +15,11 @@ describe('arrays', () => {
     arrayProperty!: number[];
   }
 
+  @v.transformerDecorator()
+  class Test2 {
+    nestedArrayProperty!: number[][];
+  }
+
   it('should construct the correct tree', () => {
     const { tree } = v.getPropertyTypeTreesFromConstructor(Test)[0];
 
@@ -23,6 +28,20 @@ describe('arrays', () => {
         children: [
           ArrayNodeFixture.create({
             children: [NumberNodeFixture.create()],
+          }),
+        ],
+      }),
+    );
+  });
+
+  it('should construct the correct tree', () => {
+    const { tree } = v.getPropertyTypeTreesFromConstructor(Test2)[0];
+
+    expect(tree).toEqual(
+      RootNodeFixture.createRequired({
+        children: [
+          ArrayNodeFixture.create({
+            children: [ArrayNodeFixture.create({ children: [NumberNodeFixture.create()] })],
           }),
         ],
       }),

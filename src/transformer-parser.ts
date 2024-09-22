@@ -407,7 +407,6 @@ export async function transform(
     values,
     options: { allowUnknownFields: options.allowUnknownFields ?? false },
   });
-
   if (!validationResult.success) {
     return validationResult;
   }
@@ -802,8 +801,8 @@ export class TransformerParser extends Parser {
       const optionNode = Node.isTypeLiteral(transformedOptions)
         ? transformedOptions
         : Node.isTypeLiteral(typeNodeOptions)
-          ? typeNodeOptions
-          : null;
+        ? typeNodeOptions
+        : null;
       if (!optionNode) {
         return [fromType, toType, {}];
       }

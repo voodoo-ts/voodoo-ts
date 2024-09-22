@@ -1,7 +1,7 @@
 import { Project } from 'ts-morph';
 
 import { ClassDiscovery } from './class-discovery';
-import { FormattedErrors, formatErrors } from './error-formatter';
+import { FormattedErrors, formatErrors, translations } from './error-formatter';
 import { IValidationOptions, ITypeAndTree, ClassNode, INodeValidationError, INodeValidationResult } from './nodes';
 import {
   SourceCodeLocationDecorator,
@@ -16,7 +16,7 @@ import {
   TransformerParser,
 } from './transformer-parser';
 import { Constructor } from './types';
-import { Parser, TypeCache } from './validator-parser';
+import { ICustomValidator, Parser, TypeCache, validatorRegistry } from './validator-parser';
 
 export interface ITransformerOptions extends IValidatorOptions {
   cls?: Constructor<unknown>;
@@ -26,6 +26,7 @@ export interface ITransformerOptions extends IValidatorOptions {
 export interface ITransformerConstructorOptions {
   project: Project;
   additionalValueTransformerFactories?: AbstractValueTransformerFactory[];
+  additionalValueValidators?: ICustomValidator[];
   eager?: boolean;
 }
 
@@ -197,15 +198,44 @@ export class TransformerInstance extends BaseTransformerInstance {
       onDecorate,
     );
 
+    const customValidators = [];
+
+    for (const validator of options.additionalValueValidators ?? []) {
+      const cls = validator.constructor as Constructor<ICustomValidator>;
+      const classMetadata = validatorRegistry.decoratorFactory.getClassMetadata(cls);
+      const classDeclaration = this.classDiscovery.getClass(
+        cls.name,
+        classMetadata.filename,
+        classMetadata.line,
+        classMetadata.column,
+      );
+
+      if (validator.translations) {
+        for (const [k, v] of Object.entries(validator.translations)) {
+          Object.assign(translations[k as keyof typeof translations], v);
+        }
+      }
+
+      customValidators.push({
+        validator,
+        classDeclaration,
+      });
+    }
+
     this.parser = TransformerParser.default(
       this.transformerClassDecoratorFactory.getClassDeclarationMapping(),
       this.classDiscovery,
       (cls) => this.getFactory(cls),
       options.additionalValueTransformerFactories ?? [],
     );
+    this.parser.customValidators = customValidators;
+    this.parser.processCustomValidators();
 
+    // Parser used for the right side of Transformed<>
     this.targetTypeParser = new Parser(this.transformerClassDecoratorFactory.getClassDeclarationMapping());
     this.targetTypeParser.propertyDiscovery = this.parser.propertyDiscovery;
+    this.targetTypeParser.customValidators = customValidators;
+    this.targetTypeParser.processCustomValidators();
 
     this.defaultOptions = {};
   }
