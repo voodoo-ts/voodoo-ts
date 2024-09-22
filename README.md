@@ -282,3 +282,7 @@ won't work.
 
 - Error formatting could be improved.
 - Serialize dtos to remove the dependency on sources.
+
+## Thanks
+
+- g8keeper for encouragement, testing and the BigNumber transformer :)
