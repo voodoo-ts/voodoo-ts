@@ -58,7 +58,8 @@
     "ts-jest": "^29.2.5"
   },
   "peerDependencies": {
-    "luxon": "*"
+    "luxon": "*",
+    "bignumber.js": "*"
   },
   "repository": {
     "url": "https://github.com/voodoo-ts/voodoo-ts"
