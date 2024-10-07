@@ -39,7 +39,6 @@
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@conventional-commits/parser": "^0.4.1",
-    "@types/bignumber.js": "^5.0.0",
     "@types/jest": "^29.5.13",
     "@types/luxon": "^3.4.2",
     "@types/node": "^22.5.5",
@@ -58,8 +57,8 @@
     "ts-jest": "^29.2.5"
   },
   "peerDependencies": {
-    "luxon": "*",
-    "bignumber.js": "*"
+    "bignumber.js": "*",
+    "luxon": "*"
   },
   "repository": {
     "url": "https://github.com/voodoo-ts/voodoo-ts"

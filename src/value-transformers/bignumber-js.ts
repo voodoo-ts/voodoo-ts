@@ -9,6 +9,8 @@ export enum BigNumberErrorTypes {
   NOT_A_BIGNUMBER_INSTANCE = 'NOT_A_BIGNUMBER_INSTANCE',
 }
 
+((bn) => bn)(BigNumber);
+
 @validatorRegistry.decorate<BigNumber>()
 export class BigNumberValidator implements ICustomValidator {
   translations?: Record<string, Record<string, (e: INodeValidationError) => string>> = {
