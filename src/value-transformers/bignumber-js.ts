@@ -1,4 +1,4 @@
-import { BigNumber } from 'bignumber.js';
+import { type BigNumber } from 'bignumber.js';
 
 import { IsNumber, PropertyDecorator } from '../decorators';
 import { IPropertyValidatorCallbackArguments, INodeValidationResult, INodeValidationError } from '../nodes';
@@ -8,8 +8,6 @@ import { ICustomValidator, validatorRegistry } from '../validator-parser';
 export enum BigNumberErrorTypes {
   NOT_A_BIGNUMBER_INSTANCE = 'NOT_A_BIGNUMBER_INSTANCE',
 }
-
-((bn) => bn)(BigNumber);
 
 @validatorRegistry.decorate<BigNumber>()
 export class BigNumberValidator implements ICustomValidator {
@@ -21,9 +19,14 @@ export class BigNumberValidator implements ICustomValidator {
         `Expected BigNumber instance, received: ${(e.context as Record<string, unknown>).received}`,
     },
   };
+  bigNumber: typeof import('bignumber.js');
 
+  constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+    this.bigNumber = require('bignumber.js');
+  }
   validate(args: IPropertyValidatorCallbackArguments<unknown>): INodeValidationResult {
-    return args.value instanceof BigNumber
+    return args.value instanceof this.bigNumber.BigNumber
       ? args.success()
       : args.fail(args.value, {
           reason: 'NOT_A_BIGNUMBER_INSTANCE',

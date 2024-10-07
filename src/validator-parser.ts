@@ -6,6 +6,7 @@ import {
   Node,
   PropertyDeclaration,
   PropertySignature,
+  Symbol,
   SyntaxKind,
   Type,
   TypeLiteralNode,
@@ -166,6 +167,21 @@ function getTypeId(type: Type): number {
   throw new ParseError(`Can't get type id for: ${type.getText()}`);
 }
 
+function getSymbolId(type?: Symbol): number {
+  if (
+    type &&
+    'compilerSymbol' in type &&
+    typeof type.compilerSymbol === 'object' &&
+    type.compilerSymbol &&
+    'id' in type.compilerSymbol &&
+    typeof type.compilerSymbol.id === 'number'
+  ) {
+    return type.compilerSymbol.id;
+  }
+
+  throw new ParseError(`Can't get symbol id for: ${type?.toString()}`);
+}
+
 export function getFirstSymbolDeclaration(type: Type | Node): ClassOrInterfaceOrLiteral {
   const declaration = type.getSymbol()?.getDeclarations()[0];
   if (!declaration) {
@@ -175,9 +191,12 @@ export function getFirstSymbolDeclaration(type: Type | Node): ClassOrInterfaceOr
   }
 
   if (!isClassOrInterfaceOrLiteral(declaration)) {
-    throw new ParseError(`Symbol is not a class / interface / object literal: ${type.getText()}`, {
-      asText: type.getText(),
-    });
+    throw new ParseError(
+      `Symbol is not a class / interface / object literal: ${type.getText()} (id: ${'compilerType' in type ? getTypeId(type) : null})`,
+      {
+        asText: type.getText(),
+      },
+    );
   }
 
   return declaration;
@@ -483,7 +502,7 @@ export class Parser {
   classTreeCache = new TypeCache<ITypeAndTree[]>();
   declarationsDiscovered = new Set<string>();
   classNodeCache: Map<ClassDeclaration, ClassNode> = new Map();
-  typeIdToCustomValidator: Map<number, ICustomValidator> = new Map();
+  symbolIdToCustomValidator: Map<number, ICustomValidator> = new Map();
   customValidators: Array<{ validator: ICustomValidator; classDeclaration: ClassDeclaration }> = [];
   customValidatorClassDeclarations: Map<Constructor<unknown>, ClassDeclaration> = new Map();
 
@@ -511,12 +530,13 @@ export class Parser {
         throw new ParseError('type arg no type');
       }
 
-      const typeId = getTypeId(typeArgument.getType());
+      const type = typeArgument.getType();
+      const symbolId = getSymbolId(type.getSymbol());
 
-      this.typeIdToCustomValidator.set(typeId, validator);
+      this.symbolIdToCustomValidator.set(symbolId, validator);
 
       this.log(
-        `Processed custom type validator for type ${typeArgument.getText()} (typeId: ${typeId}, class: ${
+        `Processed custom type validator for type ${typeArgument.getText()} (typeId: ${symbolId}, class: ${
           validator.constructor.name
         })`,
       );
@@ -595,8 +615,8 @@ export class Parser {
   walkTypeNodes(type: Type, { typeMap }: { typeMap?: TypeMap } = {}): TypeNode {
     type = this.handleTypeParameter(type, typeMap);
 
-    const typeId = getTypeId(type);
-    const customValidator = this.typeIdToCustomValidator.get(typeId);
+    const symbolId = type.getSymbol() ? getSymbolId(type.getSymbol()) : -1;
+    const customValidator = this.symbolIdToCustomValidator.get(symbolId);
     if (customValidator) {
       const node = new AnyNode();
       if (!node.annotations.validationFunctions) {
