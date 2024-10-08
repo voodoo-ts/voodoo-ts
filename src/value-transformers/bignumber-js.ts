@@ -26,7 +26,7 @@ export class BigNumberValidator implements ICustomValidator {
     this.bigNumber = require('bignumber.js');
   }
   validate(args: IPropertyValidatorCallbackArguments<unknown>): INodeValidationResult {
-    return args.value instanceof this.bigNumber.BigNumber
+    return this.bigNumber.BigNumber.isBigNumber(args.value)
       ? args.success()
       : args.fail(args.value, {
           reason: 'NOT_A_BIGNUMBER_INSTANCE',
