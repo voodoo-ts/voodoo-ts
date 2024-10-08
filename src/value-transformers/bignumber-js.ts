@@ -30,7 +30,13 @@ export class BigNumberValidator implements ICustomValidator {
       ? args.success()
       : args.fail(args.value, {
           reason: 'NOT_A_BIGNUMBER_INSTANCE',
-          context: { received: (args.value as object).constructor?.name ?? typeof args.value },
+          context: {
+            received: (args.value as object)?.constructor?.name
+              ? (args.value as object)?.constructor?.name
+              : args.value === null
+                ? 'null'
+                : typeof args.value,
+          },
         });
   }
 }
