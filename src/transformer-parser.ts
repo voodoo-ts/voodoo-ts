@@ -648,8 +648,9 @@ export class TransformerParser extends Parser {
 
     const propertyTypeName = propertyTypeNode.getTypeName();
     if (!Node.isIdentifier(propertyTypeName)) {
-      throw new Error('');
+      return null;
     }
+
     const propertyTypeNameDefinition = propertyTypeName.getDefinitions()[0].getDeclarationNode();
     if (!Node.isTypeAliasDeclaration(propertyTypeNameDefinition)) {
       return null; // REVIEW: ?
