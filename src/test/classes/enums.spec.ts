@@ -10,13 +10,25 @@ describe('enums', () => {
     YES = 'yes',
     NO = 'no',
   }
+
   @v.transformerDecorator()
   class Test {
     enumProperty!: TestEnum;
   }
 
+  @v.transformerDecorator()
+  class TestLiteralEnumValue {
+    enumValue!: TestEnum.YES;
+  }
+
   it('should validate valid enum', () => {
     const result = v.validate(Test, { enumProperty: TestEnum.YES });
+
+    expect(result.success).toEqual(true);
+  });
+
+  it('should validate valid enum value', () => {
+    const result = v.validate(TestLiteralEnumValue, { enumValue: TestEnum.YES });
 
     expect(result.success).toEqual(true);
   });
@@ -37,6 +49,31 @@ describe('enums', () => {
                 context: {
                   enumName: 'TestEnum',
                   allowedValues: ['yes', 'no'],
+                },
+              }),
+            ],
+          }),
+        );
+      });
+    });
+  });
+
+  describe('should not validate wrong enum value', () => {
+    const result = v.validate(TestLiteralEnumValue, { enumValue: TestEnum.NO });
+
+    it('should not validate', () => {
+      expect(result.success).toEqual(false);
+    });
+
+    it('should construct the correct error', () => {
+      expectValidationError(result, (result) => {
+        expect(result.rawErrors).toEqual(
+          NodeValidationErrorMatcher.objectPropertyFailedForClass(TestLiteralEnumValue, 'enumValue', {
+            previousErrors: [
+              NodeValidationErrorMatcher.literalError({
+                context: {
+                  type: 'string',
+                  expected: 'yes',
                 },
               }),
             ],
